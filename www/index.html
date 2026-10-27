@@ -2396,7 +2396,7 @@ $('#report').addEventListener('change', function(){
   save({report:{text:text, who:nameNow(), at:Date.now()}});
 });
 $('#daySel').addEventListener('change', function(){ goTo(this.value); });
-$('#salBtn').addEventListener('click', function(){ if(isOwner){ tab='sal'; renderAll(); } });
+$('#salBtn').addEventListener('click', function(){ if(isOwner){ salAttFor=''; tab='sal'; renderAll(); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
@@ -2811,7 +2811,7 @@ function salSave(patch){
 var salAtt={}, salAttFor='', salAttBusy=false;
 function rateOf(sid){ return Number((salData.b||{})[sid])||0; }
 function loadSalAtt(){
-  var key=salMonth+'|'+nursery; if(salAttFor===key||salAttBusy||!db) return;
+  var key=salMonth+'|'+nursery; if(salAttFor===key||salAttBusy||!db||!db.list) return;
   salAttBusy=true;
   db.list('days/','att').then(function(rows){
     var o={}; rows.forEach(function(r){ var d=r.path.slice(5); if(d.slice(0,7)!==salMonth) return; var a=(r.data&&r.data.att)||{}; Object.keys(a).forEach(function(sid){ if(a[sid]&&a[sid].s){ (o[sid]=o[sid]||{})[d]=a[sid].s; } }); });
@@ -2834,7 +2834,7 @@ function salPeople(kind){
 }
 function salMonthInfo(sid,kind){
   var ym=salMonth.split('-'), dim=new Date(+ym[0],+ym[1],0).getDate(), rate=rateOf(sid), A=0,H=0;
-  if(kind==='staff'){ var at=salAtt[sid]||{}; Object.keys(at).forEach(function(d){ if(at[d]==='A')A++; else if(at[d]==='H')H++; }); }
+  if(kind==='staff'){ var at=Object.assign({},salAtt[sid]||{}); var cur=day&&day.att&&day.att[sid]; if(cur&&selDate.slice(0,7)===salMonth) at[selDate]=cur.s||undefined; Object.keys(at).forEach(function(d){ if(at[d]==='A')A++; else if(at[d]==='H')H++; }); }
   var gross=rate*dim, absA=Math.round(rate*A), absH=Math.round(rate*H*0.5), absDed=absA+absH, adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid);
   return {dim:dim,rate:rate,A:A,H:H,absA:absA,absH:absH,dedAll:ded+absDed,gross:gross,absDed:absDed,adv:adv,ded:ded,bon:bon,net:gross-absDed-adv-ded+bon};
 }

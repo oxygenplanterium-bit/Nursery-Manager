@@ -36,6 +36,18 @@ async function refresh(path) {
 }
 
 const db = {
+  /* list documents whose path starts with prefix; with a field, only that part of each document is fetched */
+  async list(prefix, field) {
+    const out = [];
+    for (let from = 0; ; from += 1000) {
+      const sel = field ? 'path, v:data->' + field : 'path, data';
+      const r = await sb.from('docs').select(sel).like('path', prefix + '%').order('path').range(from, from + 999);
+      if (r.error) throw mapErr(r.error);
+      (r.data || []).forEach(x => out.push({ path: x.path, data: field ? { [field]: x.v } : x.data }));
+      if (!r.data || r.data.length < 1000) break;
+    }
+    return out;
+  },
   doc(path) {
     return {
       get: async () => snapOf(await fetchDoc(path)),
