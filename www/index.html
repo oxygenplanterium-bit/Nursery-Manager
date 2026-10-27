@@ -110,6 +110,7 @@ h2.dwide{margin:6px 2px 0; font-size:1rem}
 .salmon{display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; align-items:center; padding:8px; text-align:center}
 .salmon .btn{padding:0; min-height:44px; font-size:1.4rem}
 .salmon b{font-size:1.05rem}
+.abal{margin-left:auto; color:var(--accent); white-space:nowrap; font-size:.95rem}
 .lp{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
 .row.picked{outline:3px solid var(--accent); outline-offset:-2px; background:var(--accent-soft)}
 #rowMoveBar{position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:30; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px; background:var(--card); border:2px solid var(--accent); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
@@ -2394,7 +2395,7 @@ function attText(){
 }
 function makeAtt(id){
   var el=mk('div','card arow'), top=mk('div','ttop'), num_=mk('span','sl'), nm=mk('div','ttitle');
-  top.append(num_,nm);
+  var bal_=mk('b','abal'); top.append(num_,nm,bal_);
   var seg=mk('div','aseg'), b={};
   [['P','✔ Present',''],['H','½ Half day','h'],['A','✖ Absent','a']].forEach(function(d){
     var x=mk('button','btn '+d[2],d[1]); x.type='button';
@@ -2402,12 +2403,18 @@ function makeAtt(id){
     b[d[0]]=x; seg.append(x);
   });
   var meta=mk('div','tmeta');
-  el.append(top,seg,meta); el._r={num:num_,nm:nm,b:b,meta:meta};
+  el.append(top,seg,meta); el._r={num:num_,nm:nm,b:b,meta:meta,bal:bal_}; el._id=id;
   return el;
 }
 function updateAtt(el,a,n,ed){
   var R=el._r;
   R.num.textContent=n; R.nm.textContent=a.n;
+  if(isOwner && db){
+    salSubscribe(); loadSalAtt();
+    var vm=todayKey().slice(0,7), info=null;
+    try{ info=salCalc(el._id,String(el._id).charAt(0)==='s'?'sup':'staff',vm)[vm]; }catch(e){}
+    if(info && info.rate){ var bv=info.balance; R.bal.textContent=(info.paid&&Math.round(bv)===0)?'✔ Paid':(bv<0?'Recover ₹'+fmtN(-bv):'Balance to pay ₹'+fmtN(bv)); R.bal.hidden=false; } else R.bal.hidden=true;
+  } else R.bal.hidden=true;
   ['P','H','A'].forEach(function(k){ R.b[k].setAttribute('aria-pressed', a.s===k); R.b[k].disabled=!ed; });
   R.meta.textContent = a.s ? ATT_TXT[a.s]+(a.who||a.at ? ' · '+[a.who,fmtTime(a.at)].filter(Boolean).join(' ') : '') : 'Not marked';
 }
@@ -2911,7 +2918,7 @@ function loadSalAtt(){
   salAttBusy=true;
   db.list('days/','att').then(function(rows){
     var o={}; rows.forEach(function(r){ var d=r.path.slice(5), a=(r.data&&r.data.att)||{}; Object.keys(a).forEach(function(sid){ if(a[sid]&&a[sid].s){ (o[sid]=o[sid]||{})[d]=a[sid].s; } }); });
-    salAtt=o; salAttFor=key; salAttBusy=false; if(tab==='sal') renderSal();
+    salAtt=o; salAttFor=key; salAttBusy=false; if(tab==='sal') renderSal(); if(tab==='att') renderAtt();
   }).catch(function(){ salAttBusy=false; salAttFor=key; });
 }
 function salStaff(){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nursery; }); }
@@ -2923,7 +2930,7 @@ function salEntries(kind){
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
   if(salSubbed||!db||!isOwner) return; salSubbed=true;
-  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; if(tab==='sal') renderSal(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function salPeople(kind){
   var l=teamList(kind); return l.filter(function(it){ return (it[1].nid||'1')===nursery; });
@@ -2931,11 +2938,12 @@ function salPeople(kind){
 function ymIdx(m){ var q=m.split('-'); return (+q[0])*12+(+q[1])-1; }
 function ymOf(i){ return Math.floor(i/12)+'-'+('0'+(i%12+1)).slice(-2); }
 /* month by month: advances go to the earliest month whose salary is not yet cleared; excess paid is carried to the next month */
-function salCalc(sid,kind){
+function salCalc(sid,kind,view){
+  view=view||salMonth;
   var e=salData.e||{}, paid=(salData.p||{})[sid]||{}, rate=rateOf(sid), advs=[], mn={}, i;
   Object.keys(e).forEach(function(id){ var x=e[id]; if(x&&x.sid===sid){ mn[x.m]=1; if(x.k==='adv') advs.push(Object.assign({id:id},x)); } });
   Object.keys(paid).forEach(function(m){ mn[m]=1; });
-  mn[salMonth]=1;
+  mn[view]=1;
   var idx=Object.keys(mn).map(ymIdx), lo=Math.min.apply(null,idx), hi=Math.max.apply(null,idx), M={}, order=[];
   var att=Object.assign({},salAtt[sid]||{}); var cur=day&&day.att&&day.att[sid]; if(cur) att[selDate]=cur.s||undefined;
   for(i=lo;i<=hi;i++){
