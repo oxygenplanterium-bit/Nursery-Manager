@@ -2926,9 +2926,12 @@ function renderSalDlg(){
       pbox.append(mk('span',null,'Until This Month\'s Salary Is Marked As Paid, All The Advances Are Deducted In Old Or Previous Month Salary.')); pbox.append(mk('span',null,'Any Excess Advance Amount Paid Shall Be Carried Forwarded To Next Month As Advance.'));
       var pr=mk('div','sline'), pa=mk('input'), pb=mk('button','btn primary','✔ Mark salary paid'); pb.style.minHeight='48px';
       pa.type='number'; pa.step='1'; pa.inputMode='numeric'; pa.value=Math.max(0,Math.round(m.balance)); pa.setAttribute('aria-label','Amount paid'); pb.type='button';
-      pr.append(pa,pb); pbox.append(pr);
+      var need=Math.max(0,Math.round(m.balance)), rem=mk('span','pmeta');
+      var chk=function(){ var left=need-Math.round(Number(pa.value)||0); pb.disabled=left!==0; rem.textContent=left===0?'Balance to pay: ₹0 – ready to mark as paid.':'Balance to pay after this payment: ₹'+fmtN(left)+' – pay the full balance to mark salary as paid.'; };
+      pa.addEventListener('input', chk);
+      pr.append(pa,pb); pbox.append(pr,rem); chk();
       pb.addEventListener('click', function(){
-        var a=Math.round(Number(pa.value)); if(!(a>=0)){ toast('Enter the amount paid.'); return; }
+        var a=Math.round(Number(pa.value)); if(!(a>=0)||a!==need){ toast('Pay the full balance to mark salary as paid.'); return; }
         var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]={amt:a,at:Date.now()}; salSave(p);
       });
     }
