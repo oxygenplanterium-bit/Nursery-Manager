@@ -168,22 +168,6 @@ span.note{cursor:default}
 .trow{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .trow input{flex:1; padding:8px 12px}
 .arow{display:flex; flex-direction:column; gap:10px}
-.attnav{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-.attdate{flex:1; text-align:center; font-weight:700; min-width:120px}
-.mperson{border:1px solid var(--line); border-radius:12px; margin-top:8px; overflow:hidden}
-.mhead{display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; background:transparent; border:0; color:var(--ink); text-align:left; font:inherit; cursor:pointer}
-.mhead .mn{flex:1; font-weight:700}
-.mhead small{color:var(--muted)}
-.mbody{padding:10px 12px; border-top:1px solid var(--line); display:grid; gap:8px}
-.mgrid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
-.mgh{text-align:center; font-size:.72rem; color:var(--muted)}
-.mcell{min-height:42px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--ink); display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; padding:3px 5px; font:inherit; font-size:.72rem}
-.mcell b{align-self:flex-end; font-size:.85rem}
-.mcell.sP{background:rgba(46,160,90,.3); border-color:transparent}
-.mcell.sH{background:rgba(230,170,60,.3); border-color:transparent}
-.mcell.sA{background:rgba(220,80,70,.3); border-color:transparent}
-.mcell:disabled{opacity:.45}
-.mleg{font-size:.78rem; color:var(--muted)}
 .aseg{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .aseg .btn{padding:8px 4px; font-size:.92rem}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
@@ -210,69 +194,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   .c input{padding:8px 4px; text-align:center}
   .val,.bal .val{padding:0 4px; justify-content:center}
 }
-
-/* ---------- Salary section ---------- */
-#salSubs{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; padding:6px; border:1px solid var(--line); border-radius:16px}
-#salSubs .tab{min-height:46px; font-size:.8rem; padding:0 2px; line-height:1.15}
-#salBody{display:flex; flex-direction:column; gap:10px}
-.sx-no{font-variant-numeric:tabular-nums; font-weight:700; min-width:26px}
-.sx-nav{display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:8px; align-items:center}
-.sx-nav .btn{padding:0; font-size:1.4rem}
-.sx-navl{display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; text-align:center; position:relative; min-height:48px; border:1px solid var(--line); border-radius:12px; background:var(--card)}
-.sx-navl input[type=date]{position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer}
-.sx-hero{display:flex; flex-direction:column; gap:8px}
-.sx-herorow{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
-.sx-eye{font-size:.8rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
-.sx-big,.sx-v,.sx-amt b,.sx-sum dd,.sx-amtIn{font-variant-numeric:tabular-nums; font-weight:700}
-.sx-big{font-size:1.9rem; line-height:1.15}
-.sx-sec{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:6px 2px 0; font-size:1.02rem}
-.sx-sec .pmeta{font-weight:400}
-.sx-btns{display:flex; gap:8px; flex-wrap:wrap}
-.sx-btns .btn{flex:1 1 140px}
-.sx-line{display:flex; align-items:center; gap:10px; width:100%; text-align:left}
-.sx-tap{cursor:pointer; font:inherit; color:inherit}
-.sx-who{flex:1; min-width:0; display:flex; flex-direction:column}
-.sx-grp{display:flex; flex-direction:column; gap:8px}
-.sx-grph{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:6px; border-bottom:1px solid var(--line)}
-.sx-ent{display:flex; align-items:center; gap:10px}
-.sx-d{flex:0 0 52px; font-size:.88rem; color:var(--muted); font-variant-numeric:tabular-nums}
-.sx-t{flex:1; min-width:0; overflow-wrap:anywhere}
-.sx-ent .btn.small{min-height:34px; padding:2px 10px}
-.sx-ask{display:flex; gap:6px}
-.sx-pay{padding:0; overflow:hidden}
-.sx-payh{display:flex; align-items:center; gap:10px; width:100%; padding:14px; background:none; border:0; text-align:left; cursor:pointer; font:inherit; color:inherit; min-height:60px}
-.sx-amt{display:flex; flex-direction:column; align-items:flex-end}
-.sx-amt b{font-size:1.1rem}
-.sx-amt small{font-size:.75rem; color:var(--muted)}
-.sx-body{display:flex; flex-direction:column; gap:10px; padding:0 14px 14px}
-.sx-sum{margin:0; display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:start}
-.sx-sum dt{font-weight:600}
-.sx-sum dd{margin:0; text-align:right}
-.sx-sum .tot{border-top:1px solid var(--line); padding-top:8px; font-size:1.1rem; color:var(--accent)}
-.sx-sum .carry{color:var(--warn); font-size:.9rem}
-.sx-legend{gap:12px}
-.sx-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
-.sx-gh{text-align:center; font-size:.75rem; color:var(--muted)}
-.sx-cell{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:44px; border-radius:10px; border:1px solid var(--line); background:var(--field); cursor:pointer; padding:2px; font-size:.78rem; color:var(--ink)}
-.sx-cell b{font-size:.8rem; min-height:1em}
-.sx-cell.sP{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-.sx-cell.sH{background:var(--warn); color:var(--bg); border-color:var(--warn)}
-.sx-cell.sA{background:var(--loss); color:var(--bg); border-color:var(--loss)}
-dialog.sx{width:min(560px,calc(100vw - 16px)); max-height:92vh}
-dialog.sx.tall{height:min(92vh,800px)}
-dialog.sx .dbody{max-height:inherit; overflow:auto}
-dialog.sx.tall .dbody{height:100%}
-#salSheet form{padding:0; display:flex; flex-direction:column; gap:12px; flex:1; min-height:0}
-#salSheet{padding:16px}
-.sx-sh{display:flex; align-items:center; justify-content:space-between; gap:10px}
-.sx-sh h2{flex:1}
-.sx-dateTop{width:auto; flex:0 0 auto; padding:8px 10px; font-weight:700}
-.sx-pick{display:flex; flex-direction:column; gap:6px; overflow:auto; flex:1 1 160px; min-height:140px; border:1px solid var(--line); border-radius:12px; padding:6px}
-.sx-p{display:flex; align-items:center; gap:10px; min-height:46px; padding:6px 10px; border-radius:10px; border:1px solid transparent; background:var(--field); text-align:left; cursor:pointer; font:inherit; color:inherit}
-.sx-p.on{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-.sx-p .sl{color:inherit}
-.sx-amtIn{font-size:1.2rem}
-dialog.sx label.f{font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 
@@ -311,7 +232,6 @@ dialog.sx label.f{font-weight:600}
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>👥 Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">🧰 Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">🧾 Customers</button>
-    <button class="tab" id="tabSal" role="tab" aria-selected="false">💰 Salary</button>
   </nav>
 
   <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
@@ -394,23 +314,6 @@ dialog.sx label.f{font-weight:600}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <div class="card attnav" id="attNav">
-      <button class="btn small" type="button" id="attPrev" aria-label="Previous saved day">‹</button>
-      <div class="attdate" id="attDate"></div>
-      <button class="btn small" type="button" id="attNext" aria-label="Next saved day">›</button>
-      <button class="btn small" type="button" id="attToday" hidden>Back to today</button>
-    </div>
-    <p class="pmeta" id="attPastNote" hidden></p>
-    <section class="card team" id="monBox">
-      <h2>Monthly attendance</h2>
-      <div class="attnav" style="padding:0">
-        <button class="btn small" type="button" id="monPrev" aria-label="Previous month">‹</button>
-        <div class="attdate" id="monLabel"></div>
-        <button class="btn small" type="button" id="monNext" aria-label="Next month">›</button>
-      </div>
-      <p class="pmeta" id="monNote"></p>
-      <div id="monList"></div>
-    </section>
     <section class="card team" id="weekBox">
       <h2>Weekly attendance report</h2>
       <p class="pmeta" id="weekHelp">One PDF for all staff, Sunday to Saturday.</p>
@@ -420,7 +323,6 @@ dialog.sx label.f{font-weight:600}
       <button class="btn" id="attPdfBtn" style="margin-top:8px">Download attendance PDF</button>
       <p class="pmeta" id="attPdfHelp">Attendance for the selected date only. It does not need tasks, resources or other sections to be finished.</p>
     </section>
-    <input type="search" id="attFilter" placeholder="Search names" aria-label="Search staff names" hidden style="margin-top:2px">
     <div class="bar" id="attBar" hidden>
       <span class="tsum" id="asum"></span>
       <button class="btn small" id="attAll" style="margin-left:auto" hidden>Mark all present</button>
@@ -473,21 +375,6 @@ dialog.sx label.f{font-weight:600}
     </div>
     <div class="card state" id="rstate">No tools or resources yet.</div>
     <div class="tl" id="rlist"></div>
-  </section>
-
-  <section class="pane" id="paneSal" role="tabpanel" aria-labelledby="tabSal" hidden>
-    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
-      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
-    </label>
-    <nav id="salSubs" aria-label="Salary sections" hidden>
-      <button class="tab" data-sub="att" aria-selected="true">Attend</button>
-      <button class="tab" data-sub="adv" aria-selected="false">Advance</button>
-      <button class="tab" data-sub="pay" aria-selected="false">Salary</button>
-      <button class="tab" data-sub="bon" aria-selected="false">Bonus</button>
-      <button class="tab" data-sub="crew" aria-selected="false">Labour</button>
-    </nav>
-    <input type="search" id="salQ" placeholder="Search name" aria-label="Search name" autocomplete="off">
-    <div id="salBody"></div>
   </section>
 
   <section class="pane" id="paneTeam" role="tabpanel" aria-labelledby="tabTeam" hidden>
@@ -679,8 +566,6 @@ dialog.sx label.f{font-weight:600}
   </div>
 </dialog>
 
-<dialog id="dlgSal" class="sx"><div class="dbody" id="salSheet"></div></dialog>
-
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
@@ -731,7 +616,6 @@ function toast(msg,ms){
 }
 function keys(){ return Object.keys(index||{}).sort(); }
 function latest(){ var k=keys(); return k.length ? k[k.length-1] : null; }
-function attEditable(){ return editable() || !!(isOwner && canWrite && day && dayLive); }
 function editable(){ return !!(canWrite && dayLive && day && !day.closed && selDate===latest()); }
 function sortedOf(map,key){
   var o=(day&&day[map])||{};
@@ -889,13 +773,13 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='stock';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#tabSal'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
   $('#tabTeam').hidden=!isOwner;
-  $('#teamNav').style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+  $('#teamNav').style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
-  $('.acts').hidden=(tab==='team'||tab==='sal');
-  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'||tab==='sal'));
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs';
+  $('.acts').hidden=tab==='team';
+  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
   $('#tabTasks').textContent='✅ Tasks'+(pendSug?' 🔔'+pendSug:'');
   $('#pdfBtn').textContent = 'Download full report PDF';
@@ -1238,7 +1122,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); if(window.Sal) window.Sal.render(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
@@ -1792,12 +1676,12 @@ function makeTeam(kind,id){
     if(!v||v===cur){ inp.value=cur||''; return; }
     var clash=teamList(kind).some(function(it){ return it[0]!==id && normName(it[1].n)===normName(v); });
     if(clash){ toast(v+' is already in the list.'); inp.value=cur||''; return; }
-    var p={team:{}}; p.team[kind]={}; p.team[kind][id]={n:v}; saveSettings(p); if(kind==='staff') labourPatch(id,{n:v});
+    var p={team:{}}; p.team[kind]={}; p.team[kind][id]={n:v}; saveSettings(p);
   });
   btn.addEventListener('click', function(){
     arm(btn,'rm'+kind+id,'Remove', async function(){
       var p={team:{}}; p.team[kind]={}; p.team[kind][id]={x:true};
-      if(await saveSettings(p)){ toast('Removed'); if(kind==='staff') labourPatch(id,{act:false}); }
+      if(await saveSettings(p)) toast('Removed');
     });
   });
   var nsel=null;
@@ -2054,17 +1938,16 @@ function setRes(id,v,qty){
 }
 function resetMarks(btn,key,label,field,msg,idsFn){
   arm(btn,key,label, async function(){
-    if(!isOwner||!(field==='att'?attEditable():editable())) return;
+    if(!isOwner||!editable()) return;
     var cur=(day&&day[field])||{}, p={}, mine={};
     idsFn().forEach(function(id){ mine[id]=1; });
     p[field]={};
     Object.keys(cur).forEach(function(id){ if(mine[id]) p[field][id]=null; });
     if(!Object.keys(p[field]).length) return;
-    var dt=selDate, ids=Object.keys(p[field]);
-    if(await save(p)){ toast(msg); if(field==='att') ids.forEach(function(i){ saMark(nursery,i,dt,''); }); }
+    if(await save(p)) toast(msg);
   });
 }
-$('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' on '+fmtLong(selDate), function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
+$('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' today', function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
 $('#resReset').addEventListener('click', function(){ resetMarks(this,'rsres','Reset Resources','rs','Resource checks reset for '+NURS[nursery]+' today', function(){ return resShown().filter(function(it){ return it[1].v!==null; }).map(function(it){ return it[0]; }); }); });
 $('#resAll').addEventListener('click', function(){
   if(!editable()) return;
@@ -2271,7 +2154,7 @@ function attList(n){
 }
 function attShown(n){
   var all=day?attList(n):[];
-  return (selDate===latest() || (isOwner&&canWrite)) ? all : all.filter(function(it){ return it[1].s; });
+  return selDate===latest() ? all : all.filter(function(it){ return it[1].s; });
 }
 function attCounts(items){
   var c={P:0,H:0,A:0,N:0};
@@ -2309,16 +2192,12 @@ function updateAtt(el,a,n,ed){
 }
 function renderAtt(){
   fillWeeks();
-  var all=attShown(), ed=attEditable(), list=$('#alist'), seen=new Set(), pos=0, c=attCounts(all);
-  var q=($('#attFilter').value||'').trim().toLowerCase();
-  var items=q ? all.filter(function(it){ return String(it[1].n).toLowerCase().indexOf(q)>=0; }) : all;
-  $('#attBar').hidden=!all.length; $('#attFilter').hidden=!all.length;
+  var items=attShown(), ed=editable(), list=$('#alist'), seen=new Set(), pos=0, c=attCounts(items);
+  $('#attBar').hidden=!items.length;
   $('#asum').textContent=c.P+' present · '+c.H+' half day · '+c.A+' absent · '+c.N+' not marked';
-  $('#attAll').hidden=!(ed&&c.N>0); $('#attAll').textContent='Mark the '+c.N+' unmarked as present';
+  $('#attAll').hidden=!(ed&&c.N>0);
   $('#attReset').hidden=!(isOwner&&ed&&(c.P+c.H+c.A)>0);
-  renderAttNav(ed);
   var s=$('#astate'); s.hidden=items.length>0;
-  if(!items.length && all.length && q){ s.hidden=false; s.textContent='No one matches \u201C'+q+'\u201D.'; return renderMonth(); }
   s.textContent = day===undefined ? 'Loading attendance…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No attendance was marked on this date.' : (isOwner ? 'No staff yet. Add staff in the Team tab.' : 'No staff yet. The owner adds staff in the Team tab.')));
   items.forEach(function(it,i){
     var id=it[0]; seen.add(id);
@@ -2328,113 +2207,22 @@ function renderAtt(){
     pos++;
   });
   attEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); attEls.delete(id); } });
-  renderMonth();
-}
-function renderAttNav(ed){
-  var ks=keys(), i=ks.indexOf(selDate);
-  $('#attDate').textContent=fmtLong(selDate);
-  $('#attPrev').disabled=!(i>0); $('#attNext').disabled=!(i>=0&&i<ks.length-1);
-  $('#attToday').hidden=selDate===todayKey();
-  var pn=$('#attPastNote');
-  if(selDate!==latest() && day){ pn.hidden=false; pn.textContent = isOwner ? (day.closed ? 'This is a past day. As owner you can still correct its attendance.' : 'This is a past day.') : 'This is a past day. Only the owner can change its attendance.'; }
-  else pn.hidden=true;
-}
-$('#attPrev').addEventListener('click', function(){ var ks=keys(), i=ks.indexOf(selDate); if(i>0) goTo(ks[i-1]); });
-$('#attNext').addEventListener('click', function(){ var ks=keys(), i=ks.indexOf(selDate); if(i>=0&&i<ks.length-1) goTo(ks[i+1]); });
-$('#attToday').addEventListener('click', function(){ goTo(todayKey()); });
-$('#attFilter').addEventListener('input', function(){ renderAtt(); });
-
-/* ---------- monthly attendance (per person, calendar) ---------- */
-var monYM=todayKey().slice(0,7), monData={}, monFor='', monBusy=false, monOpen={}, MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-function monShift(n){ var p=monYM.split('-').map(Number), y=p[0], m=p[1]+n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} monYM=y+'-'+pad(m); monFor=''; renderAtt(); }
-$('#monPrev').addEventListener('click', function(){ monShift(-1); });
-$('#monNext').addEventListener('click', function(){ monShift(1); });
-async function loadMonth(){
-  if(!db||!db.list||monBusy||monFor===monYM) return;
-  var ym=monYM; monBusy=true;
-  try{
-    var rows=await db.list('days/'+ym+'-'), o={};
-    rows.forEach(function(r){ o[r.path.slice(5)]=(r.data&&r.data.att)||{}; });
-    monData=o; monFor=ym;
-  }catch(e){ monData={}; monFor=ym; $('#monNote').textContent='Could not load this month. Check your connection.'; }
-  monBusy=false; renderMonth();
-}
-function monAttOf(date){ return (day&&selDate===date) ? ((day.att)||{}) : (monData[date]||{}); }
-function monCanEdit(date){ return !!db && canWrite && ((isOwner) || (editable()&&date===selDate)); }
-function renderMonth(){
-  var box=$('#monBox'), list=$('#monList'); if(!box) return;
-  var p=monYM.split('-').map(Number); $('#monLabel').textContent=MONTHS[p[1]-1]+' '+p[0];
-  if(!db||!db.list){ box.hidden=true; return; }
-  box.hidden=false;
-  if(monFor!==monYM){ $('#monNote').textContent='Loading…'; list.textContent=''; loadMonth(); return; }
-  var nd=new Date(p[0],p[1],0).getDate(), first=new Date(p[0],p[1]-1,1).getDay(), have=Object.keys(monData);
-  if(day&&selDate.slice(0,7)===monYM&&have.indexOf(selDate)<0) have.push(selDate);
-  if(!have.length){ $('#monNote').textContent='Data not available: no register was saved for this month.'; list.textContent=''; return; }
-  $('#monNote').textContent='Tap a name to see the month. Days worked = present + half days counted as 0.5.';
-  var ids=[], names={};
-  teamList('staff').forEach(function(it){ if((it[1].nid||'1')===nursery){ ids.push(it[0]); names[it[0]]=it[1].n; } });
-  have.forEach(function(d){ var a=monAttOf(d); Object.keys(a).forEach(function(id){ var x=a[id]; if(x&&x.s&&(x.nid||'1')===nursery&&ids.indexOf(id)<0&&!names[id]){ ids.push(id); names[id]=x.n||'Former staff'; } }); });
-  list.textContent='';
-  if(!ids.length){ list.append(mk('p','pmeta','No staff in '+NURS[nursery]+'.')); return; }
-  ids.forEach(function(id){
-    var P=0,H=0,A=0;
-    for(var d=1;d<=nd;d++){ var a=monAttOf(ym0(d)); var x=a[id]; if(x&&x.s==='P')P++; else if(x&&x.s==='H')H++; else if(x&&x.s==='A')A++; }
-    var wrap=mk('div','mperson'), head=mk('button','mhead'); head.type='button';
-    head.append(mk('span','mn',names[id]), mk('small',null,'Worked '+(P+H/2)+' d · P '+P+' · ½ '+H+' · A '+A), mk('span',null,monOpen[id]?'▾':'▸'));
-    head.addEventListener('click', function(){ monOpen[id]=!monOpen[id]; renderMonth(); });
-    wrap.append(head);
-    if(monOpen[id]){
-      var body=mk('div','mbody'), g=mk('div','mgrid');
-      ['S','M','T','W','T','F','S'].forEach(function(l){ g.append(mk('span','mgh',l)); });
-      for(var i=0;i<first;i++) g.append(mk('span'));
-      for(var d2=1;d2<=nd;d2++){ (function(d2){
-        var date=ym0(d2), exists=have.indexOf(date)>=0, x=monAttOf(date)[id], st=(x&&x.s)||'';
-        var c=mk('button','mcell'+(st?' s'+st:'')); c.type='button';
-        c.append(mk('span',null,String(d2)), mk('b',null,st==='H'?'½':st));
-        c.disabled=!exists||!monCanEdit(date);
-        c.setAttribute('aria-label',d2+' '+MONTHS[p[1]-1]+': '+(ATT_TXT[st]||'Not marked'));
-        c.addEventListener('click', function(){ cycleAtt(date,id,names[id],st); });
-        g.append(c);
-      })(d2); }
-      body.append(g, mk('div','mleg','Present · ½ Half day · Absent. '+(monCanEdit(todayKey())||isOwner?'Tap a day to change it (P, then ½, then A, then clear).':'View only.')));
-      wrap.append(body);
-    }
-    list.append(wrap);
-  });
-  function ym0(d){ return monYM+'-'+pad(d); }
-}
-async function cycleAtt(date,id,name,cur){
-  if(!monCanEdit(date)) return;
-  if(needSup()&&!isOwner){ toast('Choose your name at the top first.'); return; }
-  var next=cur===''?'P':cur==='P'?'H':cur==='H'?'A':'';
-  var a=monAttOf(date), nid=(a[id]&&a[id].nid)||nursery;
-  var entry={s:next, n:name, nid:nid, who:next?whoNow():'', at:next?Date.now():null};
-  if(date===selDate&&editable()){ var pp={att:{}}; pp.att[id]=entry; save(pp).then(function(ok){ if(ok) saMark(nid,id,date,next); }); return; }
-  try{
-    var pa={att:{}}; pa.att[id]=entry;
-    await db.doc('days/'+date).update(pa);
-    saMark(nid,id,date,next);
-    var o=Object.assign({},monData[date]||{}); o[id]=Object.assign({},o[id]||{},entry); monData[date]=o;
-    renderAtt();
-  }catch(e){ toast('Could not save. Check your connection and try again.'); }
 }
 function whoNow(){ return nameNow() || (isOwner ? 'Owner' : ''); }
 function setAtt(id,s){
-  if(!attEditable()) return;
+  if(!editable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   var rec=attList().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
   var next = rec[1].s===s ? '' : s;
   var p={att:{}}; p.att[id]={s:next, n:rec[1].n, nid:rec[1].nid, who:next?whoNow():'', at:next?Date.now():null};
-  var dt=selDate, nd=rec[1].nid||nursery;
-  save(p).then(function(ok){ if(ok) saMark(nd,id,dt,next); });
+  save(p);
 }
 $('#attAll').addEventListener('click', function(){
-  if(!attEditable()) return;
+  if(!editable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   var p={att:{}}, n=0;
   attList().forEach(function(it){ if(!it[1].s){ n++; p.att[it[0]]={s:'P', n:it[1].n, nid:it[1].nid, who:whoNow(), at:Date.now()}; } });
-  if(n){ var dt=selDate, ids=Object.keys(p.att), nds={}; attList().forEach(function(it){ nds[it[0]]=it[1].nid||nursery; });
-    save(p).then(function(ok){ if(ok) ids.forEach(function(i){ saMark(nds[i],i,dt,'P'); }); }); }
+  if(n) save(p);
 });
 
 /* ---------- day, report, tabs ---------- */
@@ -2460,7 +2248,6 @@ $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); }
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
 $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
-$('#tabSal').addEventListener('click', function(){ tab='sal'; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
 function setMode(m){
@@ -2857,123 +2644,7 @@ $('#importFile').addEventListener('change', async function(){
   finally{ b.disabled=false; b.textContent=old; }
 });
 
-
-/* ---------- staff and salary labour are the same people ---------- */
-function lidOf(staffId){ var s=(team.staff||{})[staffId]; return (s&&s.lid)||staffId; }
-function staffIdOfLid(n,lid){
-  var o=team.staff||{}, hit=null;
-  Object.keys(o).forEach(function(id){ var s=o[id]; if(!hit&&s&&(s.nid||'1')===n&&(s.lid||id)===lid) hit=id; });
-  return hit;
-}
-function setDoc(path,patch,strip){
-  var d=db.doc(path);
-  return d.update(patch).catch(function(e){ if(e&&e.code==='not_found') return d.set(strip||patch); throw e; });
-}
-function stripNulls(o){
-  if(o&&typeof o==='object'&&!Array.isArray(o)){ var r={}; Object.keys(o).forEach(function(k){ if(o[k]!==null) r[k]=stripNulls(o[k]); }); return r; }
-  return o;
-}
-/* mirror an attendance mark into the salary records (sa/<nursery>/<year>) */
-function saMark(nid,staffId,date,s){
-  if(!db) return Promise.resolve();
-  var lid=lidOf(staffId), a={}; a[lid]={}; a[lid][date]=s||null;
-  var patch={a:a}, p=setDoc('sa/'+nid+'/'+date.slice(0,4),patch,stripNulls(patch));
-  if(isOwner && +date.slice(0,4)<new Date().getFullYear()) p=p.then(function(){ return setDoc('sa/'+nid+'/meta',{y0:+date.slice(0,4)}); });
-  return p.catch(function(){});
-}
-/* keep the labour record (name, archived flag) in step with the staff record */
-function labourPatch(staffId,fields){
-  if(!db||!isOwner) return;
-  var s=(team.staff||{})[staffId], nid=(s&&s.nid)||'1', lid=lidOf(staffId), l={}; l[lid]=fields;
-  setDoc('sa/'+nid+'/meta',{lab:l}).catch(function(){});
-}
-/* salary.js tells us about attendance marks and labour edits made on the Salary tab */
-window.NM_HOOKS={
-  onAttMark:function(n,lid,date,s){
-    var sid=staffIdOfLid(n,lid); if(!sid||!db||!(index&&index[date])) return;
-    var st=team.staff[sid], pa={att:{}};
-    pa.att[sid]={s:s||'', n:st.n, nid:n, who:s?(nameNow()||(isOwner?'Owner':'Supervisor')):'', at:s?Date.now():null};
-    db.doc('days/'+date).update(pa).catch(function(){});
-  },
-  onLabourEdit:function(n,lid,f){
-    if(!isOwner) return;
-    var sid=staffIdOfLid(n,lid), p={team:{staff:{}}};
-    if(sid){
-      var o={};
-      if(f.n!==undefined && team.staff[sid].n!==f.n) o.n=f.n;
-      if(f.act===false) o.x=true; else if(f.act===true) o.x=false;
-      if(!Object.keys(o).length) return;
-      p.team.staff[sid]=o; saveSettings(p);
-    } else schedulePeopleSync();
-  }
-};
-var syncTimer=null, syncBusy=false;
-function schedulePeopleSync(){ if(!db||!isOwner||!canWrite) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncPeople,1500); }
-async function syncPeople(){
-  if(syncBusy||!db||!isOwner||!canWrite) return;
-  syncBusy=true; var again=false;
-  try{
-    var ns=['1','2'], i;
-    for(i=0;i<ns.length;i++){
-      var n=ns[i], sn=await db.doc('sa/'+n+'/meta').get(), meta=sn.exists?sn.data():{}, lab=meta.lab||{};
-      var st=team.staff||{}, ids=Object.keys(st).filter(function(id){ return st[id]&&!st[id].x&&(st[id].nid||'1')===n; });
-      var claimed={}, labPatch={}, teamPatch={}, nl=0, nt=0;
-      ids.forEach(function(id){ var l=lidOf(id); if(lab[l]) claimed[l]=1; });
-      ids.forEach(function(id){
-        var l=lidOf(id); if(lab[l]) return;
-        var m=Object.keys(lab).filter(function(k){ return !claimed[k]&&lab[k]&&lab[k].act!==false&&normName(lab[k].n)===normName(st[id].n); })[0];
-        if(m){ claimed[m]=1; if(m!==id){ teamPatch[id]={lid:m}; nt++; } }
-        else { labPatch[id]={n:st[id].n, ph:'', act:true, c:Date.now()}; claimed[id]=1; nl++; }
-      });
-      var maxO=0; Object.keys(st).forEach(function(k){ maxO=Math.max(maxO,(st[k]||{}).o||0); });
-      Object.keys(lab).forEach(function(k){
-        var L=lab[k]; if(!L||claimed[k]||L.act===false) return;
-        if(Object.keys(st).some(function(x){ return ((st[x]||{}).lid||x)===k; })) return;
-        teamPatch[k]={n:L.n, o:++maxO, nid:n}; nt++;
-      });
-      if(nl) await setDoc('sa/'+n+'/meta',{lab:labPatch});
-      if(nt){ var tp={team:{staff:teamPatch}}; await saveSettings(tp); }
-      if(nl||nt){ again=true; continue; }
-      if(!meta.mg) await migrateAttendance(n);
-    }
-  }catch(e){ /* try again on the next settings change */ }
-  syncBusy=false;
-  if(again) schedulePeopleSync();
-}
-/* one-off: combine the attendance already saved in the day registers with the salary attendance */
-async function migrateAttendance(n){
-  var rows=await db.list('days/','att'), dayAtt={}, sa={}, patch={}, dpatch={}, years={}, st=team.staff||{};
-  rows.forEach(function(r){ var d=r.path.slice(5); dayAtt[d]=(r.data&&r.data.att)||{}; years[d.slice(0,4)]=1; });
-  var ys=Object.keys(years), y, i;
-  for(i=0;i<ys.length;i++){ y=ys[i]; var sn=await db.doc('sa/'+n+'/'+y).get(); sa[y]=(sn.exists&&sn.data().a)||{}; }
-  Object.keys(dayAtt).forEach(function(date){
-    var y2=date.slice(0,4), a=dayAtt[date];
-    Object.keys(a).forEach(function(sid){
-      var x=a[sid]; if(!x||!x.s||(x.nid||'1')!==n) return;
-      var lid=lidOf(sid), cur=(sa[y2]&&sa[y2][lid]||{})[date];
-      if(!cur){ patch[y2]=patch[y2]||{}; (patch[y2][lid]=patch[y2][lid]||{})[date]=x.s; }
-    });
-  });
-  Object.keys(sa).forEach(function(y2){ Object.keys(sa[y2]).forEach(function(lid){ Object.keys(sa[y2][lid]||{}).forEach(function(date){
-    var s=sa[y2][lid][date]; if(!s||!dayAtt[date]) return;
-    var sid=staffIdOfLid(n,lid); if(!sid) return;
-    var cur=dayAtt[date][sid]; if(cur&&cur.s) return;
-    dpatch[date]=dpatch[date]||{att:{}}; dpatch[date].att[sid]={s:s, n:st[sid].n, nid:n, who:'', at:null};
-  }); }); });
-  var k;
-  for(k in patch){ await setDoc('sa/'+n+'/'+k,{a:patch[k]}); }
-  for(k in dpatch){ await db.doc('days/'+k).update(dpatch[k]); }
-  await setDoc('sa/'+n+'/meta',{mg:true});
-}
 /* ---------- start ---------- */
-/* Bridge for salary.js (the Salary section) */
-window.NM={
-  db:function(){ return db; }, isOwner:function(){ return isOwner; }, canWrite:function(){ return canWrite; },
-  nursery:function(){ return nursery; }, nurseryName:function(){ return NURS[nursery]; },
-  toast:toast, needSup:needSup, dl:function(){ return downloads; },
-  onAttMark:function(n,l,d,s){ return window.NM_HOOKS.onAttMark(n,l,d,s); },
-  onLabourEdit:function(n,l,f){ return window.NM_HOOKS.onLabourEdit(n,l,f); }
-};
 async function boot(){
   if(cache.idx) index=cache.idx;
   try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
@@ -3019,7 +2690,7 @@ async function boot(){
     ownerWa = String(d.ownerWa||'');
     team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
     res = d.res||{};
-    syncSup(); renderAll(); schedulePeopleSync();
+    syncSup(); renderAll();
   }, function(){});
   setInterval(function(){
     var t=todayKey();
@@ -3030,6 +2701,5 @@ async function boot(){
 boot();
 })();
 </script>
-<script src="salary.js"></script>
 
 </body></html>
