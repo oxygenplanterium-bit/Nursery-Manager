@@ -2985,10 +2985,8 @@ function renderSal(){
     if(!list.length) body.append(mk('p','pmeta','None added yet. Add them in the Team tab.'));
     list.forEach(function(it){
       var sid=it[0], m=salMonthInfo(sid,g[0]), c=mk('div','card salp'), top=mk('div','sline');
-      var bt=mk('b',null,(m.paid&&Math.round(m.balance)===0?'✔ Paid':(m.balance<0?'Recover ₹'+fmtN(-m.balance):'Balance to pay ₹'+fmtN(m.balance)))); bt.style.cssText='color:var(--accent);white-space:nowrap';
-      top.append(mk('b','grow',it[1].n), bt);
+      top.append(mk('b','grow',it[1].n), mk('span','pmeta',m.rate?'₹'+fmtN(m.rate)+' per day':'No per-day salary set'));
       c.append(top);
-      c.append(mk('span','pmeta',m.rate?'₹'+fmtN(m.rate)+' per day':'No per-day salary set'));
       var gr=mk('div','salgrid');
       [['adv','Advances',m.advAll],['ded','Deductions',m.dedAll],['bon','Bonuses',m.bon],['pay','Monthly Pay',m.net]].forEach(function(k){
         var b=mk('button','salbox'+(k[0]==='pay'?' pay':'')); b.type='button';
