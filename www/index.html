@@ -110,7 +110,8 @@ h2.dwide{margin:6px 2px 0; font-size:1rem}
 .salmon{display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; align-items:center; padding:8px; text-align:center}
 .salmon .btn{padding:0; min-height:44px; font-size:1.4rem}
 .salmon b{font-size:1.05rem}
-.abal{margin-left:auto; color:var(--accent); white-space:nowrap; font-size:.95rem}
+.abal{margin-left:auto; white-space:nowrap; font-size:1rem; font-variant-numeric:tabular-nums; padding:4px 12px; border-radius:999px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); align-self:center}
+.abal.neg{color:var(--warn); border-color:var(--warn); background:transparent}
 .lp{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
 .row.picked{outline:3px solid var(--accent); outline-offset:-2px; background:var(--accent-soft)}
 #rowMoveBar{position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:30; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px; background:var(--card); border:2px solid var(--accent); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
@@ -2413,7 +2414,7 @@ function updateAtt(el,a,n,ed){
     salSubscribe(); loadSalAtt();
     var vm=todayKey().slice(0,7), info=null;
     try{ info=salCalc(el._id,String(el._id).charAt(0)==='s'?'sup':'staff',vm)[vm]; }catch(e){}
-    if(info && info.rate){ var bv=info.balance; R.bal.textContent=(info.paid&&Math.round(bv)===0)?'✔ Paid':(bv<0?'Recover ₹'+fmtN(-bv):'Balance To Pay Amount ₹'+fmtN(bv)); R.bal.hidden=false; } else R.bal.hidden=true;
+    if(info && info.rate){ var bv=info.balance; R.bal.textContent=(bv<0?'− ':'')+'₹'+fmtN(Math.abs(bv)); R.bal.title='Bal To Pay Amount'; R.bal.setAttribute('aria-label','Bal To Pay Amount '+R.bal.textContent); R.bal.classList.toggle('neg',bv<0); R.bal.hidden=false; } else R.bal.hidden=true;
   } else R.bal.hidden=true;
   ['P','H','A'].forEach(function(k){ R.b[k].setAttribute('aria-pressed', a.s===k); R.b[k].disabled=!ed; });
   R.meta.textContent = a.s ? ATT_TXT[a.s]+(a.who||a.at ? ' · '+[a.who,fmtTime(a.at)].filter(Boolean).join(' ') : '') : 'Not marked';
