@@ -89,6 +89,7 @@ textarea{resize:vertical; min-height:76px}
 .fddrop>summary::-webkit-details-marker{display:none}
 .fddrop>summary::after{content:"▾"; transition:transform .15s}
 .fddrop:not([open])>summary::after{transform:rotate(-90deg)}
+.fdattin{padding:0 14px 14px; display:flex; flex-direction:column; gap:8px}
 .fddrop .fdlist{border:0; border-top:1px solid var(--line); border-radius:0; background:none}
 .fdlist{display:flex; flex-direction:column; gap:8px}
 .fdlist h2{display:flex; align-items:center; gap:8px}
@@ -636,6 +637,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <summary>📦 Stocks</summary>
       <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
       <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
+    </details>
+    <details class="card fddrop" open>
+      <summary>🧑‍🌾 Attendance</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdAtt"></div><p class="pmeta" id="fdAttNote"></p></div>
     </details>
     <div class="fdgrid" id="fdGrid"></div>
   </div>
@@ -1215,7 +1220,7 @@ function renderFull(){
   var sel=$('#fdNurs').value||'all', g=$('#fdGrid'), nl=$('#fdNew'), ml=$('#fdMod');
   g.textContent=''; nl.textContent=''; ml.textContent='';
   $('#fdDate').textContent = day ? fmtLong(selDate)+' · '+(sel==='all'?'Both nurseries':NURS[sel]) : (day===undefined?'Loading…':'No report was saved for this date.');
-  if(!day){ $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
+  if(!day){ $('#fdAtt').textContent=''; $('#fdAttNote').textContent=''; $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
   var rows=sortedOf('rows').filter(function(it){ return sel==='all' || (it[1].nid||'1')===sel; });
   var fresh=[], mod=[], qty=0;
   rows.forEach(function(it){
@@ -1230,6 +1235,13 @@ function renderFull(){
     if(r.modAt) bits.push('Edited by owner');
     if(bits.length) mod.push([it[0],r,bits]);
   });
+  var ag=$('#fdAtt'); ag.textContent='';
+  var staff=(sel==='all'?attList('1').concat(attList('2')):attList(sel)), ac=attCounts(staff), pay=0, noRate=0;
+  if(isOwner){ salSubscribe(); staff.forEach(function(it){ var w=(it[1].s==='P'?1:it[1].s==='H'?0.5:0); if(!w) return; var r=rateOf(it[0]); if(!r) noRate++; pay+=r*w; }); }
+  var acards=[['✅ Presents',fmtN(ac.P)],['❌ Absents',fmtN(ac.A)],['🌗 Half days',fmtN(ac.H)]];
+  if(isOwner) acards.push(['💰 Salary for today','₹'+fmtN(Math.round(pay))]);
+  acards.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,c[1])); ag.append(d); });
+  $('#fdAttNote').textContent = (ac.N?ac.N+' not marked yet. ':'')+(isOwner?'Salary = daily rate × (presents + half days × 0.5)'+(noRate?'. '+noRate+' present staff have no daily rate set.':'.'):'');
   var cards=[
     ['🌱 New stocks added', fresh.length],
     ['✏️ Previous stocks modified', mod.length],
@@ -2824,9 +2836,13 @@ function salEntries(kind){
     .map(function(id){ return [id,e[id]]; }).sort(function(a,b){ return (a[1].d||'').localeCompare(b[1].d||'') || (a[1].at||0)-(b[1].at||0); });
 }
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
+function salSubscribe(){
+  if(salSubbed||!db||!isOwner) return; salSubbed=true;
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); renderFull(); }, function(){});
+}
 function renderSal(){
   if(tab!=='sal'||!isOwner||!db) return;
-  if(!salSubbed){ salSubbed=true; db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); }, function(){}); }
+  salSubscribe();
   document.querySelectorAll('#salSubs .tab').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.sub===salSub); });
   var mi=$('#salMonth'); if(document.activeElement!==mi) mi.value=salMonth;
   var body=$('#salBody');
