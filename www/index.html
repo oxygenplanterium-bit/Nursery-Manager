@@ -75,6 +75,23 @@ textarea{resize:vertical; min-height:76px}
 .tabs{display:flex; flex-wrap:wrap; gap:6px; padding:6px; border:1px solid var(--line); border-radius:14px}
 .tabs .tab{flex:1 1 auto; min-height:38px; padding:0 10px; font-size:.82rem; border-radius:10px; white-space:nowrap}
 .salbtn{width:100%; min-height:38px; font-size:.85rem; padding:0 10px}
+.fdbtn{width:100%; min-height:48px; font-size:1rem; border-radius:12px; background:var(--accent-soft); border-color:var(--accent)}
+#fdash{position:fixed; inset:0; z-index:40; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; padding-block:max(16px, env(safe-area-inset-top, 0px)) 40px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+#fdash[hidden]{display:none}
+.fdin{max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
+.fdtop{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.fdgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.fdc{display:flex; flex-direction:column; gap:6px; padding:18px 16px}
+.fdc span{font-size:.9rem; color:var(--muted)}
+.fdc b{font-size:2.2rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.fdlist{display:flex; flex-direction:column; gap:8px}
+.fdlist h2{display:flex; align-items:center; gap:8px}
+.fdrow{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:9px 0; border-top:1px solid var(--line)}
+.fdrow:first-of-type{border-top:0}
+.fdrow .nm{font-weight:600; min-width:0; overflow-wrap:anywhere}
+.fdrow .dt{font-size:.85rem; color:var(--muted); text-align:right}
+.fdempty{color:var(--muted); font-size:.92rem}
+@media (min-width:700px){ .fdgrid{grid-template-columns:repeat(4,minmax(0,1fr))} .fdc b{font-size:2.8rem} }
 .dgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
 .dcard{display:flex; flex-direction:column; gap:4px; padding:12px; text-align:left; cursor:pointer; font:inherit; color:inherit}
 .dcard b{font-size:1.35rem; font-variant-numeric:tabular-nums}
@@ -218,6 +235,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
+  <button class="btn fdbtn" id="fdBtn" type="button">📊 Full Sized Dashboard</button>
   <button class="btn salbtn" id="salBtn" hidden>💰 Salary</button>
 
   <section class="card alertcard" id="alertBox" hidden>
@@ -598,6 +616,21 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <div class="actions"><button class="btn primary" id="loginOk">Got it</button></div>
   </div>
 </dialog>
+
+<div id="fdash" role="dialog" aria-modal="true" aria-label="Stock dashboard" hidden>
+  <div class="fdin">
+    <div class="fdtop">
+      <div><h2>📊 Stock Dashboard</h2><p class="pmeta" id="fdDate"></p></div>
+      <button class="btn" id="fdClose" type="button">✕ Close</button>
+    </div>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <div class="fdgrid" id="fdGrid"></div>
+    <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
+    <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
+  </div>
+</div>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -1162,7 +1195,50 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderDash(); renderSal(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderDash(); renderSal(); renderFull(); }
+
+/* ---------- full sized stock dashboard ---------- */
+var fdOpen=false;
+function renderFull(){
+  var ov=$('#fdash'); ov.hidden=!fdOpen;
+  document.body.style.overflow=fdOpen?'hidden':'';
+  if(!fdOpen) return;
+  var sel=$('#fdNurs').value||'all', g=$('#fdGrid'), nl=$('#fdNew'), ml=$('#fdMod');
+  g.textContent=''; nl.textContent=''; ml.textContent='';
+  $('#fdDate').textContent = day ? fmtLong(selDate)+' · '+(sel==='all'?'Both nurseries':NURS[sel]) : (day===undefined?'Loading…':'No report was saved for this date.');
+  if(!day){ $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
+  var rows=sortedOf('rows').filter(function(it){ return sel==='all' || (it[1].nid||'1')===sel; });
+  var fresh=[], mod=[], qty=0;
+  rows.forEach(function(it){
+    var r=it[1], x=xferOf(r); qty+=Math.max(bal(r),0);
+    if(r.addedAt||r.approvedAt){ fresh.push(it); return; }
+    var bits=[];
+    if(r.purchase) bits.push('Purchases +'+fmtN(r.purchase));
+    if(r.sales) bits.push('Sales '+fmtN(r.sales));
+    if(r.damages) bits.push('Damages '+fmtN(r.damages));
+    if(x.in) bits.push('Transferred in '+fmtN(x.in));
+    if(x.out) bits.push('Transferred out '+fmtN(x.out));
+    if(r.modAt) bits.push('Edited by owner');
+    if(bits.length) mod.push([it[0],r,bits]);
+  });
+  var cards=[
+    ['🌱 New stocks added', fresh.length],
+    ['✏️ Previous stocks modified', mod.length],
+    ['📋 Total no. of items', rows.length],
+    ['🪴 Total qty of plants', qty]
+  ];
+  cards.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); g.append(d); });
+  $('#fdNewN').textContent=String(fresh.length); $('#fdModN').textContent=String(mod.length);
+  var line=function(box,name,txt){ var r=mk('div','fdrow'); r.append(mk('span','nm',name), mk('span','dt',txt)); box.append(r); };
+  if(!fresh.length) nl.append(mk('p','fdempty','No new items were added on this day.'));
+  fresh.forEach(function(it){ var r=it[1]; line(nl, r.name, 'Opening qty '+fmtN(r.total||0)+(sel==='all'?' · '+NURS[r.nid||'1']:'')); });
+  if(!mod.length) ml.append(mk('p','fdempty','No existing items were changed on this day.'));
+  mod.forEach(function(m){ line(ml, m[1].name, m[2].join(' · ')+(sel==='all'?' · '+NURS[m[1].nid||'1']:'')); });
+}
+$('#fdBtn').addEventListener('click', function(){ fdOpen=true; $('#fdNurs').value=nursery; renderFull(); $('#fdash').scrollTop=0; $('#fdClose').focus(); });
+$('#fdClose').addEventListener('click', function(){ fdOpen=false; renderFull(); $('#fdBtn').focus(); });
+$('#fdNurs').addEventListener('change', renderFull);
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && fdOpen){ fdOpen=false; renderFull(); } });
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
@@ -1178,6 +1254,7 @@ async function commit(id,f,inp){
     reset(); return;
   }
   var patch={rows:{}}; patch.rows[id]={}; patch.rows[id][f]=v;
+  if(f==='total') patch.rows[id].modAt=Date.now();
   if(f!=='total' && v===0){ patch.rows[id].notes={}; patch.rows[id].notes[f]=null; }
   var ok=await save(patch);
   if(ok && f!=='total' && v>0) openNote(id,f);
@@ -1222,6 +1299,7 @@ $('#fEdit').addEventListener('submit', async function(e){
   if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
   var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
   patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
+  if(edCtx.kind==='item') patch[key][edCtx.id].modAt=Date.now();
   $('#dlgEdit').close(); await save(patch);
 });
 $('#editCancel').addEventListener('click', function(){ $('#dlgEdit').close(); });
@@ -1348,7 +1426,7 @@ $('#fAdd').addEventListener('submit', async function(e){
     if(existing[lk]){ skipped++; dupNames.push(it.name); return; }
     existing[lk]=1; maxO++; added++;
     var id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery};
+    var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery, addedAt:Date.now()};
     if(!isOwner){ base.order=0; base.pending=true; base.by=nameNow()||'A supervisor'; base.reqAt=Date.now(); newNames.push(it.name); }
     patch.rows[id]=base;
   });
