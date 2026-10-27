@@ -637,6 +637,13 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <summary>🧑‍🌾 Attendance</summary>
       <div class="fdattin"><div class="fdgrid" id="fdAtt"></div><p class="pmeta" id="fdAttNote"></p></div>
     </details>
+    <details class="card fddrop" open>
+      <summary>✅ Tasks</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdTk"></div></div>
+      <section class="card fdlist"><h2>🕓 Pending tasks <span class="chip" id="fdTkPN"></span></h2><div id="fdTkP"></div></section>
+      <section class="card fdlist"><h2>⚠️ Not done tasks <span class="chip" id="fdTkNN"></span></h2><div id="fdTkN"></div></section>
+      <section class="card fdlist"><h2>💬 Reasons given <span class="chip" id="fdTkRN"></span></h2><div id="fdTkR"></div></section>
+    </details>
   </div>
 </div>
 
@@ -1214,7 +1221,7 @@ function renderFull(){
   var sel=$('#fdNurs').value||'all', g=$('#fdGrid'), nl=$('#fdNew'), ml=$('#fdMod');
   g.textContent=''; nl.textContent=''; ml.textContent='';
   $('#fdDate').textContent = day ? fmtLong(selDate)+' · '+(sel==='all'?'Both nurseries':NURS[sel]) : (day===undefined?'Loading…':'No report was saved for this date.');
-  if(!day){ $('#fdAtt').textContent=''; $('#fdAttNote').textContent=''; $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
+  if(!day){ $('#fdTk').textContent=''; $('#fdAtt').textContent=''; $('#fdAttNote').textContent=''; $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
   var rows=sortedOf('rows').filter(function(it){ return sel==='all' || (it[1].nid||'1')===sel; });
   var fresh=[], mod=[], qty=0;
   rows.forEach(function(it){
@@ -1229,6 +1236,15 @@ function renderFull(){
     if(r.modAt) bits.push('Edited by owner');
     if(bits.length) mod.push([it[0],r,bits]);
   });
+  var tg=$('#fdTk'), tp=$('#fdTkP'), tn=$('#fdTkN'), tr=$('#fdTkR'); tg.textContent=''; tp.textContent=''; tn.textContent=''; tr.textContent='';
+  var tasks=(sel==='all'?taskList('1').concat(taskList('2')):taskList(sel)), tdone=[], tpend=[], tnot=[], treas=[];
+  tasks.forEach(function(it){ var t=it[1]; if(t.status==='done') tdone.push(it); else if(t.status==='notdone'){ tnot.push(it); if(t.reason) treas.push(it); } else tpend.push(it); });
+  [['✅ Tasks done',tdone.length],['🕓 Pending tasks',tpend.length],['⚠️ Not done',tnot.length],['💬 Reasons given',treas.length]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); tg.append(d); });
+  var tl=function(box,list,fn,empty){ if(!list.length) box.append(mk('p','fdempty',empty)); list.forEach(function(it){ var r=mk('div','fdrow'); r.append(mk('span','nm',it[1].title), mk('span','dt',fn(it[1])+(sel==='all'?' · '+NURS[it[1].nid||'1']:''))); box.append(r); }); };
+  tl(tp,tpend,function(t){ return t.to?'Assigned to '+(((team.sup||{})[t.to]||{}).n||''):'Not marked yet'; },'No pending tasks.');
+  tl(tn,tnot,function(t){ return 'Not done'+(t.reason?'':' · no reason'); },'No tasks were marked not done.');
+  tl(tr,treas,function(t){ return t.reason; },'No reasons were given.');
+  $('#fdTkPN').textContent=String(tpend.length); $('#fdTkNN').textContent=String(tnot.length); $('#fdTkRN').textContent=String(treas.length);
   var ag=$('#fdAtt'); ag.textContent='';
   var staff=(sel==='all'?attList('1').concat(attList('2')):attList(sel)), ac=attCounts(staff), pay=0, noRate=0;
   if(isOwner){ salSubscribe(); staff.forEach(function(it){ var w=(it[1].s==='P'?1:it[1].s==='H'?0.5:0); if(!w) return; var r=rateOf(it[0]); if(!r) noRate++; pay+=r*w; }); }
