@@ -73,7 +73,7 @@ textarea{resize:vertical; min-height:76px}
 .statusline.edit-on #dstat{color:var(--accent)}
 [hidden]{display:none!important}
 .tabs{display:flex; flex-wrap:wrap; gap:6px; padding:6px; border:1px solid var(--line); border-radius:14px}
-.tabs .tab{flex:1 1 auto; min-height:38px; padding:0 10px; font-size:.82rem; border-radius:10px; white-space:nowrap}
+.tabs .tab{flex:1 1 auto; min-height:38px; padding:0 6px; font-size:.8rem; border-radius:10px; white-space:nowrap}
 .salbtn{width:100%; min-height:38px; font-size:.85rem; padding:0 10px}
 .fdbtn{width:100%; min-height:48px; font-size:1rem; border-radius:12px; background:var(--accent-soft); border-color:var(--accent)}
 #fdash{position:fixed; inset:0; z-index:40; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; padding-block:calc(env(safe-area-inset-top, 0px) + 36px) 40px; opacity:1; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
@@ -108,8 +108,8 @@ textarea{resize:vertical; min-height:76px}
 h2.dwide{margin:6px 2px 0; font-size:1rem}
 .dcard span{font-size:.82rem; color:var(--muted)}
 #salBodyX{}
-.salmon{display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; align-items:center; padding:8px; text-align:center}
-.salmon .btn{padding:0; min-height:44px; font-size:1.4rem}
+.salmon{display:grid; grid-template-columns:72px minmax(0,1fr) 72px; gap:8px; align-items:center; padding:8px; text-align:center}
+.salmon .btn{padding:0; min-height:44px; font-size:.95rem}
 .salmon b{font-size:1.05rem}
 .abal{margin-left:auto; white-space:nowrap; font-size:1rem; font-variant-numeric:tabular-nums; padding:4px 12px; border-radius:999px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); align-self:center}
 .abal.neg{color:var(--warn); border-color:var(--warn); background:transparent}
@@ -267,7 +267,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
-  <button class="btn fdbtn" id="fdBtn" type="button">Dashboard</button>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -292,6 +291,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">Customers</button>
     <button class="tab" id="salBtn" role="tab" aria-selected="false" hidden>Salary</button>
+    <button class="tab" id="fdBtn" type="button">Dashboard</button>
   </nav>
 
   <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
