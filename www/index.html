@@ -324,6 +324,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
       <button class="btn small" id="coBtn" hidden>Company details (PDF letterhead)</button>
+      <button class="btn small danger" id="rstTxBtn" hidden>Reset All Transactions</button>
+      <button class="btn small danger" id="rstAllBtn" hidden>Reset All</button>
       <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
@@ -581,6 +583,17 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <a class="btn primary" id="sentWa" target="_blank" rel="noopener" href="https://wa.me/" hidden>Notify owner on WhatsApp</a>
     </div>
   </div>
+</dialog>
+
+<dialog id="dlgRst">
+  <form id="fRst">
+    <h2 id="rstHead">Reset</h2>
+    <p id="rstWhat"></p>
+    <p style="color:var(--warn)">This cannot be undone. Use "Download all days backup" first if you may need this data.</p>
+    <label>Type RESET to confirm<input type="text" id="rstIn" autocomplete="off" autocapitalize="characters" placeholder="RESET"></label>
+    <p id="rstErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="rstCancel">Cancel</button><button type="submit" class="btn danger" id="rstGo">Reset</button></div>
+  </form>
 </dialog>
 
 <dialog id="dlgCo">
@@ -1087,7 +1100,7 @@ function renderStock(){
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
   var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); if(!armed.mvas) ma.textContent='Move all to '+NURS[otherN()];
-  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner;
+  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#rstTxBtn').hidden=!isOwner; $('#rstAllBtn').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
   var pend=items.filter(function(it){ var r=it[1]; return (r.damages||0)>0 && !((r.notes||{}).damages||{}).reason; }).length;
@@ -2645,6 +2658,46 @@ $('#alertBtn').addEventListener('click', function(){
   var b=$('#pendBox'); if(b&&b.scrollIntoView) b.scrollIntoView({behavior:'smooth', block:'start'});
 });
 $('#waSetBtn').addEventListener('click', function(){ $('#waNum').value=ownerWa; var d=$('#dlgWa'); if(!d.open) d.showModal(); });
+var rstMode='';
+function openRst(m){
+  rstMode=m;
+  $('#rstHead').textContent = m==='all' ? 'Reset All' : 'Reset All Transactions';
+  $('#rstWhat').textContent = m==='all'
+    ? 'Deletes EVERYTHING: all saved days, stock items and quantities, tasks, attendance, resources, customers and sales, team (supervisors and staff), per-day salaries, advances, deductions, bonuses and notepads. Only the owner login, owner PIN, company details and owner WhatsApp number are kept. The app starts fresh with an empty register.'
+    : 'Clears on every saved day: customers and sales, attendance marks, task done / not-done marks and reasons, and resource checks. Also clears all salary entries (advances, deductions, bonuses and paid marks). Stock items and quantities, tasks, resources, team and per-day salaries stay.';
+  $('#rstIn').value=''; $('#rstErr').textContent='';
+  var d=$('#dlgRst'); if(!d.open) d.showModal();
+}
+$('#rstTxBtn').addEventListener('click', function(){ if(isOwner) openRst('tx'); });
+$('#rstAllBtn').addEventListener('click', function(){ if(isOwner) openRst('all'); });
+$('#rstCancel').addEventListener('click', function(){ $('#dlgRst').close(); });
+$('#fRst').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(!isOwner||!db||!db.list) return;
+  if($('#rstIn').value.trim().toUpperCase()!=='RESET'){ $('#rstErr').textContent='Type RESET to confirm.'; return; }
+  var go=$('#rstGo'); go.disabled=true; $('#rstErr').textContent='Working... please wait.';
+  try{
+    var days=await db.list('days/'), n=0;
+    if(rstMode==='all'){
+      for(var i=0;i<days.length;i++){ await db.doc(days[i].path).delete(); n++; }
+      await db.doc('meta/index').delete().catch(function(){});
+      await db.doc('meta/salary').delete().catch(function(){});
+      await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});
+      try{ localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
+    }else{
+      for(var j=0;j<days.length;j++){
+        var d=days[j].data||{}, p={cs:null, att:null, rs:null}, tk=d.tasks||{};
+        Object.keys(tk).forEach(function(id){ if(tk[id]&&!tk[id].removed){ p.tasks=p.tasks||{}; p.tasks[id]={status:'', reason:'', note:'', who:'', at:null}; } });
+        await db.doc(days[j].path).update(p); n++;
+      }
+      await db.doc('meta/salary').update({e:null, p:null}).catch(function(){});
+    }
+    $('#dlgRst').close();
+    toast(rstMode==='all' ? 'Everything was reset. Reloading...' : 'All transactions were reset ('+n+' days).', 3000);
+    if(rstMode==='all') setTimeout(function(){ location.reload(); },1500);
+  }catch(err){ $('#rstErr').textContent='Reset failed: '+((err&&(err.code||err.message))||'error')+'. Check your internet and try again.'; }
+  go.disabled=false;
+});
 $('#coBtn').addEventListener('click', function(){
   $('#coN').value=CO.n||''; $('#coA').value=CO.a||''; $('#coC').value=CO.c||''; $('#coP').value=CO.p||''; $('#coS').value=CO.s||''; $('#coT').value=CO.t||'';
   var d=$('#dlgCo'); if(!d.open) d.showModal();
