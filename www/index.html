@@ -118,6 +118,13 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .notes:empty{display:none}
 .note{display:block; text-align:left; border:0; background:var(--field); border-radius:8px; padding:6px 10px; font-size:.85rem; color:var(--ink); cursor:pointer; overflow-wrap:anywhere}
 span.note{cursor:default}
+.pad{display:grid; gap:6px; margin:10px 0}
+.pad .phead{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.pad h3{margin:0; font-size:1rem}
+.pad textarea{width:100%; min-height:110px; resize:vertical; font:inherit; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--field); color:var(--ink)}
+.pad .micb{border:1px solid var(--line); background:var(--field); color:var(--ink); border-radius:50%; width:40px; height:40px; font-size:1.2rem; cursor:pointer}
+.pad .micb.on{background:#b3261e; color:#fff}
+.pad .pm{font-size:.8rem; color:var(--muted); min-height:1em}
 .note.xfer{border-left:3px solid var(--accent)}
 .note b{margin-right:6px}
 .note.purchase b{color:var(--buy)} .note.sales b{color:var(--sell)} .note.damages b{color:var(--loss)}
@@ -289,6 +296,11 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <div class="card state" id="tstate">No tasks yet. The owner adds the task list.</div>
     <div class="pane" id="tlist"></div>
+    <section class="card team" id="padTasks" hidden>
+      <div class="note" id="padPrev" hidden></div>
+      <div id="padDone"></div>
+      <div id="padNext"></div>
+    </section>
     <section class="card team" id="sugBox" hidden>
       <h2 id="sugHead">Suggest tasks for tomorrow</h2>
       <p class="pmeta" id="sugHelp">Add one task at a time. The owner reviews each one, and approved tasks are listed under Tasks for tomorrow.</p>
@@ -342,6 +354,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <div class="bar" id="csBar" hidden><span class="tsum" id="csSum"></span></div>
       <p class="pmeta" id="csEmpty">No sales entered yet.</p>
       <div class="tl" id="csList"></div>
+      <div id="padSold"></div>
     </section>
   </section>
 
@@ -695,7 +708,9 @@ async function ensureToday(){
         if(!pd.closed) await db.doc('days/'+prev).update({closed:true, closedAt:Date.now(), auto:true});
       }
     }
-    await db.doc('days/'+t).set({date:t, closed:false, rows:rows, tasks:tasks, sug:sg});
+    var pn={};
+    if(prev){ try{ var pdd=(await db.doc('days/'+prev).get()).data()||{}; ['1','2'].forEach(function(n){ var x=pdd.pn&&pdd.pn[n]&&pdd.pn[n].next; if(x&&x.t) pn[n]={prev:{t:x.t,by:x.who||''}}; }); }catch(e){} }
+    await db.doc('days/'+t).set({date:t, closed:false, rows:rows, tasks:tasks, sug:sg, pn:pn});
     var entry={}; entry[t]={c:Date.now()}; if(prev) entry[prev]={closed:true};
     if(is.exists) await db.doc('meta/index').update({d:entry});
     else await db.doc('meta/index').set({d:entry});
@@ -876,6 +891,7 @@ function sortItems(items){
 document.querySelectorAll('.nursel').forEach(function(sel){
   sel.addEventListener('change', function(){
     nursery=this.value==='2'?'2':'1';
+    if(typeof PADS!=='undefined') Object.keys(PADS).forEach(function(k){ PADS[k].dirty=false; });
     try{ localStorage.setItem('nurseryNo', nursery); }catch(e){}
     filter=''; $('#filter').value='';
     renderAll();
@@ -1106,7 +1122,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
@@ -1501,6 +1517,73 @@ function undoXfer(xid,btn){
     });
     if(await save(patch)) toast('Transfer undone');
   });
+}
+
+/* ---------- notepads (per nursery, per day) ---------- */
+var PADS={
+  sold:{mount:'#padSold', title:'Plants sold today', ph:'Write the details of the plants sold: plant names, quantities, customers.'},
+  done:{mount:'#padDone', title:'Work done today', ph:'Write the work that was done today.'},
+  next:{mount:'#padNext', title:'Work to be done for tomorrow', ph:'Write the work planned for tomorrow.'}
+};
+function padData(n,k){ var p=day&&day.pn&&day.pn[n]; return (p&&p[k])||null; }
+function padSave(k){
+  var P=PADS[k]; if(!P.ta||!editable()||!canWrite) return;
+  var n=P.nur, t=P.ta.value, cur=padData(n,k);
+  if(((cur&&cur.t)||'')===t){ P.dirty=false; return; }
+  var patch={pn:{}}; patch.pn[n]={}; patch.pn[n][k]={t:t, who:nameNow()||(isOwner?'Owner':'Supervisor'), at:Date.now()};
+  save(patch).then(function(ok){ if(ok) P.dirty=false; });
+}
+function micFor(P){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var hint=function(){ P.ta.focus(); toast('Tap the microphone on your keyboard to speak.', 4000); };
+  if(P.rec){ try{ P.rec.stop(); }catch(e){} return; }
+  if(!SR){ hint(); return; }
+  try{
+    var r=new SR(); r.lang='en-IN'; r.interimResults=false; r.continuous=false; P.rec=r; P.mic.classList.add('on');
+    r.onresult=function(ev){
+      var txt=''; for(var i=ev.resultIndex;i<ev.results.length;i++) txt+=ev.results[i][0].transcript;
+      P.ta.value=(P.ta.value?P.ta.value.replace(/\s*$/,' '):'')+txt.trim(); P.dirty=true; padSave(P.key);
+    };
+    r.onerror=function(){ P.rec=null; P.mic.classList.remove('on'); hint(); };
+    r.onend=function(){ P.rec=null; P.mic.classList.remove('on'); };
+    r.start();
+  }catch(e){ P.rec=null; P.mic.classList.remove('on'); hint(); }
+}
+function buildPad(k){
+  var P=PADS[k]; P.key=k;
+  var box=mk('div','pad'), head=mk('div','phead'), h=mk('h3',null,P.title), mic=mk('button','micb','\uD83C\uDFA4');
+  mic.type='button'; mic.setAttribute('aria-label','Speak: '+P.title);
+  var ta=document.createElement('textarea'); ta.maxLength=3000; ta.placeholder=P.ph; ta.setAttribute('aria-label',P.title);
+  var pm=mk('div','pm');
+  head.append(h,mic); box.append(head,ta,pm);
+  var timer=null;
+  ta.addEventListener('input', function(){ P.dirty=true; clearTimeout(timer); timer=setTimeout(function(){ padSave(k); },800); });
+  ta.addEventListener('blur', function(){ clearTimeout(timer); padSave(k); });
+  mic.addEventListener('click', function(){ micFor(P); });
+  P.ta=ta; P.pm=pm; P.mic=mic; P.box=box; $(P.mount).append(box);
+}
+function renderPads(){
+  var ed=editable()&&canWrite, has=!!day;
+  ['sold','done','next'].forEach(function(k){
+    var P=PADS[k]; if(!P.ta) buildPad(k);
+    P.nur=nursery;
+    var d=padData(nursery,k), txt=(d&&d.t)||'';
+    P.box.hidden=!has;
+    P.ta.disabled=!ed; P.mic.hidden=!ed;
+    if(document.activeElement!==P.ta && !P.dirty) P.ta.value=txt;
+    P.pm.textContent = d&&d.t ? ['Saved by '+(d.who||''),fmtTime(d.at)].filter(Boolean).join(' ').replace('Saved by  ','Saved ') : (ed?'':'Nothing written.');
+  });
+  var pv=day&&day.pn&&day.pn[nursery]&&day.pn[nursery].prev, pe=$('#padPrev');
+  pe.hidden=!(pv&&pv.t); pe.textContent=pv&&pv.t ? 'Planned yesterday for today: '+pv.t : '';
+  $('#padTasks').hidden=!has;
+}
+function padPdf(doc,y,n,k){
+  var d=padData(n,k), t=(d&&d.t)||''; if(!t) return y;
+  var lines=doc.splitTextToSize(t,515);
+  if(y>720){ doc.addPage(); y=50; }
+  doc.setFontSize(11); doc.text(PADS[k].title+' ('+NURS[n]+')',40,y); doc.setFontSize(10);
+  lines.forEach(function(l,i){ if(y+16+i*12>780){ doc.addPage(); y=50-16-i*12; } doc.text(l,40,y+16+i*12); });
+  return y+16+lines.length*12+10;
 }
 
 /* ---------- team: supervisors and staff ---------- */
@@ -2401,14 +2484,17 @@ function pdfTasks(d0,first){
   ['1','2'].forEach(function(n){
     var items=visibleTasksOf(n), c=taskCounts(items);
     y=nurHead(doc,y,n,c.done+' done, '+c.notdone+' not done, '+c.pending+' pending');
-    if(!items.length){ y+=14; return; }
-    doc.autoTable({
-      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
-      head:[['Sl.No.','Task','Assigned to','Status','Reason if not done','Brief report']],
-      body:items.map(function(it,i){ var t=it[1]; return [i+1,t.title,assigneeName(t.to),STATUS_TXT[t.status||''],t.status==='notdone'?(t.reason||''):'',t.note||'']; }),
-      headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40},3:{cellWidth:60}}
-    });
-    y=doc.lastAutoTable.finalY+16;
+    if(!items.length){ y+=14; }
+    else {
+      doc.autoTable({
+        startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+        head:[['Sl.No.','Task','Assigned to','Status','Reason if not done','Brief report']],
+        body:items.map(function(it,i){ var t=it[1]; return [i+1,t.title,assigneeName(t.to),STATUS_TXT[t.status||''],t.status==='notdone'?(t.reason||''):'',t.note||'']; }),
+        headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40},3:{cellWidth:60}}
+      });
+      y=doc.lastAutoTable.finalY+16;
+    }
+    y=padPdf(doc,y,n,'done'); y=padPdf(doc,y,n,'next');
   });
   return d0 ? null : doc.output('arraybuffer');
 }
@@ -2450,7 +2536,7 @@ function pdfCs(doc){
     var items=csItems(n), total=0;
     items.forEach(function(it){ total+=Number(it[1].amt)||0; });
     y=nurHead(doc,y,n,items.length+' sales, total Rs. '+fmtMoney(total));
-    if(!items.length){ y+=14; return; }
+    if(!items.length){ y=padPdf(doc,y+14,n,'sold'); return; }
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
       head:[['Sl.No.','Customer name','Phone','Bill no.','Amount (Rs.)','Entered by','Time']],
@@ -2459,6 +2545,7 @@ function pdfCs(doc){
       headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20}, columnStyles:{0:{cellWidth:40}}
     });
     y=doc.lastAutoTable.finalY+16;
+    y=padPdf(doc,y,n,'sold');
   });
 }
 function pdfAll(){
