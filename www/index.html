@@ -324,8 +324,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
       <button class="btn small" id="coBtn" hidden>Company details (PDF letterhead)</button>
-      <button class="btn small danger" id="rstTxBtn" hidden>Reset All Transactions</button>
-      <button class="btn small danger" id="rstAllBtn" hidden>Reset All</button>
       <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
@@ -695,6 +693,11 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <summary>Salary</summary>
       <div class="fdattin"><div class="fdgrid" id="fdSal"></div><p class="pmeta" id="fdSalNote"></p></div>
     </details>
+    <div class="card" id="fdReset" style="display:flex;flex-direction:column;gap:10px" hidden>
+      <h2 style="margin:0">Reset (owner only)</h2>
+      <button class="btn small danger" id="rstTxBtn" type="button">Reset All Transactions</button>
+      <button class="btn small danger" id="rstAllBtn" type="button">Reset All</button>
+    </div>
   </div>
 </div>
 
@@ -1100,7 +1103,7 @@ function renderStock(){
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
   var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); if(!armed.mvas) ma.textContent='Move all to '+NURS[otherN()];
-  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#rstTxBtn').hidden=!isOwner; $('#rstAllBtn').hidden=!isOwner;
+  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
   var pend=items.filter(function(it){ var r=it[1]; return (r.damages||0)>0 && !((r.notes||{}).damages||{}).reason; }).length;
