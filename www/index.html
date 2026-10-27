@@ -84,6 +84,12 @@ textarea{resize:vertical; min-height:76px}
 .fdc{display:flex; flex-direction:column; gap:6px; padding:18px 16px}
 .fdc span{font-size:.9rem; color:var(--muted)}
 .fdc b{font-size:2.2rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.fddrop{padding:0}
+.fddrop>summary{cursor:pointer; list-style:none; padding:14px; font-size:1.15rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; min-height:48px}
+.fddrop>summary::-webkit-details-marker{display:none}
+.fddrop>summary::after{content:"▾"; transition:transform .15s}
+.fddrop:not([open])>summary::after{transform:rotate(-90deg)}
+.fddrop .fdlist{border:0; border-top:1px solid var(--line); border-radius:0; background:none}
 .fdlist{display:flex; flex-direction:column; gap:8px}
 .fdlist h2{display:flex; align-items:center; gap:8px}
 .fdrow{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:9px 0; border-top:1px solid var(--line)}
@@ -627,8 +633,11 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
     <div class="fdgrid" id="fdGrid"></div>
-    <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
-    <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
+    <details class="card fddrop" open>
+      <summary>📦 Stocks</summary>
+      <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
+      <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
+    </details>
   </div>
 </div>
 
