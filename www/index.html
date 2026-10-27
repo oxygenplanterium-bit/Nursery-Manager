@@ -118,6 +118,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .notes:empty{display:none}
 .note{display:block; text-align:left; border:0; background:var(--field); border-radius:8px; padding:6px 10px; font-size:.85rem; color:var(--ink); cursor:pointer; overflow-wrap:anywhere}
 span.note{cursor:default}
+.note.xfer{border-left:3px solid var(--accent)}
 .note b{margin-right:6px}
 .note.purchase b{color:var(--buy)} .note.sales b{color:var(--sell)} .note.damages b{color:var(--loss)}
 .note small{color:var(--muted); margin-left:6px}
@@ -431,6 +432,25 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   </form>
 </dialog>
 
+<dialog id="dlgXfer">
+  <form id="fXfer">
+    <h2 id="xfHead">Transfer stock</h2>
+    <p id="xfInfo" class="pmeta"></p>
+    <label><span>Quantity to transfer</span>
+      <input type="number" id="xfQty" min="1" step="1" inputmode="numeric" required>
+    </label>
+    <button type="button" class="btn small" id="xfFull">Transfer full balance</button>
+    <label><span>Note (optional)</span>
+      <input type="text" id="xfNote" maxlength="120" placeholder="For example sent by truck">
+    </label>
+    <p id="xfErr" style="color:var(--warn); min-height:1.2em"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="xfCancel">Cancel</button>
+      <button class="btn primary" type="submit" id="xfOk">Transfer</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlgEdit">
   <form id="fEdit">
     <h2 id="editHead">Edit</h2>
@@ -547,7 +567,12 @@ var todayKey = function(){ return keyOf(new Date()); };
 var fmtLong = function(k){ var p=k.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); };
 var fmtTime = function(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : ''; };
 var num = function(v){ var n=parseInt(v,10); return isFinite(n)&&n>0?n:0; };
-var bal = function(r){ return (r.total||0)+(r.purchase||0)-(r.sales||0)-(r.damages||0); };
+function xferOf(r){
+  var o={in:0,out:0}, x=(r&&r.x)||{};
+  Object.keys(x).forEach(function(k){ var e=x[k]; if(e&&e.q>0){ if(e.k==='in') o.in+=e.q; else if(e.k==='out') o.out+=e.q; } });
+  return o;
+}
+var bal = function(r){ var t=xferOf(r); return (r.total||0)+(r.purchase||0)-(r.sales||0)-(r.damages||0)+t.in-t.out; };
 var fmtN = function(n){ return Number(n).toLocaleString('en-IN'); };
 var FIELDS = ['total','purchase','sales','damages'];
 var LABELS = {total:'Total Qty',purchase:'Purchases',sales:'Sales',damages:'Damages'};
@@ -753,17 +778,18 @@ function mvLabel(n){ return 'Move to '+NURS[otherN(n)]; }
 function makeRow(id){
   var el=mk('div','row'); el.dataset.id=id;
   var idw=mk('div','id'), sl=mk('span','sl'), nm=mk('div','nm'), top=mk('div','nmtop'), name=mk('span','name');
-  var edit=null, mv=null;
+  var edit=null, mv=null, xf=null;
   top.append(name);
   if(isOwner){
     edit=mk('button','edit','Edit'); edit.type='button';
     edit.addEventListener('click', function(){ openEdit('item',id); });
     top.append(edit);
     mv=moveBtn(); mv.addEventListener('click', function(){ moveRow(id,mv); });
-    top.append(mv);
+    xf=mk('button','edit','Transfer stock'); xf.type='button'; xf.addEventListener('click', function(){ openXfer(id); });
+    top.append(xf,mv);
   }
   nm.append(top); idw.append(sl,nm); el.append(idw);
-  var R={sl:sl,name:name,edit:edit,mv:mv,notes:mk('div','notes')};
+  var R={sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
     if(canWrite && (f!=='total'||isOwner)){
@@ -803,6 +829,7 @@ function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
   R.sl.textContent=n; R.name.textContent=r.name;
   if(R.edit) R.edit.hidden=!ed;
+  if(R.xf) R.xf.hidden=!(ed&&isOwner);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
   FIELDS.forEach(function(f){
     var v=r[f]||0;
@@ -815,6 +842,16 @@ function updateRow(el,id,r,n){
   var b=bal(r); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
+  xferEntries(r).forEach(function(e){
+    var el=mk('span','note xfer'); el.append(mk('b',null,(e.k==='in'?'Transferred in ':'Transferred out ')+e.q));
+    el.append(document.createTextNode((e.k==='in'?' from ':' to ')+NURS[e.o||'1']+(e.n?' · '+e.n:'')));
+    var meta=[e.by,fmtTime(e.at)].filter(Boolean).join(' '); if(meta) el.append(mk('small',null,meta));
+    R.notes.append(el);
+  });
+}
+function xferEntries(r){
+  var x=(r&&r.x)||{};
+  return Object.keys(x).map(function(k){ return x[k]; }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
 }
 function sortItems(items){
   if(!sortMode) return items;
@@ -1388,6 +1425,50 @@ $('#mvAllRes').addEventListener('click', function(){
     if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'Nothing to move.'); return; }
     if(await saveSettings(p)) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
   });
+});
+
+/* ---------- stock transfer between nurseries (owner only) ---------- */
+var xfCtx=null;
+function openXfer(id){
+  if(!isOwner||!editable()) return;
+  var r=day&&day.rows&&day.rows[id]; if(!r||r.removed) return;
+  var from=r.nid||'1', dest=otherN(from), b=bal(r);
+  xfCtx={id:id};
+  $('#xfHead').textContent='Transfer '+r.name;
+  var dr=destRow(r,dest), db_=dr?bal(dr[1]):null;
+  $('#xfInfo').textContent='From '+NURS[from]+' to '+NURS[dest]+'. Available: '+fmtN(b)+'. '+(dr?'Now in '+NURS[dest]+': '+fmtN(db_)+'.':'It will be added to '+NURS[dest]+' as a new item.');
+  $('#xfQty').value=''; $('#xfQty').max=String(b); $('#xfNote').value=''; $('#xfErr').textContent='';
+  var d=$('#dlgXfer'); if(!d.open) d.showModal();
+}
+function destRow(r,dest){
+  var rows=(day&&day.rows)||{}, k=normName(r.name), hit=null;
+  Object.keys(rows).forEach(function(i){ var x=rows[i]; if(!hit && !x.removed && (x.nid||'1')===dest && normName(x.name)===k) hit=[i,x]; });
+  return hit;
+}
+$('#xfFull').addEventListener('click', function(){
+  var r=xfCtx&&day&&day.rows&&day.rows[xfCtx.id]; if(!r) return;
+  $('#xfQty').value=String(Math.max(0,bal(r)));
+});
+$('#xfCancel').addEventListener('click', function(){ $('#dlgXfer').close(); });
+$('#fXfer').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(!isOwner||!editable()||!xfCtx) return;
+  var id=xfCtx.id, r=day&&day.rows&&day.rows[id]; if(!r||r.removed) return;
+  var from=r.nid||'1', dest=otherN(from), q=Math.floor(num($('#xfQty').value)), avail=bal(r), err=$('#xfErr');
+  if(!(q>0)){ err.textContent='Enter a quantity of 1 or more.'; return; }
+  if(q>avail){ err.textContent='Only '+fmtN(avail)+' available in '+NURS[from]+'.'; return; }
+  var dr=destRow(r,dest);
+  if(dr&&dr[1].pending){ err.textContent='This item is still waiting for approval in '+NURS[dest]+'.'; return; }
+  var rows=day.rows, maxO=0, at=Date.now(), by=nameNow()||'Owner', note=$('#xfNote').value.trim().replace(/\s+/g,' ');
+  Object.keys(rows).forEach(function(i){ maxO=Math.max(maxO,rows[i].order||0); });
+  var xid='x'+at.toString(36)+Math.random().toString(36).slice(2,5), did;
+  var patch={rows:{}};
+  patch.rows[id]={x:{}}; patch.rows[id].x[xid]={k:'out', q:q, o:dest, by:by, at:at, n:note};
+  if(dr){ did=dr[0]; patch.rows[did]={x:{}}; }
+  else { did='i'+at.toString(36)+Math.random().toString(36).slice(2,6); patch.rows[did]={order:maxO+1, name:r.name, total:0, purchase:0, sales:0, damages:0, nid:dest, x:{}}; }
+  patch.rows[did].x[xid]={k:'in', q:q, o:from, by:by, at:at, n:note};
+  $('#dlgXfer').close();
+  if(await save(patch)) toast(fmtN(q)+' '+r.name+' transferred to '+NURS[dest]);
 });
 
 /* ---------- team: supervisors and staff ---------- */
@@ -2206,6 +2287,7 @@ function stockText(){
     ['purchase','sales','damages'].forEach(function(f){
       if(n[f]&&(n[f].text||n[f].reason)) L.push('   '+NOTE_LABELS[f]+': '+[n[f].reason,n[f].text].filter(Boolean).join(' - '));
     });
+    xferEntries(r).forEach(function(e){ L.push('   Transferred '+(e.k==='in'?'in '+e.q+' from ':'out '+e.q+' to ')+NURS[e.o||'1']+(e.n?' - '+e.n:'')); });
   });
   if(day.report&&day.report.text){ L.push('', "Supervisor's report:", day.report.text); }
   return L.join('\n');
@@ -2247,11 +2329,11 @@ function pdfStock(d0,first){
     if(!items.length){ doc.text('No items in this nursery.', 40, y+16); y+=36; return; }
     doc.autoTable({
       startY:y+6, theme:'grid', styles:{fontSize:9,cellPadding:4},
-      head:[['Sl.No.','Item Name','Total Qty','Purchases','Sales','Damages','Bal Qty']],
-      body:items.map(function(it,i){ var r=it[1]; return [i+1,r.name,r.total||0,r.purchase||0,r.sales||0,r.damages||0,bal(r)]; }),
-      foot:[['','Totals',s.total,s.purchase,s.sales,s.damages,s.bal]],
+      head:[['Sl.No.','Item Name','Total Qty','Purchases','Sales','Damages','Transfers (net)','Bal Qty']],
+      body:items.map(function(it,i){ var r=it[1], t=xferOf(r); return [i+1,r.name,r.total||0,r.purchase||0,r.sales||0,r.damages||0,t.in-t.out,bal(r)]; }),
+      foot:[['','Totals',s.total,s.purchase,s.sales,s.damages,items.reduce(function(a,it){ var t=xferOf(it[1]); return a+t.in-t.out; },0),s.bal]],
       headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20},
-      columnStyles:{0:{cellWidth:40},2:R(),3:R(),4:R(),5:R(),6:R()}
+      columnStyles:{0:{cellWidth:40},2:R(),3:R(),4:R(),5:R(),6:R(),7:R()}
     });
     var nrows=[];
     items.forEach(function(it){
@@ -2259,6 +2341,7 @@ function pdfStock(d0,first){
       ['purchase','sales','damages'].forEach(function(f){
         if(nt[f]&&(nt[f].text||nt[f].reason)) nrows.push([it[1].name, NOTE_LABELS[f]+' '+(it[1][f]||0), [nt[f].reason,nt[f].text].filter(Boolean).join(' - ')]);
       });
+      xferEntries(it[1]).forEach(function(e){ nrows.push([it[1].name, 'Transferred '+(e.k==='in'?'in ':'out ')+e.q, (e.k==='in'?'From ':'To ')+NURS[e.o||'1']+(e.n?' - '+e.n:'')]); });
     });
     y=doc.lastAutoTable.finalY+18;
     if(nrows.length){
