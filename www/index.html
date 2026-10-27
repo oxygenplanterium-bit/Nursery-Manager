@@ -110,6 +110,11 @@ h2.dwide{margin:6px 2px 0; font-size:1rem}
 .salmon{display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; align-items:center; padding:8px; text-align:center}
 .salmon .btn{padding:0; min-height:44px; font-size:1.4rem}
 .salmon b{font-size:1.05rem}
+.lp{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
+.row.picked{outline:3px solid var(--accent); outline-offset:-2px; background:var(--accent-soft)}
+#rowMoveBar{position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:30; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px; background:var(--card); border:2px solid var(--accent); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#rowMoveBar span{flex:1 1 100%; font-weight:700; overflow-wrap:anywhere}
+#rowMoveBar .btn{flex:1 1 80px; min-height:44px}
 .salh{margin:8px 2px 0; font-size:1.05rem}
 .salp{display:flex; flex-direction:column; gap:10px; border:1px solid var(--line)}
 .salgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
@@ -667,6 +672,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   </div>
 </div>
 
+<div id="rowMoveBar" hidden><span id="rmName"></span><button class="btn" id="rmUp" type="button">▲ Up</button><button class="btn" id="rmDown" type="button">▼ Down</button><button class="btn primary" id="rmDone" type="button">Done</button></div>
+
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
@@ -915,6 +922,15 @@ function makeRow(id){
     top.append(xf);
   }
   nm.append(top); idw.append(sl,nm); el.append(idw);
+  if(isOwner){
+    idw.classList.add('lp');
+    var lpT=null, lx=0, ly=0;
+    var lpStop=function(){ if(lpT){ clearTimeout(lpT); lpT=null; } };
+    idw.addEventListener('pointerdown', function(e){ if(e.target.closest('button')) return; lx=e.clientX; ly=e.clientY; lpStop(); lpT=setTimeout(function(){ lpT=null; selectRow(id); },550); });
+    idw.addEventListener('pointermove', function(e){ if(Math.abs(e.clientX-lx)>10||Math.abs(e.clientY-ly)>10) lpStop(); });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(t){ idw.addEventListener(t,lpStop); });
+    idw.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
   var R={sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
@@ -1073,6 +1089,7 @@ function renderStock(){
     var sorted=sortItems(items);
     renderRows(sorted,serial); renderTotals(items);
   }
+  paintSel();
   var box=$('#reportBox'), ta=$('#report'), meta=$('#reportMeta');
   box.hidden=!day;
   if(day){
@@ -1554,6 +1571,38 @@ function resClash(name,dest,exId){
   var k=normName(name);
   return resList().some(function(it){ return it[0]!==exId && (it[1].nid||'1')===dest && normName(it[1].n)===k; });
 }
+/* manual sorting: long-press a row, then move it up or down */
+var selRowId=null;
+function paintSel(){
+  var bar=$('#rowMoveBar'); if(!bar) return;
+  var rec=selRowId&&day&&day.rows&&day.rows[selRowId];
+  if(!rec||rec.removed||!isOwner||!editable()||tab!=='stock'){ selRowId=null; }
+  rowEls.forEach(function(el,rid){ el.classList.toggle('picked', rid===selRowId); });
+  bar.hidden=!selRowId;
+  if(selRowId){
+    var l=sortedRows(), i=l.findIndex(function(it){ return it[0]===selRowId; });
+    $('#rmName').textContent=day.rows[selRowId].name+'  ('+(i+1)+' of '+l.length+')';
+    $('#rmUp').disabled=i<=0; $('#rmDown').disabled=i<0||i>=l.length-1;
+  }
+}
+function selectRow(id){
+  if(!isOwner||!editable()){ return; }
+  if(sortMode){ sortMode=''; try{ localStorage.setItem('nurserySort',''); }catch(e){} toast('Showing default order so you can arrange rows manually.'); renderAll(); }
+  selRowId=id; if(navigator.vibrate) try{ navigator.vibrate(30); }catch(e){}
+  paintSel();
+}
+async function shiftRow(dir){
+  if(!selRowId||!isOwner||!editable()) return;
+  var l=sortedRows(), i=l.findIndex(function(it){ return it[0]===selRowId; }), j=i+dir;
+  if(i<0||j<0||j>=l.length) return;
+  var ids=l.map(function(it){ return it[0]; }); ids.splice(j,0,ids.splice(i,1)[0]);
+  var p={rows:{}}; ids.forEach(function(rid,k){ if(((day.rows[rid]||{}).order||0)!==k+1) p.rows[rid]={order:k+1}; });
+  var keep=selRowId; await save(p);
+  var el=rowEls.get(keep); if(el&&el.scrollIntoView) el.scrollIntoView({block:'center',behavior:'smooth'});
+}
+$('#rmUp').addEventListener('click', function(){ shiftRow(-1); });
+$('#rmDown').addEventListener('click', function(){ shiftRow(1); });
+$('#rmDone').addEventListener('click', function(){ selRowId=null; paintSel(); });
 function moveRow(id,btn){
   if(!isOwner||!editable()) return;
   var r=day.rows&&day.rows[id]; if(!r||r.removed) return;
