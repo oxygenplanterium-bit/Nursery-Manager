@@ -28,8 +28,9 @@ window.XLSX = XLSX;
 const app = initializeApp(firebaseConfig);
 const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
 let fs;
-try { fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }) }); }
-catch (e) { fs = initializeFirestore(app, { localCache: memoryLocalCache() }); }
+const FS_OPTS = { experimentalAutoDetectLongPolling: true, experimentalLongPollingOptions: { timeoutSeconds: 25 } };
+try { fs = initializeFirestore(app, Object.assign({ localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }) }, FS_OPTS)); }
+catch (e) { fs = initializeFirestore(app, Object.assign({ localCache: memoryLocalCache() }, FS_OPTS)); }
 
 /* ---------- helpers ---------- */
 const CODE = { 'not-found': 'not_found', 'resource-exhausted': 'quota_exceeded', 'permission-denied': 'revoked', 'invalid-argument': 'invalid_argument' };
