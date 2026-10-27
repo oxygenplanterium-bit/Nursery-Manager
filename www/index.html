@@ -91,8 +91,6 @@ textarea{resize:vertical; min-height:76px}
 .fddrop{padding:0}
 .fddrop>summary{cursor:pointer; list-style:none; padding:14px; font-size:1.15rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; min-height:48px}
 .fddrop>summary::-webkit-details-marker{display:none}
-.fddrop>summary::after{content:"▾"; transition:transform .15s}
-.fddrop:not([open])>summary::after{transform:rotate(-90deg)}
 .fdattin{padding:0 14px 14px; display:flex; flex-direction:column; gap:8px}
 .fddrop .fdlist{border:0; border-top:1px solid var(--line); border-radius:0; background:none}
 .fdlist{display:flex; flex-direction:column; gap:8px}
@@ -269,8 +267,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
-  <button class="btn fdbtn" id="fdBtn" type="button">📊 Dashboard</button>
-  <button class="btn salbtn" id="salBtn" hidden>💰 Salary</button>
+  <button class="btn fdbtn" id="fdBtn" type="button">Dashboard</button>
+  <button class="btn salbtn" id="salBtn" hidden>Salary</button>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -288,12 +286,12 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   </section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab" id="tabStock" role="tab" aria-selected="true">📦 Stock</button>
-    <button class="tab" id="tabTasks" role="tab" aria-selected="false">✅ Tasks</button>
-    <button class="tab" id="tabAtt" role="tab" aria-selected="false">🧑‍🌾 Attendance</button>
-    <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>👥 Team</button>
-    <button class="tab" id="tabRes" role="tab" aria-selected="false">🧰 Resources</button>
-    <button class="tab" id="tabCs" role="tab" aria-selected="false">🧾 Customers</button>
+    <button class="tab" id="tabStock" role="tab" aria-selected="true">Stock</button>
+    <button class="tab" id="tabTasks" role="tab" aria-selected="false">Tasks</button>
+    <button class="tab" id="tabAtt" role="tab" aria-selected="false">Attendance</button>
+    <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>Team</button>
+    <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
+    <button class="tab" id="tabCs" role="tab" aria-selected="false">Customers</button>
   </nav>
 
   <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
@@ -309,7 +307,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
       <input type="search" id="filter" placeholder="Search item name">
       <select id="sortSel" aria-label="Sort stock">
-        <option value="">↕ Sort: Default order</option>
+        <option value="">Sort: Default order</option>
         <option value="name-asc">Name A to Z</option>
         <option value="name-desc">Name Z to A</option>
         <option value="bal-desc">Bal Qty: high to low</option>
@@ -445,7 +443,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
     <label class="f card" style="padding:10px 14px"><span>Full-attendance bonus (₹, added automatically when present all days of the month)</span><input type="number" id="salBonusCfg" min="0" step="1" inputmode="numeric" placeholder="₹ 0 = no automatic bonus"></label>
-    <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="salPrev" aria-label="Previous month">‹</button><b id="salMonthLbl"></b><button class="btn" type="button" id="salNext" aria-label="Next month">›</button></div>
+    <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="salPrev" aria-label="Previous month">Prev</button><b id="salMonthLbl"></b><button class="btn" type="button" id="salNext" aria-label="Next month">Next</button></div>
     <div id="salBody" class="pane"></div>
   </section>
 
@@ -657,36 +655,36 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 <div id="fdash" role="dialog" aria-modal="true" aria-label="Stock dashboard" hidden>
   <div class="fdin">
     <div class="fdtop">
-      <div><h2>📊 Stock Dashboard</h2><p class="pmeta" id="fdDate"></p></div>
-      <button class="btn" id="fdClose" type="button">✕ Close</button>
+      <div><h2>Stock Dashboard</h2><p class="pmeta" id="fdDate"></p></div>
+      <button class="btn" id="fdClose" type="button">Close</button>
     </div>
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
     <details class="card fddrop" open>
-      <summary>📦 Stocks</summary>
-      <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
-      <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
+      <summary>Stocks</summary>
+      <section class="card fdlist"><h2>New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
+      <section class="card fdlist"><h2>Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
       <div class="fdattin"><div class="fdgrid" id="fdGrid"></div></div>
     </details>
     <details class="card fddrop" open>
-      <summary>🧑‍🌾 Attendance</summary>
+      <summary>Attendance</summary>
       <div class="fdattin"><div class="fdgrid" id="fdAtt"></div><p class="pmeta" id="fdAttNote"></p></div>
     </details>
     <details class="card fddrop" open>
-      <summary>✅ Tasks</summary>
+      <summary>Tasks</summary>
       <div class="fdattin"><div class="fdgrid" id="fdTk"></div></div>
     </details>
     <details class="card fddrop" id="fdSalBox" open hidden>
-      <summary>💰 Salary</summary>
+      <summary>Salary</summary>
       <div class="fdattin"><div class="fdgrid" id="fdSal"></div><p class="pmeta" id="fdSalNote"></p></div>
     </details>
   </div>
 </div>
 
-<button id="menuFab" type="button" aria-label="Open dashboard" title="Dashboard"><span aria-hidden="true">📊</span><b>Menu</b></button>
+<button id="menuFab" type="button" aria-label="Open dashboard" title="Dashboard"><b>Menu</b></button>
 
-<div id="rowMoveBar" hidden><span id="rmName"></span><button class="btn" id="rmUp" type="button">▲ Up</button><button class="btn" id="rmDown" type="button">▼ Down</button><button class="btn primary" id="rmDone" type="button">Done</button></div>
+<div id="rowMoveBar" hidden><span id="rmName"></span><button class="btn" id="rmUp" type="button">Up</button><button class="btn" id="rmDown" type="button">Down</button><button class="btn primary" id="rmDone" type="button">Done</button></div>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -869,7 +867,7 @@ function renderTop(){
   ms.textContent=isOwner?'Switch to Supervisor Mode':'Supervisor Mode';
   var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
   ab.hidden=!(isOwner && pn>0);
-  if(!ab.hidden) $('#alertText').textContent='🔔 '+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
+  if(!ab.hidden) $('#alertText').textContent=''+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
   $('#todayField').value=fmtLong(todayKey());
   var sel=$('#daySel'), ks=keys().slice().reverse(), t=todayKey();
   if(!ks.length||ks[0]!==t){ if(canWrite) ks.unshift(t); }
@@ -910,7 +908,7 @@ function renderTop(){
   $('.acts').hidden=(tab==='team'||tab==='sal');
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
-  $('#tabTasks').textContent='✅ Tasks'+(pendSug?' 🔔'+pendSug:'');
+  $('#tabTasks').textContent='Tasks'+(pendSug?' '+pendSug:'');
   $('#pdfBtn').textContent = 'Download full report PDF';
   $('#pdfBtn').disabled=!day;
 }
@@ -1131,7 +1129,7 @@ function makeTask(id){
     mv=mk('button','btn small','Move'); mv.type='button'; mv.addEventListener('click', function(){ moveTask(id,mv); });
     mvRow=mk('div','tassign tmove'); mvLabelEl=mk('span',null,''); mvRow.append(mvLabelEl,mv); }
   var seg=mk('div','seg');
-  var done=mk('button','btn','✔ Done'), nd=mk('button','btn nd','✖ Not done');
+  var done=mk('button','btn','Done'), nd=mk('button','btn nd','Not done');
   done.type='button'; nd.type='button';
   done.addEventListener('click', function(){ setStatus(id,'done'); });
   nd.addEventListener('click', function(){ setStatus(id,'notdone'); });
@@ -1151,7 +1149,7 @@ function updateTask(el,id,t,n){
   R.asgRow.hidden=!(teamList('sup').length||t.to);
   if(R.asgSel){ fillAssign(R.asgSel,t.to||''); R.asgSel.disabled=!ed; } else R.asgTxt.textContent=assigneeName(t.to);
   if(R.edit) R.edit.hidden=!ed;
-  if(R.mv){ R.mvRow.hidden=!(ed&&isOwner); R.mvLbl.textContent='Nursery: '+NURS[t.nid||'1']; if(!armed['mvt'+id]) R.mv.textContent='\u21c4 '+mvLabel(t.nid||'1'); }
+  if(R.mv){ R.mvRow.hidden=!(ed&&isOwner); R.mvLbl.textContent='Nursery: '+NURS[t.nid||'1']; if(!armed['mvt'+id]) R.mv.textContent=''+mvLabel(t.nid||'1'); }
   el.classList.toggle('done', st==='done');
   R.done.setAttribute('aria-pressed', st==='done'); R.nd.setAttribute('aria-pressed', st==='notdone');
   R.done.disabled=!ed; R.nd.disabled=!ed;
@@ -1290,7 +1288,7 @@ function renderFull(){
   var tg=$('#fdTk'); tg.textContent='';
   var tasks=(sel==='all'?taskList('1').concat(taskList('2')):taskList(sel)), tdone=[], tpend=[], tnot=[], treas=[];
   tasks.forEach(function(it){ var t=it[1]; if(t.status==='done') tdone.push(it); else if(t.status==='notdone'){ tnot.push(it); if(t.reason) treas.push(it); } else tpend.push(it); });
-  [['✅ Tasks done',tdone.length],['🕓 Pending tasks',tpend.length],['⚠️ Not done',tnot.length],['💬 Reasons given',treas.length]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); tg.append(d); });
+  [['Tasks done',tdone.length],['Pending tasks',tpend.length],['Not done',tnot.length],['Reasons given',treas.length]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); tg.append(d); });
   var sb=$('#fdSalBox'); sb.hidden=!isOwner; var sg=$('#fdSal'); sg.textContent='';
   if(isOwner){
     salSubscribe(); loadSalAtt();
@@ -1306,21 +1304,21 @@ function renderFull(){
       wS+=info.rate*(7-ab);
     });
     var mn=new Date(+vm.slice(0,4),+vm.slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-    [['💰 Monthly Salary',mS],['🗓️ Weekly Salary',wS],['➖ Total Deductions',tD],['💵 Total Advances',tA]].forEach(function(c){ var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,'₹'+fmtN(Math.round(c[1])))); sg.append(d); });
+    [['Monthly Salary',mS],['Weekly Salary',wS],['Total Deductions',tD],['Total Advances',tA]].forEach(function(c){ var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,'₹'+fmtN(Math.round(c[1])))); sg.append(d); });
     $('#fdSalNote').textContent='Monthly: '+mn+' · Weekly: '+fmtShort(new Date(ws))+' to '+fmtShort(new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+6))+'. Salary is after absent and half-day deductions. Deductions include absent days; advances include amounts carried from last month.';
   }
   var ag=$('#fdAtt'); ag.textContent='';
   var staff=(sel==='all'?attList('1').concat(attList('2')):attList(sel)), ac=attCounts(staff), pay=0, noRate=0;
   if(isOwner){ salSubscribe(); staff.forEach(function(it){ var w=(it[1].s==='P'?1:it[1].s==='H'?0.5:0); if(!w) return; var r=rateOf(it[0]); if(!r) noRate++; pay+=r*w; }); }
-  var acards=[['✅ Presents',fmtN(ac.P)],['❌ Absents',fmtN(ac.A)],['🌗 Half days',fmtN(ac.H)]];
-  if(isOwner) acards.push(['💰 Salary for today','₹'+fmtN(Math.round(pay))]);
+  var acards=[['Presents',fmtN(ac.P)],['Absents',fmtN(ac.A)],['Half days',fmtN(ac.H)]];
+  if(isOwner) acards.push(['Salary for today','₹'+fmtN(Math.round(pay))]);
   acards.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,c[1])); ag.append(d); });
   $('#fdAttNote').textContent = (ac.N?ac.N+' not marked yet. ':'')+(isOwner?'Salary = daily rate × (presents + half days × 0.5)'+(noRate?'. '+noRate+' present staff have no daily rate set.':'.'):'');
   var cards=[
-    ['🌱 New stocks added', fresh.length],
-    ['✏️ Previous stocks modified', mod.length],
-    ['📋 Total no. of items', rows.length],
-    ['🪴 Total qty of plants', qty]
+    ['New stocks added', fresh.length],
+    ['Previous stocks modified', mod.length],
+    ['Total no. of items', rows.length],
+    ['Total qty of plants', qty]
   ];
   cards.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); g.append(d); });
   $('#fdNewN').textContent=String(fresh.length); $('#fdModN').textContent=String(mod.length);
@@ -1650,7 +1648,7 @@ function moveTask(id,btn){
   if(!isOwner||!editable()) return;
   var t=day.tasks&&day.tasks[id]; if(!t||t.removed) return;
   var from=t.nid||'1', dest=otherN(from);
-  arm(btn,'mvt'+id,'\u21c4 '+mvLabel(from), async function(){
+  arm(btn,'mvt'+id,''+mvLabel(from), async function(){
     var p={tasks:{}}; p.tasks[id]={nid:dest};
     if(await save(p)) toast('Task moved to '+NURS[dest]);
   });
@@ -1976,7 +1974,7 @@ function sugItems(){
     .sort(function(a,b){ return (a[1].st?1:0)-(b[1].st?1:0) || (a[1].at||0)-(b[1].at||0); });
 }
 function buildCtl(tid){
-  var box=mk('div','task'), seg=mk('div','seg'), done=mk('button','btn','\u2714 Done'), nd=mk('button','btn nd','\u2716 Not done');
+  var box=mk('div','task'), seg=mk('div','seg'), done=mk('button','btn','Done'), nd=mk('button','btn nd','Not done');
   done.type=nd.type='button';
   done.addEventListener('click', function(){ setStatus(tid,'done'); });
   nd.addEventListener('click', function(){ setStatus(tid,'notdone'); });
@@ -2429,7 +2427,7 @@ function makeAtt(id){
   var el=mk('div','card arow'), top=mk('div','ttop'), num_=mk('span','sl'), nm=mk('div','ttitle');
   var bal_=mk('b','abal'); top.append(num_,nm,bal_);
   var seg=mk('div','aseg'), b={};
-  [['P','✔ Present',''],['H','½ Half day','h'],['A','✖ Absent','a']].forEach(function(d){
+  [['P','Present',''],['H','Half day','h'],['A','Absent','a']].forEach(function(d){
     var x=mk('button','btn '+d[2],d[1]); x.type='button';
     x.addEventListener('click', function(){ setAtt(id,d[0]); });
     b[d[0]]=x; seg.append(x);
@@ -3011,7 +3009,7 @@ function renderSal(){
   var bc=$('#salBonusCfg'); if(document.activeElement!==bc) bc.value=(salData.cfg&&salData.cfg.bonus)||'';
   var ym0=salMonth.split('-'); $('#salMonthLbl').textContent=new Date(+ym0[0],+ym0[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var body=$('#salBody'); body.textContent='';
-  [['sup','👤 Supervisors'],['staff','🧑‍🌾 Staff']].forEach(function(g){
+  [['sup','Supervisors'],['staff','Staff']].forEach(function(g){
     var list=salPeople(g[0]);
     body.append(mk('h2','salh',g[1]+' ('+list.length+')'));
     if(!list.length) body.append(mk('p','pmeta','None added yet. Add them in the Team tab.'));
@@ -3052,14 +3050,14 @@ function renderSalDlg(){
     if(!m.rate) b.append(mk('p',null,'Set the per-day salary in the Team tab.'));
     var pbox=mk('div','sline'); pbox.style.cssText='flex-direction:column;align-items:stretch;border:1px solid var(--line);border-radius:10px;padding:10px;gap:8px';
     if(m.paid){
-      pbox.append(mk('b',null,'✔ Salary paid: ₹'+fmtN(m.paid.amt)+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'')));
+      pbox.append(mk('b',null,'Salary paid: ₹'+fmtN(m.paid.amt)+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'')));
       if(m.carryOut>0) pbox.append(mk('span',null,'₹'+fmtN(m.carryOut)+' carried forward as an advance to be recovered from next month\'s salary.'));
       var un=mk('button','btn small','Undo payment'); un.type='button';
       un.addEventListener('click', function(){ var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]=null; salSave(p); });
       pbox.append(un);
     }else{
       pbox.append(mk('span',null,'Until This Month\'s Salary Is Marked As Paid, All The Advances Are Deducted In Old Or Previous Month Salary.')); pbox.append(mk('span',null,'Any Excess Advance Amount Paid Shall Be Carried Forwarded To Next Month As Advance.'));
-      var pb=mk('button','btn primary','✔ Mark salary paid'); pb.type='button'; pb.style.minHeight='48px';
+      var pb=mk('button','btn primary','Mark salary paid'); pb.type='button'; pb.style.minHeight='48px';
       var zero=Math.round(m.balance)===0; pb.disabled=!zero;
       pbox.append(pb, mk('span','pmeta',zero?'Balance to pay is ₹0 – ready to mark as paid.':'Available only when the Balance to pay is ₹0 (now '+(m.balance<0?'excess advance ₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))+').'));
       pb.addEventListener('click', function(){
@@ -3076,7 +3074,7 @@ function renderSalDlg(){
     if(m.adv) rows2.push(['Advances','- '+R(m.adv)]);
     if(m.carryIn>0) rows2.push(['Advance recovered from previous month','- '+R(m.carryIn)]);
     var foot=[[m.balance<0?'Excess advance to recover':'Balance to pay',R(Math.abs(m.balance))]];
-    var wa=mk('button','btn primary','📲 Share slip (PDF) on WhatsApp'); wa.type='button'; wa.style.minHeight='48px';
+    var wa=mk('button','btn primary','Share slip (PDF) on WhatsApp'); wa.type='button'; wa.style.minHeight='48px';
     wa.addEventListener('click', async function(){
       var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
       if(!downloads){ toast('Saving files is not available in this view.'); return; }
