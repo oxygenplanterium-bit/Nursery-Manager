@@ -2413,7 +2413,7 @@ function updateAtt(el,a,n,ed){
     salSubscribe(); loadSalAtt();
     var vm=todayKey().slice(0,7), info=null;
     try{ info=salCalc(el._id,String(el._id).charAt(0)==='s'?'sup':'staff',vm)[vm]; }catch(e){}
-    if(info && info.rate){ var bv=info.balance; R.bal.textContent=(info.paid&&Math.round(bv)===0)?'✔ Paid':(bv<0?'Recover ₹'+fmtN(-bv):'Balance to pay ₹'+fmtN(bv)); R.bal.hidden=false; } else R.bal.hidden=true;
+    if(info && info.rate){ var bv=info.balance; R.bal.textContent=(info.paid&&Math.round(bv)===0)?'✔ Paid':(bv<0?'Recover ₹'+fmtN(-bv):'Balance To Pay Amount ₹'+fmtN(bv)); R.bal.hidden=false; } else R.bal.hidden=true;
   } else R.bal.hidden=true;
   ['P','H','A'].forEach(function(k){ R.b[k].setAttribute('aria-pressed', a.s===k); R.b[k].disabled=!ed; });
   R.meta.textContent = a.s ? ATT_TXT[a.s]+(a.who||a.at ? ' · '+[a.who,fmtTime(a.at)].filter(Boolean).join(' ') : '') : 'Not marked';
