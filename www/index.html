@@ -268,7 +268,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
   <button class="btn fdbtn" id="fdBtn" type="button">Dashboard</button>
-  <button class="btn salbtn" id="salBtn" hidden>Salary</button>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -292,6 +291,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">Customers</button>
+    <button class="tab" id="salBtn" role="tab" aria-selected="false" hidden>Salary</button>
   </nav>
 
   <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
@@ -899,10 +899,9 @@ function renderTop(){
   if(tab==='team' && !isOwner) tab='stock';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
   if(tab==='sal' && !isOwner) tab='stock';
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn'};
   $('#tabTeam').hidden=!isOwner;
   $('#salBtn').hidden=!isOwner;
-  $('#salBtn').classList.toggle('primary', tab==='sal');
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
   $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
   $('.acts').hidden=(tab==='team'||tab==='sal');
