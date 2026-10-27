@@ -168,6 +168,22 @@ span.note{cursor:default}
 .trow{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .trow input{flex:1; padding:8px 12px}
 .arow{display:flex; flex-direction:column; gap:10px}
+.attnav{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.attdate{flex:1; text-align:center; font-weight:700; min-width:120px}
+.mperson{border:1px solid var(--line); border-radius:12px; margin-top:8px; overflow:hidden}
+.mhead{display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; background:transparent; border:0; color:var(--ink); text-align:left; font:inherit; cursor:pointer}
+.mhead .mn{flex:1; font-weight:700}
+.mhead small{color:var(--muted)}
+.mbody{padding:10px 12px; border-top:1px solid var(--line); display:grid; gap:8px}
+.mgrid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+.mgh{text-align:center; font-size:.72rem; color:var(--muted)}
+.mcell{min-height:42px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--ink); display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; padding:3px 5px; font:inherit; font-size:.72rem}
+.mcell b{align-self:flex-end; font-size:.85rem}
+.mcell.sP{background:rgba(46,160,90,.3); border-color:transparent}
+.mcell.sH{background:rgba(230,170,60,.3); border-color:transparent}
+.mcell.sA{background:rgba(220,80,70,.3); border-color:transparent}
+.mcell:disabled{opacity:.45}
+.mleg{font-size:.78rem; color:var(--muted)}
 .aseg{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .aseg .btn{padding:8px 4px; font-size:.92rem}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
@@ -378,6 +394,23 @@ dialog.sx label.f{font-weight:600}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
+    <div class="card attnav" id="attNav">
+      <button class="btn small" type="button" id="attPrev" aria-label="Previous saved day">‹</button>
+      <div class="attdate" id="attDate"></div>
+      <button class="btn small" type="button" id="attNext" aria-label="Next saved day">›</button>
+      <button class="btn small" type="button" id="attToday" hidden>Back to today</button>
+    </div>
+    <p class="pmeta" id="attPastNote" hidden></p>
+    <section class="card team" id="monBox">
+      <h2>Monthly attendance</h2>
+      <div class="attnav" style="padding:0">
+        <button class="btn small" type="button" id="monPrev" aria-label="Previous month">‹</button>
+        <div class="attdate" id="monLabel"></div>
+        <button class="btn small" type="button" id="monNext" aria-label="Next month">›</button>
+      </div>
+      <p class="pmeta" id="monNote"></p>
+      <div id="monList"></div>
+    </section>
     <section class="card team" id="weekBox">
       <h2>Weekly attendance report</h2>
       <p class="pmeta" id="weekHelp">One PDF for all staff, Sunday to Saturday.</p>
@@ -387,6 +420,7 @@ dialog.sx label.f{font-weight:600}
       <button class="btn" id="attPdfBtn" style="margin-top:8px">Download attendance PDF</button>
       <p class="pmeta" id="attPdfHelp">Attendance for the selected date only. It does not need tasks, resources or other sections to be finished.</p>
     </section>
+    <input type="search" id="attFilter" placeholder="Search names" aria-label="Search staff names" hidden style="margin-top:2px">
     <div class="bar" id="attBar" hidden>
       <span class="tsum" id="asum"></span>
       <button class="btn small" id="attAll" style="margin-left:auto" hidden>Mark all present</button>
@@ -697,6 +731,7 @@ function toast(msg,ms){
 }
 function keys(){ return Object.keys(index||{}).sort(); }
 function latest(){ var k=keys(); return k.length ? k[k.length-1] : null; }
+function attEditable(){ return editable() || !!(isOwner && canWrite && day && dayLive); }
 function editable(){ return !!(canWrite && dayLive && day && !day.closed && selDate===latest()); }
 function sortedOf(map,key){
   var o=(day&&day[map])||{};
@@ -2019,7 +2054,7 @@ function setRes(id,v,qty){
 }
 function resetMarks(btn,key,label,field,msg,idsFn){
   arm(btn,key,label, async function(){
-    if(!isOwner||!editable()) return;
+    if(!isOwner||!(field==='att'?attEditable():editable())) return;
     var cur=(day&&day[field])||{}, p={}, mine={};
     idsFn().forEach(function(id){ mine[id]=1; });
     p[field]={};
@@ -2028,7 +2063,7 @@ function resetMarks(btn,key,label,field,msg,idsFn){
     if(await save(p)) toast(msg);
   });
 }
-$('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' today', function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
+$('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' on '+fmtLong(selDate), function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
 $('#resReset').addEventListener('click', function(){ resetMarks(this,'rsres','Reset Resources','rs','Resource checks reset for '+NURS[nursery]+' today', function(){ return resShown().filter(function(it){ return it[1].v!==null; }).map(function(it){ return it[0]; }); }); });
 $('#resAll').addEventListener('click', function(){
   if(!editable()) return;
@@ -2235,7 +2270,7 @@ function attList(n){
 }
 function attShown(n){
   var all=day?attList(n):[];
-  return selDate===latest() ? all : all.filter(function(it){ return it[1].s; });
+  return (selDate===latest() || (isOwner&&canWrite)) ? all : all.filter(function(it){ return it[1].s; });
 }
 function attCounts(items){
   var c={P:0,H:0,A:0,N:0};
@@ -2273,12 +2308,16 @@ function updateAtt(el,a,n,ed){
 }
 function renderAtt(){
   fillWeeks();
-  var items=attShown(), ed=editable(), list=$('#alist'), seen=new Set(), pos=0, c=attCounts(items);
-  $('#attBar').hidden=!items.length;
+  var all=attShown(), ed=attEditable(), list=$('#alist'), seen=new Set(), pos=0, c=attCounts(all);
+  var q=($('#attFilter').value||'').trim().toLowerCase();
+  var items=q ? all.filter(function(it){ return String(it[1].n).toLowerCase().indexOf(q)>=0; }) : all;
+  $('#attBar').hidden=!all.length; $('#attFilter').hidden=!all.length;
   $('#asum').textContent=c.P+' present · '+c.H+' half day · '+c.A+' absent · '+c.N+' not marked';
-  $('#attAll').hidden=!(ed&&c.N>0);
+  $('#attAll').hidden=!(ed&&c.N>0); $('#attAll').textContent='Mark the '+c.N+' unmarked as present';
   $('#attReset').hidden=!(isOwner&&ed&&(c.P+c.H+c.A)>0);
+  renderAttNav(ed);
   var s=$('#astate'); s.hidden=items.length>0;
+  if(!items.length && all.length && q){ s.hidden=false; s.textContent='No one matches \u201C'+q+'\u201D.'; return renderMonth(); }
   s.textContent = day===undefined ? 'Loading attendance…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No attendance was marked on this date.' : (isOwner ? 'No staff yet. Add staff in the Team tab.' : 'No staff yet. The owner adds staff in the Team tab.')));
   items.forEach(function(it,i){
     var id=it[0]; seen.add(id);
@@ -2288,10 +2327,98 @@ function renderAtt(){
     pos++;
   });
   attEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); attEls.delete(id); } });
+  renderMonth();
+}
+function renderAttNav(ed){
+  var ks=keys(), i=ks.indexOf(selDate);
+  $('#attDate').textContent=fmtLong(selDate);
+  $('#attPrev').disabled=!(i>0); $('#attNext').disabled=!(i>=0&&i<ks.length-1);
+  $('#attToday').hidden=selDate===todayKey();
+  var pn=$('#attPastNote');
+  if(selDate!==latest() && day){ pn.hidden=false; pn.textContent = isOwner ? (day.closed ? 'This is a past day. As owner you can still correct its attendance.' : 'This is a past day.') : 'This is a past day. Only the owner can change its attendance.'; }
+  else pn.hidden=true;
+}
+$('#attPrev').addEventListener('click', function(){ var ks=keys(), i=ks.indexOf(selDate); if(i>0) goTo(ks[i-1]); });
+$('#attNext').addEventListener('click', function(){ var ks=keys(), i=ks.indexOf(selDate); if(i>=0&&i<ks.length-1) goTo(ks[i+1]); });
+$('#attToday').addEventListener('click', function(){ goTo(todayKey()); });
+$('#attFilter').addEventListener('input', function(){ renderAtt(); });
+
+/* ---------- monthly attendance (per person, calendar) ---------- */
+var monYM=todayKey().slice(0,7), monData={}, monFor='', monBusy=false, monOpen={}, MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function monShift(n){ var p=monYM.split('-').map(Number), y=p[0], m=p[1]+n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} monYM=y+'-'+pad(m); monFor=''; renderAtt(); }
+$('#monPrev').addEventListener('click', function(){ monShift(-1); });
+$('#monNext').addEventListener('click', function(){ monShift(1); });
+async function loadMonth(){
+  if(!db||!db.list||monBusy||monFor===monYM) return;
+  var ym=monYM; monBusy=true;
+  try{
+    var rows=await db.list('days/'+ym+'-'), o={};
+    rows.forEach(function(r){ o[r.path.slice(5)]=(r.data&&r.data.att)||{}; });
+    monData=o; monFor=ym;
+  }catch(e){ monData={}; monFor=ym; $('#monNote').textContent='Could not load this month. Check your connection.'; }
+  monBusy=false; renderMonth();
+}
+function monAttOf(date){ return (day&&selDate===date) ? ((day.att)||{}) : (monData[date]||{}); }
+function monCanEdit(date){ return !!db && canWrite && ((isOwner) || (editable()&&date===selDate)); }
+function renderMonth(){
+  var box=$('#monBox'), list=$('#monList'); if(!box) return;
+  var p=monYM.split('-').map(Number); $('#monLabel').textContent=MONTHS[p[1]-1]+' '+p[0];
+  if(!db||!db.list){ box.hidden=true; return; }
+  box.hidden=false;
+  if(monFor!==monYM){ $('#monNote').textContent='Loading…'; list.textContent=''; loadMonth(); return; }
+  var nd=new Date(p[0],p[1],0).getDate(), first=new Date(p[0],p[1]-1,1).getDay(), have=Object.keys(monData);
+  if(day&&selDate.slice(0,7)===monYM&&have.indexOf(selDate)<0) have.push(selDate);
+  if(!have.length){ $('#monNote').textContent='Data not available: no register was saved for this month.'; list.textContent=''; return; }
+  $('#monNote').textContent='Tap a name to see the month. Days worked = present + half days counted as 0.5.';
+  var ids=[], names={};
+  teamList('staff').forEach(function(it){ if((it[1].nid||'1')===nursery){ ids.push(it[0]); names[it[0]]=it[1].n; } });
+  have.forEach(function(d){ var a=monAttOf(d); Object.keys(a).forEach(function(id){ var x=a[id]; if(x&&x.s&&(x.nid||'1')===nursery&&ids.indexOf(id)<0&&!names[id]){ ids.push(id); names[id]=x.n||'Former staff'; } }); });
+  list.textContent='';
+  if(!ids.length){ list.append(mk('p','pmeta','No staff in '+NURS[nursery]+'.')); return; }
+  ids.forEach(function(id){
+    var P=0,H=0,A=0;
+    for(var d=1;d<=nd;d++){ var a=monAttOf(ym0(d)); var x=a[id]; if(x&&x.s==='P')P++; else if(x&&x.s==='H')H++; else if(x&&x.s==='A')A++; }
+    var wrap=mk('div','mperson'), head=mk('button','mhead'); head.type='button';
+    head.append(mk('span','mn',names[id]), mk('small',null,'Worked '+(P+H/2)+' d · P '+P+' · ½ '+H+' · A '+A), mk('span',null,monOpen[id]?'▾':'▸'));
+    head.addEventListener('click', function(){ monOpen[id]=!monOpen[id]; renderMonth(); });
+    wrap.append(head);
+    if(monOpen[id]){
+      var body=mk('div','mbody'), g=mk('div','mgrid');
+      ['S','M','T','W','T','F','S'].forEach(function(l){ g.append(mk('span','mgh',l)); });
+      for(var i=0;i<first;i++) g.append(mk('span'));
+      for(var d2=1;d2<=nd;d2++){ (function(d2){
+        var date=ym0(d2), exists=have.indexOf(date)>=0, x=monAttOf(date)[id], st=(x&&x.s)||'';
+        var c=mk('button','mcell'+(st?' s'+st:'')); c.type='button';
+        c.append(mk('span',null,String(d2)), mk('b',null,st==='H'?'½':st));
+        c.disabled=!exists||!monCanEdit(date);
+        c.setAttribute('aria-label',d2+' '+MONTHS[p[1]-1]+': '+(ATT_TXT[st]||'Not marked'));
+        c.addEventListener('click', function(){ cycleAtt(date,id,names[id],st); });
+        g.append(c);
+      })(d2); }
+      body.append(g, mk('div','mleg','Present · ½ Half day · Absent. '+(monCanEdit(todayKey())||isOwner?'Tap a day to change it (P, then ½, then A, then clear).':'View only.')));
+      wrap.append(body);
+    }
+    list.append(wrap);
+  });
+  function ym0(d){ return monYM+'-'+pad(d); }
+}
+async function cycleAtt(date,id,name,cur){
+  if(!monCanEdit(date)) return;
+  if(needSup()&&!isOwner){ toast('Choose your name at the top first.'); return; }
+  var next=cur===''?'P':cur==='P'?'H':cur==='H'?'A':'';
+  var a=monAttOf(date), nid=(a[id]&&a[id].nid)||nursery;
+  var entry={s:next, n:name, nid:nid, who:next?whoNow():'', at:next?Date.now():null};
+  if(date===selDate&&editable()){ var pp={att:{}}; pp.att[id]=entry; save(pp); return; }
+  try{
+    var pa={att:{}}; pa.att[id]=entry;
+    await db.doc('days/'+date).update(pa);
+    var o=Object.assign({},monData[date]||{}); o[id]=Object.assign({},o[id]||{},entry); monData[date]=o;
+    renderAtt();
+  }catch(e){ toast('Could not save. Check your connection and try again.'); }
 }
 function whoNow(){ return nameNow() || (isOwner ? 'Owner' : ''); }
 function setAtt(id,s){
-  if(!editable()) return;
+  if(!attEditable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   var rec=attList().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
   var next = rec[1].s===s ? '' : s;
@@ -2299,7 +2426,7 @@ function setAtt(id,s){
   save(p);
 }
 $('#attAll').addEventListener('click', function(){
-  if(!editable()) return;
+  if(!attEditable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   var p={att:{}}, n=0;
   attList().forEach(function(it){ if(!it[1].s){ n++; p.att[it[0]]={s:'P', n:it[1].n, nid:it[1].nid, who:whoNow(), at:Date.now()}; } });

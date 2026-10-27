@@ -36,6 +36,11 @@ async function refresh(path) {
 }
 
 const db = {
+  list: async prefix => {
+    const r = await sb.from('docs').select('path,data').like('path', prefix + '%');
+    if (r.error) throw mapErr(r.error);
+    return r.data || [];
+  },
   doc(path) {
     return {
       get: async () => snapOf(await fetchDoc(path)),
