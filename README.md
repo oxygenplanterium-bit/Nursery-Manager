@@ -14,5 +14,8 @@ and download `NurseryDailyManager.apk` on your phone. Allow "Install unknown app
 4. Authentication, Sign In / Providers: turn off "Allow new users to sign up".
 5. Put the Project URL and anon key in `src/config.js`.
 
+## iPhone (web app)
+Open the site address in Safari, tap Share, then Add to Home Screen. Pages must be enabled: repository Settings, Pages, Source: GitHub Actions.
+
 ## Moving your old data
 In the old Claude version use "Download all days backup", send the file to your phone, then in this app (Owner Mode) use "Import backup file".

@@ -140,6 +140,11 @@ const downloads = {
       }
       return { status: 'saved' };
     }
+    const type0 = /\.pdf$/i.test(name) ? 'application/pdf' : 'application/json';
+    try {
+      const file = new File([o.data], name, { type: type0 });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return { status: 'saved' }; }
+    } catch (e) { if (e && e.name === 'AbortError') { const x = new Error('declined'); x.code = 'declined'; throw x; } }
     const blob = new Blob([o.data], { type: /\.pdf$/i.test(name) ? 'application/pdf' : 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
