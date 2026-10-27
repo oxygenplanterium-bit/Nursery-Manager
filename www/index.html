@@ -386,7 +386,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn primary" id="pdfBtn">Download stock PDF</button>
     <button class="btn" id="backupBtn">Download all days backup</button>
     <button class="btn" id="importBtn" hidden>Import backup file</button>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="importFile" hidden>
   </div>
 </div>
 
@@ -2411,26 +2411,33 @@ $('#backupBtn').addEventListener('click', async function(){
 $('#importBtn').addEventListener('click', function(){ if(isOwner) $('#importFile').click(); });
 $('#importFile').addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f||!isOwner) return;
-  var b=$('#importBtn'), old=b.textContent;
+  var b=$('#importBtn'), old=b.textContent, data, ks;
   try{
-    var data=JSON.parse(await f.text());
-    if(!data||data.kind!=='backup'||!data.days||typeof data.days!=='object') throw new Error('bad');
-    var ks=Object.keys(data.days).sort();
-    if(!ks.length){ toast('The backup file has no days.'); return; }
-    if(!window.confirm('Import '+ks.length+' saved day'+(ks.length===1?'':'s')+' from this backup? Days with the same date will be replaced.')) return;
-    b.disabled=true;
+    var txt=(await f.text()).replace(/^\uFEFF/,'').trim();
+    data=JSON.parse(txt);
+  }catch(e){ toast('Cannot read this file as a backup (it is not JSON text). Pick the .json file downloaded from the old app.', 7000); return; }
+  if(data&&data.days===undefined&&data.backup) data=data.backup;
+  if(!data||typeof data!=='object'||!data.days||typeof data.days!=='object'){ toast('This file has no saved days. Use the file made by "Download all days backup" in the old app.', 7000); return; }
+  ks=Object.keys(data.days).sort();
+  if(!ks.length){ toast('The backup file has no days.'); return; }
+  if(!window.confirm('Import '+ks.length+' saved day'+(ks.length===1?'':'s')+' from this backup? Days with the same date will be replaced.')) return;
+  b.disabled=true;
+  try{
     var idx={}, i;
     for(i=0;i<ks.length;i++){
       b.textContent='Importing '+(i+1)+' of '+ks.length+'…';
-      await db.doc('days/'+ks[i]).set(data.days[ks[i]]);
+      await db.doc('days/'+ks[i]).set(JSON.parse(JSON.stringify(data.days[ks[i]])));
       idx[ks[i]]={c:Date.now(), closed:!!data.days[ks[i]].closed};
     }
     var d=db.doc('meta/index'), s=await d.get();
     if(s.exists) await d.update({d:idx}); else await d.set({d:idx});
     var st={}; if(data.team) st.team=data.team; if(data.resources) st.res=data.resources;
-    if(Object.keys(st).length) await saveSettings(st);
+    if(Object.keys(st).length){
+      var sd=db.doc('meta/settings'), ss=await sd.get();
+      if(ss.exists) await sd.update(st); else await sd.set(st);
+    }
     toast('Imported '+ks.length+' day'+(ks.length===1?'':'s')+'.');
-  }catch(e){ toast('That file is not a valid Nursery Daily Manager backup.'); }
+  }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check the Firestore rules and your internet.', 9000); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 
