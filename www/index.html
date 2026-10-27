@@ -52,7 +52,9 @@ textarea{resize:vertical; min-height:76px}
 .btn.danger{color:var(--loss); border-color:var(--loss)}
 .btn.small{min-height:38px; padding:6px 12px; font-size:.9rem}
 .addwide{flex:1 1 100%; order:-1; width:100%; min-height:54px; font-size:1.05rem; border-radius:12px}
-.modes{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.modes{display:flex; flex-direction:column; gap:8px}
+.modes .btn.sw{min-height:40px; font-size:.9rem}
+.modes .btn.cur{cursor:default}
 .modes .btn{min-height:54px; font-size:1.05rem; border-radius:12px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .alertcard{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--warn-soft); border-color:var(--warn)}
@@ -769,8 +771,13 @@ function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',lab
 
 function renderTop(){
   $('#importBtn').hidden=!(isOwner&&canWrite);
-  $('#modeOwner').setAttribute('aria-pressed', isOwner);
-  $('#modeSup').setAttribute('aria-pressed', !isOwner && canWrite);
+  var mo=$('#modeOwner'), ms=$('#modeSup');
+  mo.setAttribute('aria-pressed', isOwner); ms.setAttribute('aria-pressed', !isOwner);
+  mo.classList.toggle('cur', isOwner); ms.classList.toggle('cur', !isOwner);
+  mo.classList.toggle('sw', !isOwner); ms.classList.toggle('sw', isOwner);
+  mo.style.order=isOwner?1:2; ms.style.order=isOwner?2:1;
+  mo.textContent=isOwner?'Owner Mode':'Switch to Owner Mode';
+  ms.textContent=isOwner?'Switch to Supervisor Mode':'Supervisor Mode';
   var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
   ab.hidden=!(isOwner && pn>0);
   if(!ab.hidden) $('#alertText').textContent='🔔 '+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
