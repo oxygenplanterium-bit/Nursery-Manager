@@ -84,6 +84,9 @@ textarea{resize:vertical; min-height:76px}
 .fdgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
 .fdc{display:flex; flex-direction:column; gap:6px; padding:18px 16px}
 .fdc span{font-size:.9rem; color:var(--muted)}
+.fdsal{padding:14px 12px; justify-content:space-between; min-height:92px; align-items:flex-start}
+.fdsal span{font-size:.85rem; line-height:1.25}
+.fdsal b{font-size:clamp(1.05rem,5.2vw,1.45rem)!important; white-space:nowrap; line-height:1.15; letter-spacing:-.01em}
 .fdc b{font-size:2.2rem; line-height:1.1; font-variant-numeric:tabular-nums}
 .fddrop{padding:0}
 .fddrop>summary{cursor:pointer; list-style:none; padding:14px; font-size:1.15rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; min-height:48px}
@@ -1298,7 +1301,7 @@ function renderFull(){
       wS+=info.rate*(7-ab);
     });
     var mn=new Date(+vm.slice(0,4),+vm.slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-    [['💰 Monthly Salary',mS],['🗓️ Weekly Salary',wS],['➖ Total Deductions',tD],['💵 Total Advances',tA]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,'₹'+fmtN(Math.round(c[1])))); sg.append(d); });
+    [['💰 Monthly Salary',mS],['🗓️ Weekly Salary',wS],['➖ Total Deductions',tD],['💵 Total Advances',tA]].forEach(function(c){ var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,'₹'+fmtN(Math.round(c[1])))); sg.append(d); });
     $('#fdSalNote').textContent='Monthly: '+mn+' · Weekly: '+fmtShort(new Date(ws))+' to '+fmtShort(new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+6))+'. Salary is after absent and half-day deductions. Deductions include absent days; advances include amounts carried from last month.';
   }
   var ag=$('#fdAtt'); ag.textContent='';
