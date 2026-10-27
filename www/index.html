@@ -107,6 +107,9 @@ textarea{resize:vertical; min-height:76px}
 h2.dwide{margin:6px 2px 0; font-size:1rem}
 .dcard span{font-size:.82rem; color:var(--muted)}
 #salBodyX{}
+.salmon{display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; align-items:center; padding:8px; text-align:center}
+.salmon .btn{padding:0; min-height:44px; font-size:1.4rem}
+.salmon b{font-size:1.05rem}
 .salh{margin:8px 2px 0; font-size:1.05rem}
 .salp{display:flex; flex-direction:column; gap:10px; border:1px solid var(--line)}
 .salgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
@@ -427,7 +430,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <label class="f card" style="padding:10px 14px"><span>Month</span><input type="month" id="salMonth"></label>
+    <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="salPrev" aria-label="Previous month">‹</button><b id="salMonthLbl"></b><button class="btn" type="button" id="salNext" aria-label="Next month">›</button></div>
     <div id="salBody" class="pane"></div>
   </section>
 
@@ -2841,7 +2844,7 @@ function salMonthInfo(sid,kind){
 function renderSal(){
   if(tab!=='sal'||!isOwner||!db) return;
   salSubscribe(); loadSalAtt();
-  var mi=$('#salMonth'); if(document.activeElement!==mi) mi.value=salMonth;
+  var ym0=salMonth.split('-'); $('#salMonthLbl').textContent=new Date(+ym0[0],+ym0[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var body=$('#salBody'); body.textContent='';
   [['sup','👤 Supervisors'],['staff','🧑‍🌾 Staff']].forEach(function(g){
     var list=salPeople(g[0]);
@@ -2909,7 +2912,9 @@ function renderSalDlg(){
   }
   var cl=mk('button','btn','Close'); cl.type='button'; cl.addEventListener('click', function(){ d.close(); }); var ac=mk('div','actions'); ac.append(cl); b.append(ac);
 }
-$('#salMonth').addEventListener('change', function(){ if(this.value){ salMonth=this.value; salAttFor=''; renderSal(); } });
+function salShift(n){ var q=salMonth.split('-'), d=new Date(+q[0],+q[1]-1+n,1); salMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); salAttFor=''; renderSal(); }
+$('#salPrev').addEventListener('click', function(){ salShift(-1); });
+$('#salNext').addEventListener('click', function(){ salShift(1); });
 
 /* ---------- start ---------- */
 async function boot(){
