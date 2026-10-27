@@ -14,17 +14,27 @@ drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
--- Owner PIN data is readable by the owner only
+-- Owner-only data: the PIN, and all salary money records (wages, advances, deductions, salary paid: paths sf/...)
 create policy docs_select on public.docs for select to authenticated
-  using (path <> 'meta/security' or public.is_owner());
--- Team, resources and the PIN can only be changed by the owner; day records by any signed-in team member
+  using ((path <> 'meta/security' or public.is_owner())
+     and (path not like 'sf/%' or public.is_owner()));
+-- Team, resources, the PIN, the labour list (sa/<nursery>/meta) and all salary money records can only be changed by the owner.
+-- Day records and labour attendance (sa/<nursery>/<year>) can be changed by any signed-in team member.
 create policy docs_insert on public.docs for insert to authenticated
-  with check (path not in ('meta/security','meta/settings') or public.is_owner());
+  with check ((path not in ('meta/security','meta/settings') or public.is_owner())
+     and (path not like 'sf/%' or public.is_owner())
+     and (path not like 'sa/%/meta' or public.is_owner()));
 create policy docs_update on public.docs for update to authenticated
-  using (path not in ('meta/security','meta/settings') or public.is_owner())
-  with check (path not in ('meta/security','meta/settings') or public.is_owner());
+  using ((path not in ('meta/security','meta/settings') or public.is_owner())
+     and (path not like 'sf/%' or public.is_owner())
+     and (path not like 'sa/%/meta' or public.is_owner()))
+  with check ((path not in ('meta/security','meta/settings') or public.is_owner())
+     and (path not like 'sf/%' or public.is_owner())
+     and (path not like 'sa/%/meta' or public.is_owner()));
 create policy docs_delete on public.docs for delete to authenticated
-  using (path not in ('meta/security','meta/settings') or public.is_owner());
+  using ((path not in ('meta/security','meta/settings') or public.is_owner())
+     and (path not like 'sf/%' or public.is_owner())
+     and (path not like 'sa/%/meta' or public.is_owner()));
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb

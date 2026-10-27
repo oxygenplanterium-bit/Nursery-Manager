@@ -194,6 +194,69 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   .c input{padding:8px 4px; text-align:center}
   .val,.bal .val{padding:0 4px; justify-content:center}
 }
+
+/* ---------- Salary section ---------- */
+#salSubs{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; padding:6px; border:1px solid var(--line); border-radius:16px}
+#salSubs .tab{min-height:46px; font-size:.8rem; padding:0 2px; line-height:1.15}
+#salBody{display:flex; flex-direction:column; gap:10px}
+.sx-no{font-variant-numeric:tabular-nums; font-weight:700; min-width:26px}
+.sx-nav{display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:8px; align-items:center}
+.sx-nav .btn{padding:0; font-size:1.4rem}
+.sx-navl{display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; text-align:center; position:relative; min-height:48px; border:1px solid var(--line); border-radius:12px; background:var(--card)}
+.sx-navl input[type=date]{position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer}
+.sx-hero{display:flex; flex-direction:column; gap:8px}
+.sx-herorow{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.sx-eye{font-size:.8rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+.sx-big,.sx-v,.sx-amt b,.sx-sum dd,.sx-amtIn{font-variant-numeric:tabular-nums; font-weight:700}
+.sx-big{font-size:1.9rem; line-height:1.15}
+.sx-sec{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:6px 2px 0; font-size:1.02rem}
+.sx-sec .pmeta{font-weight:400}
+.sx-btns{display:flex; gap:8px; flex-wrap:wrap}
+.sx-btns .btn{flex:1 1 140px}
+.sx-line{display:flex; align-items:center; gap:10px; width:100%; text-align:left}
+.sx-tap{cursor:pointer; font:inherit; color:inherit}
+.sx-who{flex:1; min-width:0; display:flex; flex-direction:column}
+.sx-grp{display:flex; flex-direction:column; gap:8px}
+.sx-grph{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:6px; border-bottom:1px solid var(--line)}
+.sx-ent{display:flex; align-items:center; gap:10px}
+.sx-d{flex:0 0 52px; font-size:.88rem; color:var(--muted); font-variant-numeric:tabular-nums}
+.sx-t{flex:1; min-width:0; overflow-wrap:anywhere}
+.sx-ent .btn.small{min-height:34px; padding:2px 10px}
+.sx-ask{display:flex; gap:6px}
+.sx-pay{padding:0; overflow:hidden}
+.sx-payh{display:flex; align-items:center; gap:10px; width:100%; padding:14px; background:none; border:0; text-align:left; cursor:pointer; font:inherit; color:inherit; min-height:60px}
+.sx-amt{display:flex; flex-direction:column; align-items:flex-end}
+.sx-amt b{font-size:1.1rem}
+.sx-amt small{font-size:.75rem; color:var(--muted)}
+.sx-body{display:flex; flex-direction:column; gap:10px; padding:0 14px 14px}
+.sx-sum{margin:0; display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:start}
+.sx-sum dt{font-weight:600}
+.sx-sum dd{margin:0; text-align:right}
+.sx-sum .tot{border-top:1px solid var(--line); padding-top:8px; font-size:1.1rem; color:var(--accent)}
+.sx-sum .carry{color:var(--warn); font-size:.9rem}
+.sx-legend{gap:12px}
+.sx-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+.sx-gh{text-align:center; font-size:.75rem; color:var(--muted)}
+.sx-cell{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:44px; border-radius:10px; border:1px solid var(--line); background:var(--field); cursor:pointer; padding:2px; font-size:.78rem; color:var(--ink)}
+.sx-cell b{font-size:.8rem; min-height:1em}
+.sx-cell.sP{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.sx-cell.sH{background:var(--warn); color:var(--bg); border-color:var(--warn)}
+.sx-cell.sA{background:var(--loss); color:var(--bg); border-color:var(--loss)}
+dialog.sx{width:min(560px,calc(100vw - 16px)); max-height:92vh}
+dialog.sx.tall{height:min(92vh,800px)}
+dialog.sx .dbody{max-height:inherit; overflow:auto}
+dialog.sx.tall .dbody{height:100%}
+#salSheet form{padding:0; display:flex; flex-direction:column; gap:12px; flex:1; min-height:0}
+#salSheet{padding:16px}
+.sx-sh{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.sx-sh h2{flex:1}
+.sx-dateTop{width:auto; flex:0 0 auto; padding:8px 10px; font-weight:700}
+.sx-pick{display:flex; flex-direction:column; gap:6px; overflow:auto; flex:1 1 160px; min-height:140px; border:1px solid var(--line); border-radius:12px; padding:6px}
+.sx-p{display:flex; align-items:center; gap:10px; min-height:46px; padding:6px 10px; border-radius:10px; border:1px solid transparent; background:var(--field); text-align:left; cursor:pointer; font:inherit; color:inherit}
+.sx-p.on{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.sx-p .sl{color:inherit}
+.sx-amtIn{font-size:1.2rem}
+dialog.sx label.f{font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 
@@ -232,6 +295,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>👥 Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">🧰 Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">🧾 Customers</button>
+    <button class="tab" id="tabSal" role="tab" aria-selected="false">💰 Salary</button>
   </nav>
 
   <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
@@ -375,6 +439,21 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <div class="card state" id="rstate">No tools or resources yet.</div>
     <div class="tl" id="rlist"></div>
+  </section>
+
+  <section class="pane" id="paneSal" role="tabpanel" aria-labelledby="tabSal" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <nav id="salSubs" aria-label="Salary sections" hidden>
+      <button class="tab" data-sub="att" aria-selected="true">Attend</button>
+      <button class="tab" data-sub="adv" aria-selected="false">Advance</button>
+      <button class="tab" data-sub="pay" aria-selected="false">Salary</button>
+      <button class="tab" data-sub="bon" aria-selected="false">Bonus</button>
+      <button class="tab" data-sub="crew" aria-selected="false">Labour</button>
+    </nav>
+    <input type="search" id="salQ" placeholder="Search name" aria-label="Search name" autocomplete="off">
+    <div id="salBody"></div>
   </section>
 
   <section class="pane" id="paneTeam" role="tabpanel" aria-labelledby="tabTeam" hidden>
@@ -565,6 +644,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <div class="actions"><button class="btn primary" id="loginOk">Got it</button></div>
   </div>
 </dialog>
+
+<dialog id="dlgSal" class="sx"><div class="dbody" id="salSheet"></div></dialog>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -773,13 +854,13 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='stock';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#tabSal'};
   $('#tabTeam').hidden=!isOwner;
-  $('#teamNav').style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
+  $('#teamNav').style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs';
-  $('.acts').hidden=tab==='team';
-  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
+  $('.acts').hidden=(tab==='team'||tab==='sal');
+  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'||tab==='sal'));
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
   $('#tabTasks').textContent='✅ Tasks'+(pendSug?' 🔔'+pendSug:'');
   $('#pdfBtn').textContent = 'Download full report PDF';
@@ -1122,7 +1203,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); if(window.Sal) window.Sal.render(); }
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
@@ -2248,6 +2329,7 @@ $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); }
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
 $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
+$('#tabSal').addEventListener('click', function(){ tab='sal'; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
 function setMode(m){
@@ -2645,6 +2727,12 @@ $('#importFile').addEventListener('change', async function(){
 });
 
 /* ---------- start ---------- */
+/* Bridge for salary.js (the Salary section) */
+window.NM={
+  db:function(){ return db; }, isOwner:function(){ return isOwner; }, canWrite:function(){ return canWrite; },
+  nursery:function(){ return nursery; }, nurseryName:function(){ return NURS[nursery]; },
+  toast:toast, needSup:needSup, dl:function(){ return downloads; }
+};
 async function boot(){
   if(cache.idx) index=cache.idx;
   try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
@@ -2701,5 +2789,6 @@ async function boot(){
 boot();
 })();
 </script>
+<script src="salary.js"></script>
 
 </body></html>
