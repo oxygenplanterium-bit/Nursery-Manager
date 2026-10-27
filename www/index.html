@@ -102,6 +102,8 @@ textarea{resize:vertical; min-height:76px}
 .dgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
 .dcard{display:flex; flex-direction:column; gap:4px; padding:12px; text-align:left; cursor:pointer; font:inherit; color:inherit}
 .dcard b{font-size:1.35rem; font-variant-numeric:tabular-nums}
+.dwide{grid-column:1/-1}
+h2.dwide{margin:6px 2px 0; font-size:1rem}
 .dcard span{font-size:.82rem; color:var(--muted)}
 #salSubs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; padding:6px; border:1px solid var(--line); border-radius:14px}
 .sline{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
@@ -2791,22 +2793,24 @@ function renderDash(){
   var g=$('#dashGrid'); g.textContent='';
   $('#dashDate').textContent=day ? fmtLong(selDate)+' · '+NURS[nursery] : (day===undefined?'Loading…':'No report was saved for this date.');
   if(!day) return;
-  var rows=rowsOf(nursery), low=0, qty=0;
-  rows.forEach(function(it){ var b=bal(it[1]); qty+=Math.max(b,0); if(b<=0) low++; });
+  var rows=rowsOf(nursery), sum={total:0,purchase:0,sales:0,damages:0}, inhand=0, low=0;
+  rows.forEach(function(it){ var r=it[1], b=bal(r); FIELDS.forEach(function(k){ sum[k]+=Number(r[k])||0; }); inhand+=Math.max(b,0); if(b<=0) low++; });
   var tc=taskCounts(visibleTasksOf(nursery)), ac=attCounts(attList(nursery)), cs=csItems(nursery), tot=0;
   cs.forEach(function(it){ tot+=Number(it[1].amt)||0; });
-  var cards=[
-    ['stock','📦',rows.length+' items','Stock · '+fmtN(qty)+' plants in hand'+(low?' · '+low+' out of stock':'')],
-    ['tasks','✅',tc.done+' / '+(tc.done+tc.notdone+tc.pending),'Tasks done · '+tc.notdone+' not done · '+tc.pending+' pending'],
-    ['att','🧑‍🌾',String(ac.P+ac.H),'Attendance · '+ac.P+' present · '+ac.H+' half · '+ac.A+' absent · '+ac.N+' not marked'],
-    ['cs','🧾',cs.length+(cs.length===1?' sale':' sales'),'Customers · ₹'+fmtMoney(tot)]
-  ];
-  cards.forEach(function(c){
-    var b=mk('button','card dcard'); b.type='button';
-    b.append(mk('span',null,c[1]+' '+c[3]), mk('b',null,c[2]));
-    b.addEventListener('click', function(){ tab=c[0]; renderAll(); });
-    g.append(b);
-  });
+  function card(go,label,val,cls){
+    var b=mk('button','card dcard'+(cls?' '+cls:'')); b.type='button';
+    b.append(mk('span',null,label), mk('b',null,val));
+    b.addEventListener('click', function(){ tab=go; renderAll(); });
+    return b;
+  }
+  g.append(mk('h2','dwide','📦 Stock report · '+rows.length+' items'));
+  FIELDS.forEach(function(k){ g.append(card('stock',LABELS[k],fmtN(sum[k]))); });
+  var bl=card('stock','Balance in hand'+(low?' · '+low+' out of stock':''),fmtN(inhand),'dwide'); g.append(bl);
+  g.append(mk('h2','dwide','🧑‍🌾 Attendance'));
+  g.append(card('att',ac.P+' present · '+ac.H+' half day · '+ac.A+' absent · '+ac.N+' not marked',String(ac.P+ac.H),'dwide'));
+  g.append(mk('h2','dwide','✅ Tasks and 🧾 Customers'));
+  g.append(card('tasks','Tasks done · '+tc.notdone+' not done · '+tc.pending+' pending',tc.done+' / '+(tc.done+tc.notdone+tc.pending)));
+  g.append(card('cs','Sales · ₹'+fmtMoney(tot),cs.length+(cs.length===1?' sale':' sales')));
 }
 
 /* ---------- salary (owner only) ---------- */
