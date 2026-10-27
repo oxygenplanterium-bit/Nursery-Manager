@@ -2862,7 +2862,7 @@ function salCalc(sid,kind){
   order.forEach(function(m){
     var o=M[m]; o.carryIn=carry; o.absDed=o.absA+o.absH; o.dedAll=o.ded+o.absDed;
     o.balance=o.gross-o.absDed-o.ded+o.bon-o.adv-o.carryIn;
-    if(paid[m]){ o.paid=paid[m]; carry=Math.max(0,(Number(paid[m].amt)||0)-o.balance); o.carryOut=carry; } else { carry=0; o.carryOut=0; }
+    if(paid[m]){ o.paid=paid[m]; carry=Math.max(0,(Number(paid[m].amt)||0)-o.balance); o.carryOut=carry; } else { carry=Math.max(0,-o.balance); o.carryOut=carry; }
   });
   return M;
 }
@@ -2913,6 +2913,7 @@ function renderSalDlg(){
     rows.push([m.balance<0?'Excess advance to recover':'Balance to pay',(m.balance<0?'₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))]);
     rows.forEach(function(r,i){ var dt=mk('dt',null,r[0]), dd=mk('dd',null,r[1]); dt.style.margin='0'; dd.style.cssText='margin:0;text-align:right'; if(i===rows.length-1){ dt.style.fontWeight=dd.style.fontWeight='700'; } l.append(dt,dd); });
     b.append(l);
+    if(!m.paid && m.carryOut>0) b.append(mk('p',null,'₹'+fmtN(m.carryOut)+' is carried forward to next month as "Advance recovered from previous month".'));
     if(!m.rate) b.append(mk('p',null,'Set the per-day salary in the Team tab.'));
     var pbox=mk('div','sline'); pbox.style.cssText='flex-direction:column;align-items:stretch;border:1px solid var(--line);border-radius:10px;padding:10px;gap:8px';
     if(m.paid){
