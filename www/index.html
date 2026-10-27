@@ -263,7 +263,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   </section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab" id="tabDash" role="tab" aria-selected="false">📊 Dashboard</button>
     <button class="tab" id="tabStock" role="tab" aria-selected="true">📦 Stock</button>
     <button class="tab" id="tabTasks" role="tab" aria-selected="false">✅ Tasks</button>
     <button class="tab" id="tabAtt" role="tab" aria-selected="false">🧑‍🌾 Attendance</button>
@@ -413,14 +412,6 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <div class="card state" id="rstate">No tools or resources yet.</div>
     <div class="tl" id="rlist"></div>
-  </section>
-
-  <section class="pane" id="paneDash" role="tabpanel" aria-labelledby="tabDash" hidden>
-    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
-      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
-    </label>
-    <p class="pmeta" id="dashDate"></p>
-    <div class="dgrid" id="dashGrid"></div>
   </section>
 
   <section class="pane" id="paneSal" role="tabpanel" hidden>
@@ -640,11 +631,11 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <section class="card fdlist"><h2>🌱 New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
       <section class="card fdlist"><h2>✏️ Previous stocks modified <span class="chip" id="fdModN"></span></h2><div id="fdMod"></div></section>
     </details>
+    <div class="fdgrid" id="fdGrid"></div>
     <details class="card fddrop" open>
       <summary>🧑‍🌾 Attendance</summary>
       <div class="fdattin"><div class="fdgrid" id="fdAtt"></div><p class="pmeta" id="fdAttNote"></p></div>
     </details>
-    <div class="fdgrid" id="fdGrid"></div>
   </div>
 </div>
 
@@ -861,12 +852,12 @@ function renderTop(){
   if(tab==='team' && !isOwner) tab='stock';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
   if(tab==='sal' && !isOwner) tab='stock';
-  var tb={dash:'#tabDash',stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
   $('#tabTeam').hidden=!isOwner;
   $('#salBtn').hidden=!isOwner;
   $('#salBtn').classList.toggle('primary', tab==='sal');
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneDash').hidden=tab!=='dash'; $('#paneSal').hidden=tab!=='sal';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
   $('.acts').hidden=(tab==='team'||tab==='sal');
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
@@ -1211,7 +1202,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderDash(); renderSal(); renderFull(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
 
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
@@ -2384,7 +2375,6 @@ $('#report').addEventListener('change', function(){
   save({report:{text:text, who:nameNow(), at:Date.now()}});
 });
 $('#daySel').addEventListener('change', function(){ goTo(this.value); });
-$('#tabDash').addEventListener('click', function(){ tab='dash'; renderAll(); });
 $('#salBtn').addEventListener('click', function(){ if(isOwner){ tab='sal'; renderAll(); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
@@ -2786,32 +2776,6 @@ $('#importFile').addEventListener('change', async function(){
   }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check your internet connection and that supabase.sql was run.', 9000); }
   finally{ b.disabled=false; b.textContent=old; }
 });
-
-/* ---------- dashboard ---------- */
-function renderDash(){
-  if(tab!=='dash') return;
-  var g=$('#dashGrid'); g.textContent='';
-  $('#dashDate').textContent=day ? fmtLong(selDate)+' · '+NURS[nursery] : (day===undefined?'Loading…':'No report was saved for this date.');
-  if(!day) return;
-  var rows=rowsOf(nursery), sum={total:0,purchase:0,sales:0,damages:0}, inhand=0, low=0;
-  rows.forEach(function(it){ var r=it[1], b=bal(r); FIELDS.forEach(function(k){ sum[k]+=Number(r[k])||0; }); inhand+=Math.max(b,0); if(b<=0) low++; });
-  var tc=taskCounts(visibleTasksOf(nursery)), ac=attCounts(attList(nursery)), cs=csItems(nursery), tot=0;
-  cs.forEach(function(it){ tot+=Number(it[1].amt)||0; });
-  function card(go,label,val,cls){
-    var b=mk('button','card dcard'+(cls?' '+cls:'')); b.type='button';
-    b.append(mk('span',null,label), mk('b',null,val));
-    b.addEventListener('click', function(){ tab=go; renderAll(); });
-    return b;
-  }
-  g.append(mk('h2','dwide','📦 Stock report · '+rows.length+' items'));
-  FIELDS.forEach(function(k){ g.append(card('stock',LABELS[k],fmtN(sum[k]))); });
-  var bl=card('stock','Balance in hand'+(low?' · '+low+' out of stock':''),fmtN(inhand),'dwide'); g.append(bl);
-  g.append(mk('h2','dwide','🧑‍🌾 Attendance'));
-  g.append(card('att',ac.P+' present · '+ac.H+' half day · '+ac.A+' absent · '+ac.N+' not marked',String(ac.P+ac.H),'dwide'));
-  g.append(mk('h2','dwide','✅ Tasks and 🧾 Customers'));
-  g.append(card('tasks','Tasks done · '+tc.notdone+' not done · '+tc.pending+' pending',tc.done+' / '+(tc.done+tc.notdone+tc.pending)));
-  g.append(card('cs','Sales · ₹'+fmtMoney(tot),cs.length+(cs.length===1?' sale':' sales')));
-}
 
 /* ---------- salary (owner only) ---------- */
 var salSub='adv', salData={e:{},b:{}}, salSubbed=false, salMonth=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); })();
