@@ -247,11 +247,13 @@ function setStatus(id, date, s){
   if(isOwner()) bumpY0(date);
   var o = {}; o[date] = s || null;
   var a = {}; a[id] = o;
-  put('sa/'+S.n+'/'+yearOf(date), { a:a });
+  put('sa/'+S.n+'/'+yearOf(date), { a:a }).then(function(ok){ if(ok && NM.onAttMark) NM.onAttMark(S.n, id, date, s||''); });
 }
 function putLabour(id, fields){
   var l = {}; l[id] = fields;
-  return put('sa/'+S.n+'/meta', { lab:l });
+  var p = put('sa/'+S.n+'/meta', { lab:l }), n = S.n;
+  p.then(function(ok){ if(ok && NM.onLabourEdit) NM.onLabourEdit(n, id, fields); });
+  return p;
 }
 function putRates(id, arr){
   var r = {}; r[id] = arr;

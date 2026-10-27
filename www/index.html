@@ -1792,12 +1792,12 @@ function makeTeam(kind,id){
     if(!v||v===cur){ inp.value=cur||''; return; }
     var clash=teamList(kind).some(function(it){ return it[0]!==id && normName(it[1].n)===normName(v); });
     if(clash){ toast(v+' is already in the list.'); inp.value=cur||''; return; }
-    var p={team:{}}; p.team[kind]={}; p.team[kind][id]={n:v}; saveSettings(p);
+    var p={team:{}}; p.team[kind]={}; p.team[kind][id]={n:v}; saveSettings(p); if(kind==='staff') labourPatch(id,{n:v});
   });
   btn.addEventListener('click', function(){
     arm(btn,'rm'+kind+id,'Remove', async function(){
       var p={team:{}}; p.team[kind]={}; p.team[kind][id]={x:true};
-      if(await saveSettings(p)) toast('Removed');
+      if(await saveSettings(p)){ toast('Removed'); if(kind==='staff') labourPatch(id,{act:false}); }
     });
   });
   var nsel=null;
@@ -2060,7 +2060,8 @@ function resetMarks(btn,key,label,field,msg,idsFn){
     p[field]={};
     Object.keys(cur).forEach(function(id){ if(mine[id]) p[field][id]=null; });
     if(!Object.keys(p[field]).length) return;
-    if(await save(p)) toast(msg);
+    var dt=selDate, ids=Object.keys(p[field]);
+    if(await save(p)){ toast(msg); if(field==='att') ids.forEach(function(i){ saMark(nursery,i,dt,''); }); }
   });
 }
 $('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' on '+fmtLong(selDate), function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
@@ -2408,10 +2409,11 @@ async function cycleAtt(date,id,name,cur){
   var next=cur===''?'P':cur==='P'?'H':cur==='H'?'A':'';
   var a=monAttOf(date), nid=(a[id]&&a[id].nid)||nursery;
   var entry={s:next, n:name, nid:nid, who:next?whoNow():'', at:next?Date.now():null};
-  if(date===selDate&&editable()){ var pp={att:{}}; pp.att[id]=entry; save(pp); return; }
+  if(date===selDate&&editable()){ var pp={att:{}}; pp.att[id]=entry; save(pp).then(function(ok){ if(ok) saMark(nid,id,date,next); }); return; }
   try{
     var pa={att:{}}; pa.att[id]=entry;
     await db.doc('days/'+date).update(pa);
+    saMark(nid,id,date,next);
     var o=Object.assign({},monData[date]||{}); o[id]=Object.assign({},o[id]||{},entry); monData[date]=o;
     renderAtt();
   }catch(e){ toast('Could not save. Check your connection and try again.'); }
@@ -2423,14 +2425,16 @@ function setAtt(id,s){
   var rec=attList().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
   var next = rec[1].s===s ? '' : s;
   var p={att:{}}; p.att[id]={s:next, n:rec[1].n, nid:rec[1].nid, who:next?whoNow():'', at:next?Date.now():null};
-  save(p);
+  var dt=selDate, nd=rec[1].nid||nursery;
+  save(p).then(function(ok){ if(ok) saMark(nd,id,dt,next); });
 }
 $('#attAll').addEventListener('click', function(){
   if(!attEditable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   var p={att:{}}, n=0;
   attList().forEach(function(it){ if(!it[1].s){ n++; p.att[it[0]]={s:'P', n:it[1].n, nid:it[1].nid, who:whoNow(), at:Date.now()}; } });
-  if(n) save(p);
+  if(n){ var dt=selDate, ids=Object.keys(p.att), nds={}; attList().forEach(function(it){ nds[it[0]]=it[1].nid||nursery; });
+    save(p).then(function(ok){ if(ok) ids.forEach(function(i){ saMark(nds[i],i,dt,'P'); }); }); }
 });
 
 /* ---------- day, report, tabs ---------- */
@@ -2853,12 +2857,122 @@ $('#importFile').addEventListener('change', async function(){
   finally{ b.disabled=false; b.textContent=old; }
 });
 
+
+/* ---------- staff and salary labour are the same people ---------- */
+function lidOf(staffId){ var s=(team.staff||{})[staffId]; return (s&&s.lid)||staffId; }
+function staffIdOfLid(n,lid){
+  var o=team.staff||{}, hit=null;
+  Object.keys(o).forEach(function(id){ var s=o[id]; if(!hit&&s&&(s.nid||'1')===n&&(s.lid||id)===lid) hit=id; });
+  return hit;
+}
+function setDoc(path,patch,strip){
+  var d=db.doc(path);
+  return d.update(patch).catch(function(e){ if(e&&e.code==='not_found') return d.set(strip||patch); throw e; });
+}
+function stripNulls(o){
+  if(o&&typeof o==='object'&&!Array.isArray(o)){ var r={}; Object.keys(o).forEach(function(k){ if(o[k]!==null) r[k]=stripNulls(o[k]); }); return r; }
+  return o;
+}
+/* mirror an attendance mark into the salary records (sa/<nursery>/<year>) */
+function saMark(nid,staffId,date,s){
+  if(!db) return Promise.resolve();
+  var lid=lidOf(staffId), a={}; a[lid]={}; a[lid][date]=s||null;
+  var patch={a:a}, p=setDoc('sa/'+nid+'/'+date.slice(0,4),patch,stripNulls(patch));
+  if(isOwner && +date.slice(0,4)<new Date().getFullYear()) p=p.then(function(){ return setDoc('sa/'+nid+'/meta',{y0:+date.slice(0,4)}); });
+  return p.catch(function(){});
+}
+/* keep the labour record (name, archived flag) in step with the staff record */
+function labourPatch(staffId,fields){
+  if(!db||!isOwner) return;
+  var s=(team.staff||{})[staffId], nid=(s&&s.nid)||'1', lid=lidOf(staffId), l={}; l[lid]=fields;
+  setDoc('sa/'+nid+'/meta',{lab:l}).catch(function(){});
+}
+/* salary.js tells us about attendance marks and labour edits made on the Salary tab */
+window.NM_HOOKS={
+  onAttMark:function(n,lid,date,s){
+    var sid=staffIdOfLid(n,lid); if(!sid||!db||!(index&&index[date])) return;
+    var st=team.staff[sid], pa={att:{}};
+    pa.att[sid]={s:s||'', n:st.n, nid:n, who:s?(nameNow()||(isOwner?'Owner':'Supervisor')):'', at:s?Date.now():null};
+    db.doc('days/'+date).update(pa).catch(function(){});
+  },
+  onLabourEdit:function(n,lid,f){
+    if(!isOwner) return;
+    var sid=staffIdOfLid(n,lid), p={team:{staff:{}}};
+    if(sid){
+      var o={};
+      if(f.n!==undefined && team.staff[sid].n!==f.n) o.n=f.n;
+      if(f.act===false) o.x=true; else if(f.act===true) o.x=false;
+      if(!Object.keys(o).length) return;
+      p.team.staff[sid]=o; saveSettings(p);
+    } else schedulePeopleSync();
+  }
+};
+var syncTimer=null, syncBusy=false;
+function schedulePeopleSync(){ if(!db||!isOwner||!canWrite) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncPeople,1500); }
+async function syncPeople(){
+  if(syncBusy||!db||!isOwner||!canWrite) return;
+  syncBusy=true; var again=false;
+  try{
+    var ns=['1','2'], i;
+    for(i=0;i<ns.length;i++){
+      var n=ns[i], sn=await db.doc('sa/'+n+'/meta').get(), meta=sn.exists?sn.data():{}, lab=meta.lab||{};
+      var st=team.staff||{}, ids=Object.keys(st).filter(function(id){ return st[id]&&!st[id].x&&(st[id].nid||'1')===n; });
+      var claimed={}, labPatch={}, teamPatch={}, nl=0, nt=0;
+      ids.forEach(function(id){ var l=lidOf(id); if(lab[l]) claimed[l]=1; });
+      ids.forEach(function(id){
+        var l=lidOf(id); if(lab[l]) return;
+        var m=Object.keys(lab).filter(function(k){ return !claimed[k]&&lab[k]&&lab[k].act!==false&&normName(lab[k].n)===normName(st[id].n); })[0];
+        if(m){ claimed[m]=1; if(m!==id){ teamPatch[id]={lid:m}; nt++; } }
+        else { labPatch[id]={n:st[id].n, ph:'', act:true, c:Date.now()}; claimed[id]=1; nl++; }
+      });
+      var maxO=0; Object.keys(st).forEach(function(k){ maxO=Math.max(maxO,(st[k]||{}).o||0); });
+      Object.keys(lab).forEach(function(k){
+        var L=lab[k]; if(!L||claimed[k]||L.act===false) return;
+        if(Object.keys(st).some(function(x){ return ((st[x]||{}).lid||x)===k; })) return;
+        teamPatch[k]={n:L.n, o:++maxO, nid:n}; nt++;
+      });
+      if(nl) await setDoc('sa/'+n+'/meta',{lab:labPatch});
+      if(nt){ var tp={team:{staff:teamPatch}}; await saveSettings(tp); }
+      if(nl||nt){ again=true; continue; }
+      if(!meta.mg) await migrateAttendance(n);
+    }
+  }catch(e){ /* try again on the next settings change */ }
+  syncBusy=false;
+  if(again) schedulePeopleSync();
+}
+/* one-off: combine the attendance already saved in the day registers with the salary attendance */
+async function migrateAttendance(n){
+  var rows=await db.list('days/','att'), dayAtt={}, sa={}, patch={}, dpatch={}, years={}, st=team.staff||{};
+  rows.forEach(function(r){ var d=r.path.slice(5); dayAtt[d]=(r.data&&r.data.att)||{}; years[d.slice(0,4)]=1; });
+  var ys=Object.keys(years), y, i;
+  for(i=0;i<ys.length;i++){ y=ys[i]; var sn=await db.doc('sa/'+n+'/'+y).get(); sa[y]=(sn.exists&&sn.data().a)||{}; }
+  Object.keys(dayAtt).forEach(function(date){
+    var y2=date.slice(0,4), a=dayAtt[date];
+    Object.keys(a).forEach(function(sid){
+      var x=a[sid]; if(!x||!x.s||(x.nid||'1')!==n) return;
+      var lid=lidOf(sid), cur=(sa[y2]&&sa[y2][lid]||{})[date];
+      if(!cur){ patch[y2]=patch[y2]||{}; (patch[y2][lid]=patch[y2][lid]||{})[date]=x.s; }
+    });
+  });
+  Object.keys(sa).forEach(function(y2){ Object.keys(sa[y2]).forEach(function(lid){ Object.keys(sa[y2][lid]||{}).forEach(function(date){
+    var s=sa[y2][lid][date]; if(!s||!dayAtt[date]) return;
+    var sid=staffIdOfLid(n,lid); if(!sid) return;
+    var cur=dayAtt[date][sid]; if(cur&&cur.s) return;
+    dpatch[date]=dpatch[date]||{att:{}}; dpatch[date].att[sid]={s:s, n:st[sid].n, nid:n, who:'', at:null};
+  }); }); });
+  var k;
+  for(k in patch){ await setDoc('sa/'+n+'/'+k,{a:patch[k]}); }
+  for(k in dpatch){ await db.doc('days/'+k).update(dpatch[k]); }
+  await setDoc('sa/'+n+'/meta',{mg:true});
+}
 /* ---------- start ---------- */
 /* Bridge for salary.js (the Salary section) */
 window.NM={
   db:function(){ return db; }, isOwner:function(){ return isOwner; }, canWrite:function(){ return canWrite; },
   nursery:function(){ return nursery; }, nurseryName:function(){ return NURS[nursery]; },
-  toast:toast, needSup:needSup, dl:function(){ return downloads; }
+  toast:toast, needSup:needSup, dl:function(){ return downloads; },
+  onAttMark:function(n,l,d,s){ return window.NM_HOOKS.onAttMark(n,l,d,s); },
+  onLabourEdit:function(n,l,f){ return window.NM_HOOKS.onLabourEdit(n,l,f); }
 };
 async function boot(){
   if(cache.idx) index=cache.idx;
@@ -2905,7 +3019,7 @@ async function boot(){
     ownerWa = String(d.ownerWa||'');
     team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
     res = d.res||{};
-    syncSup(); renderAll();
+    syncSup(); renderAll(); schedulePeopleSync();
   }, function(){});
   setInterval(function(){
     var t=todayKey();

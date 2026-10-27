@@ -25,3 +25,6 @@ Open the site address in Safari, tap Share, then Add to Home Screen. Pages must 
 
 ## Moving your old data
 In the old Claude version use "Download all days backup", send the file to your phone, then in this app (Owner Mode) use "Import backup file".
+
+## Staff and labour are the same people
+The Team tab staff list and the Salary tab labour list are kept in step (names, archived/removed). Attendance marked in the Attendance tab or in Salary, Attend is saved in both places. The first time the owner opens the app after this update, existing records are combined automatically (matching staff and labour by name).
