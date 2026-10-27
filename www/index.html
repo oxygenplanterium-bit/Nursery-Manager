@@ -204,7 +204,7 @@ span.note{cursor:default}
 .team{display:flex; flex-direction:column; gap:10px}
 .tl{display:flex; flex-direction:column; gap:3mm}
 .trow{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-.trow input{flex:1; padding:8px 12px}
+.trow input{flex:1 1 150px; min-width:0; padding:8px 12px}
 .arow{display:flex; flex-direction:column; gap:10px}
 .aseg{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .aseg .btn{padding:8px 4px; font-size:.92rem}
@@ -433,7 +433,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <section class="card team">
       <h2 id="supHead">Supervisors</h2>
       <p class="pmeta">Assign tasks to them. Each supervisor picks their own name at the top of the app.</p>
-      <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><button class="btn primary" type="submit">Add</button></form>
+      <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><input type="number" id="supRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><button class="btn primary" type="submit">Add</button></form>
       <p class="pmeta" id="supWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="supEmpty">No supervisors yet.</p>
       <div class="tl" id="supList"></div>
@@ -441,7 +441,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <section class="card team">
       <h2 id="staffHead">Staff</h2>
       <p class="pmeta">Supervisors mark attendance for these people every day.</p>
-      <form class="addtask" id="fStaff"><input type="text" id="staffIn" maxlength="600" placeholder="Name, or several separated by commas" aria-label="Add staff"><select id="staffNur" aria-label="Staff nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
+      <form class="addtask" id="fStaff"><input type="text" id="staffIn" maxlength="600" placeholder="Name, or several separated by commas" aria-label="Add staff"><input type="number" id="staffRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><select id="staffNur" aria-label="Staff nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
       <p class="pmeta" id="staffWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="staffEmpty">No staff yet.</p>
       <div class="tl" id="staffList"></div>
@@ -1779,6 +1779,7 @@ $('#supSel').addEventListener('change', function(){
 });
 function cleanName(s){ return s.trim().replace(/\s+/g,' '); }
 async function addTeam(kind,raw){
+  var rateV=Math.round(Number($('#'+kind+'Rate').value)||0), rp={b:{}};
   var names=raw.split(/[,;\n]+/).map(cleanName).filter(Boolean);
   var have={}, maxO=0;
   teamList(kind).forEach(function(it){ have[normName(it[1].n)]=1; maxO=Math.max(maxO,it[1].o||0); });
@@ -1788,10 +1789,12 @@ async function addTeam(kind,raw){
     var k=normName(n); if(have[k]){ dups.push(n); return; }
     have[k]=1; maxO++; added++;
     var id=(kind==='sup'?'s':'w')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    patch.team[kind][id]={n:n, o:maxO}; if(kind==='staff') patch.team[kind][id].nid=$('#staffNur').value==='2'?'2':'1';
+    patch.team[kind][id]={n:n, o:maxO}; if(rateV>0) rp.b[id]=rateV; if(kind==='staff') patch.team[kind][id].nid=$('#staffNur').value==='2'?'2':'1';
   });
   if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter a name first.'); return false; }
   if(await saveSettings(patch)){
+    if(rateV>0 && isOwner) await salSave(rp);
+    $('#'+kind+'Rate').value='';
     toast(added+(added===1?' name added':' names added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):''));
     return true;
   }
@@ -1825,19 +1828,23 @@ function makeTeam(kind,id){
       if(await saveSettings(p)) toast('Removed');
     });
   });
+  var rin=document.createElement('input'); rin.type='number'; rin.min='0'; rin.step='1'; rin.inputMode='numeric'; rin.placeholder='₹/day'; rin.setAttribute('aria-label','Per day salary');
+  rin.style.cssText='flex:0 0 92px; width:92px; padding:8px 6px; text-align:center';
+  rin.addEventListener('change', function(){ var v=Math.round(Number(rin.value)||0), p={b:{}}; p.b[id]=v>0?v:null; salSave(p); });
   var nsel=null;
   if(kind==='staff'){
     nsel=document.createElement('select'); nsel.setAttribute('aria-label','Nursery');
-    nsel.style.cssText='flex:0 0 150px; width:150px; padding:8px 6px';
+    nsel.style.cssText='flex:1 1 140px; width:auto; padding:8px 6px';
     nsel.innerHTML='<option value="1">'+NURS['1']+'</option><option value="2">'+NURS['2']+'</option>';
     nsel.addEventListener('change', function(){ var p={team:{staff:{}}}; p.team.staff[id]={nid:nsel.value}; saveSettings(p); });
-    el.append(inp,nsel,btn);
-  } else el.append(inp,btn);
-  el._r={inp:inp,nsel:nsel}; el._kind=kind;
+    el.append(inp,rin,nsel,btn);
+  } else el.append(inp,rin,btn);
+  el._r={inp:inp,nsel:nsel,rin:rin}; el._kind=kind;
   return el;
 }
 function renderTeam(){
   if(!isOwner) return;
+  salSubscribe();
   [['sup','#supList','#supEmpty','#supHead','Supervisors'],['staff','#staffList','#staffEmpty','#staffHead','Staff']].forEach(function(d){
     var kind=d[0], list=$(d[1]), l=teamList(kind), seen=new Set(), pos=0;
     $(d[2]).hidden=l.length>0;
@@ -1847,6 +1854,7 @@ function renderTeam(){
       var el=teamEls.get(key); if(!el){ el=makeTeam(kind,it[0]); teamEls.set(key,el); }
       el._r.inp.setAttribute('aria-label',d[4]+' name');
       if(document.activeElement!==el._r.inp) el._r.inp.value=it[1].n;
+      if(document.activeElement!==el._r.rin) el._r.rin.value=rateOf(it[0])||'';
       if(el._r.nsel && document.activeElement!==el._r.nsel) el._r.nsel.value=it[1].nid||'1';
       if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
       pos++;
@@ -2815,7 +2823,7 @@ function salEntries(kind){
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
   if(salSubbed||!db||!isOwner) return; salSubbed=true;
-  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); renderFull(); }, function(){});
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function renderSal(){
   if(tab!=='sal'||!isOwner||!db) return;
