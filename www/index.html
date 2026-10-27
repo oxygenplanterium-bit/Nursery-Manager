@@ -2713,6 +2713,16 @@ function salSave(patch){
     throw e;
   }).catch(function(){ toast('Could not save. Check your internet and try again.',4000); });
 }
+var salAtt={}, salAttFor='', salAttBusy=false;
+function rateOf(sid){ return Number((salData.b||{})[sid])||0; }
+function loadSalAtt(){
+  var key=salMonth+'|'+nursery; if(salAttFor===key||salAttBusy||!db) return;
+  salAttBusy=true;
+  db.list('days/','att').then(function(rows){
+    var o={}; rows.forEach(function(r){ var d=r.path.slice(5); if(d.slice(0,7)!==salMonth) return; var a=(r.data&&r.data.att)||{}; Object.keys(a).forEach(function(sid){ if(a[sid]&&a[sid].s){ (o[sid]=o[sid]||{})[d]=a[sid].s; } }); });
+    salAtt=o; salAttFor=key; salAttBusy=false; if(tab==='sal') renderSal();
+  }).catch(function(){ salAttBusy=false; salAttFor=key; });
+}
 function salStaff(){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nursery; }); }
 function salEntries(kind){
   var e=salData.e||{};
@@ -2731,7 +2741,7 @@ function renderSal(){
   if(salSub==='pay') return salPay(body);
   var staff=salStaff(), kind=salSub, nm=SALK[kind];
   var f=mk('div','card sline'), sel=mk('select','grow'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
-  staff.forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; sel.append(o); });
+  staff.forEach(function(it){ var r=rateOf(it[0]), o=mk('option',null,it[1].n+(r?' · ₹'+fmtN(r)+'/day':'')); o.value=it[0]; sel.append(o); });
   amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount';
   note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60;
   if(!staff.length) body.append(mk('p','pmeta','No staff in this nursery yet. Add staff in the Team tab.'));
@@ -2749,7 +2759,7 @@ function renderSal(){
   body.append(mk('p','pmeta',items.length+' '+(items.length===1?nm[0].toLowerCase():nm[1].toLowerCase())+' · Total ₹'+fmtN(salSum(kind))));
   items.forEach(function(it){
     var e=it[1], c=mk('div','card sline');
-    c.append(mk('span','grow',e.n+(e.note?' · '+e.note:'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
+    c.append(mk('span','grow',e.n+(rateOf(e.sid)?' (₹'+fmtN(rateOf(e.sid))+'/day)':'')+(e.note?' · '+e.note:'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
     var del=mk('button','btn small','Delete'); del.type='button';
     del.addEventListener('click', function(){
       if(del.dataset.arm!=='1'){ del.dataset.arm='1'; del.textContent='Tap to confirm'; setTimeout(function(){ del.dataset.arm=''; del.textContent='Delete'; },3000); return; }
@@ -2760,25 +2770,28 @@ function renderSal(){
 }
 function salPay(body){
   var staff=salStaff(), grand=0;
+  loadSalAtt();
   if(!staff.length){ body.append(mk('p','pmeta','No staff in this nursery yet. Add staff in the Team tab.')); return; }
-  body.append(mk('p','pmeta','Monthly salary − advances − deductions + bonuses. Enter each person\'s monthly salary once; it is remembered.'));
-  var totEl=mk('p','pmeta'); totEl.style.fontWeight='700';
+  var ym=salMonth.split('-'), dim=new Date(+ym[0],+ym[1],0).getDate();
+  body.append(mk('p','pmeta','Pay = per-day salary × '+dim+' days − absent days − advances − deductions + bonuses. Half day counts as half an absent day; days not marked are paid. Set each per-day salary below.'));
+  var totEl=mk('p','pmeta'); totEl.style.fontWeight='700'; body.append(totEl);
   staff.forEach(function(it){
-    var sid=it[0], base=Number((salData.b||{})[sid])||0, c=mk('div','card'), top=mk('div','sline'), inp=mk('input');
-    inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='Monthly ₹'; inp.value=base||''; inp.dataset.keep='1';
-    var adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid), net=base-adv-ded+bon; grand+=net;
-    var netEl=mk('b',null,'₹'+fmtN(net));
-    top.append(mk('b','grow',it[1].n), inp);
+    var sid=it[0], rate=rateOf(sid), c=mk('div','card'), top=mk('div','sline'), inp=mk('input');
+    inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='₹ per day'; inp.value=rate||''; inp.dataset.keep='1';
+    var at=salAtt[sid]||{}, A=0,H=0,P=0; Object.keys(at).forEach(function(d){ if(at[d]==='A')A++; else if(at[d]==='H')H++; else if(at[d]==='P')P++; });
+    var absDed=Math.round(rate*(A+H*0.5)), gross=rate*dim, adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid), net=gross-absDed-adv-ded+bon; grand+=net;
+    top.append(mk('b','grow',it[1].n), mk('span','pmeta','₹/day'), inp);
     c.append(top);
-    c.append(mk('p','pmeta','Advances ₹'+fmtN(adv)+' · Deductions ₹'+fmtN(ded)+' · Bonuses ₹'+fmtN(bon)));
-    var l=mk('div','sline'); l.append(mk('span','grow','Pay this month'), netEl); c.append(l);
+    var l=mk('dl','sx-sum'); l.style.cssText='margin:6px 0 0;display:grid;grid-template-columns:1fr auto;gap:4px 12px';
+    [['Salary ('+dim+' days × ₹'+fmtN(rate)+')','₹'+fmtN(gross)],['Absent ('+A+(H?' + '+H+' half':'')+' days)','− ₹'+fmtN(absDed)],['Advances','− ₹'+fmtN(adv)],['Deductions','− ₹'+fmtN(ded)],['Bonuses','+ ₹'+fmtN(bon)]].forEach(function(r){ var dt=mk('dt',null,r[0]), dd=mk('dd',null,r[1]); dt.style.margin='0'; dd.style.cssText='margin:0;text-align:right'; l.append(dt,dd); });
+    var t1=mk('dt',null,'Balance to pay'), t2=mk('dd',null,(net<0?'− ':'')+'₹'+fmtN(Math.abs(net))+(net<0?' (recover)':'')); t1.style.cssText='margin:0;font-weight:700'; t2.style.cssText='margin:0;text-align:right;font-weight:700';
+    l.append(t1,t2); c.append(l);
     inp.addEventListener('change', function(){
       var v=Math.round(Number(inp.value)||0), p={b:{}}; p.b[sid]=v>0?v:null; salSave(p);
     });
     body.append(c);
   });
-  totEl.textContent='Total to pay: ₹'+fmtN(grand);
-  body.insertBefore(totEl, body.children[1]);
+  totEl.textContent='Total balance to pay: ₹'+fmtN(grand);
 }
 $('#salSubs').addEventListener('click', function(e){ var b=e.target.closest('.tab'); if(!b) return; salSub=b.dataset.sub; renderSal(); });
 $('#salMonth').addEventListener('change', function(){ if(this.value){ salMonth=this.value; renderSal(); } });
