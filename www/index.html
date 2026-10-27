@@ -2437,7 +2437,7 @@ $('#importFile').addEventListener('change', async function(){
       if(ss.exists) await sd.update(st); else await sd.set(st);
     }
     toast('Imported '+ks.length+' day'+(ks.length===1?'':'s')+'.');
-  }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check the Firestore rules and your internet.', 9000); }
+  }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check your internet connection and that supabase.sql was run.', 9000); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 
