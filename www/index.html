@@ -2923,7 +2923,7 @@ function renderSalDlg(){
       un.addEventListener('click', function(){ var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]=null; salSave(p); });
       pbox.append(un);
     }else{
-      pbox.append(mk('span',null,'Until this month\'s salary is marked paid, new advances are deducted from it.'));
+      pbox.append(mk('span',null,'Until This Month\'s Salary Is Marked As Paid, All The Advances Are Deducted In Old Or Previous Month Salary.')); pbox.append(mk('span',null,'Any Excess Advance Amount Paid Shall Be Carried Forwarded To Next Month As Advance.'));
       var pr=mk('div','sline'), pa=mk('input'), pb=mk('button','btn primary','✔ Mark salary paid'); pb.style.minHeight='48px';
       pa.type='number'; pa.step='1'; pa.inputMode='numeric'; pa.value=Math.max(0,Math.round(m.balance)); pa.setAttribute('aria-label','Amount paid'); pb.type='button';
       pr.append(pa,pb); pbox.append(pr);
