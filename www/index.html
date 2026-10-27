@@ -2924,7 +2924,7 @@ function renderSalDlg(){
       pbox.append(un);
     }else{
       pbox.append(mk('span',null,'Until this month\'s salary is marked paid, new advances are deducted from it.'));
-      var pr=mk('div','sline'), pa=mk('input'), pb=mk('button','btn primary','Mark salary paid');
+      var pr=mk('div','sline'), pa=mk('input'), pb=mk('button','btn primary','✔ Mark salary paid'); pb.style.minHeight='48px';
       pa.type='number'; pa.step='1'; pa.inputMode='numeric'; pa.value=Math.max(0,Math.round(m.balance)); pa.setAttribute('aria-label','Amount paid'); pb.type='button';
       pr.append(pa,pb); pbox.append(pr);
       pb.addEventListener('click', function(){
@@ -2933,6 +2933,18 @@ function renderSalDlg(){
       });
     }
     b.append(pbox);
+    var L=function(t,v){ return t+': '+v; }, mon=new Date(+salMonth.slice(0,4),+salMonth.slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    var lines=['*Salary Slip – '+mon+'*','Oxygen Planterium'+(salDlg.kind==='staff'?' · '+NURS[nursery]:''),'Name: '+rec.n,'',L('Per day salary','₹'+fmtN(m.rate)),L('Salary for '+m.dim+' days','₹'+fmtN(m.gross))];
+    if(salDlg.kind==='staff'){ lines.push(L('Absent '+m.A+' day(s) and half day '+m.H,'− ₹'+fmtN(m.absDed))); }
+    if(m.ded) lines.push(L('Deductions','− ₹'+fmtN(m.ded)));
+    if(m.bon) lines.push(L('Bonus','+ ₹'+fmtN(m.bon)));
+    if(m.adv) lines.push(L('Advances','− ₹'+fmtN(m.adv)));
+    if(m.carryIn>0) lines.push(L('Advance recovered from previous month','− ₹'+fmtN(m.carryIn)));
+    lines.push('',m.balance<0?L('Excess advance to recover','₹'+fmtN(-m.balance)):L('Balance salary','₹'+fmtN(m.balance)));
+    if(m.paid) lines.push(L('Salary paid','₹'+fmtN(m.paid.amt)+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'')));
+    if(m.carryOut>0) lines.push(L('Carried forward to next month as advance','₹'+fmtN(m.carryOut)));
+    var wa=mk('a','btn primary','📲 Share slip on WhatsApp'); wa.href='https://wa.me/?text='+encodeURIComponent(lines.join('\n')); wa.target='_blank'; wa.rel='noopener'; wa.style.cssText='text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;min-height:48px';
+    b.append(wa);
   }else{
     var f=mk('div','sline'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
     amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount'; note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60; add.type='button';
