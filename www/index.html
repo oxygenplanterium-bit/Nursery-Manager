@@ -309,6 +309,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <button class="btn small" id="mvAllStock" hidden></button>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
+      <button class="btn small" id="coBtn" hidden>Company details (PDF letterhead)</button>
       <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
@@ -566,6 +567,20 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <a class="btn primary" id="sentWa" target="_blank" rel="noopener" href="https://wa.me/" hidden>Notify owner on WhatsApp</a>
     </div>
   </div>
+</dialog>
+
+<dialog id="dlgCo">
+  <form id="fCo">
+    <h2>Company details</h2>
+    <p>Shown on the right of the letterhead of every PDF, next to the logo. Everyone who opens the app can see these details.</p>
+    <label>Company name<input type="text" id="coN" maxlength="80"></label>
+    <label>Address<input type="text" id="coA" maxlength="120" autocomplete="street-address"></label>
+    <label>City<input type="text" id="coC" maxlength="60"></label>
+    <label>Pin<input type="text" id="coP" maxlength="10" inputmode="numeric"></label>
+    <label>State<input type="text" id="coS" maxlength="60"></label>
+    <label>Phone number<input type="tel" id="coT" maxlength="30"></label>
+    <div class="actions"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+  </form>
 </dialog>
 
 <dialog id="dlgWa">
@@ -1035,7 +1050,7 @@ function renderStock(){
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
   var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); if(!armed.mvas) ma.textContent='Move all to '+NURS[otherN()];
-  $('#waSetBtn').hidden=!isOwner;
+  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
   var pend=items.filter(function(it){ var r=it[1]; return (r.damages||0)>0 && !((r.notes||{}).damages||{}).reason; }).length;
@@ -2242,13 +2257,13 @@ async function weeklyPdf(startKey,W){
       if(a[id]&&a[id].s&&!known[id]){ var g=by[a[id].nid==='2'?'2':'1']; g.names[id]=a[id].n||'Former staff'; g.order.push(id); known[id]=1; }
     });
   });
-  var doc=new J({unit:'pt',format:'a4',orientation:'landscape'});
-  doc.setFontSize(16); doc.text('Nursery Daily Manager - Weekly Attendance Report', 40, 42);
+  var doc=new J({unit:'pt',format:'a4',orientation:'landscape'}); letterhead(doc);
+  doc.setFontSize(16); doc.text('Nursery Daily Manager - Weekly Attendance Report', 40, 42+70);
   doc.setFontSize(10);
-  doc.text('Week: '+fmtLong(keysW[0])+' (Sunday) to '+fmtLong(keysW[6])+' (Saturday)', 40, 60);
+  doc.text('Week: '+fmtLong(keysW[0])+' (Sunday) to '+fmtLong(keysW[6])+' (Saturday)', 40, 60+70);
   var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], CODE={P:'P',H:'H',A:'A'};
   var head=[['Sl.No.','Staff'].concat(dates.map(function(d,i){ return DN[i]+' '+pad(d.getDate())+'/'+pad(d.getMonth()+1); }),['Present','Half day','Absent','Days worked'])];
-  var y=72;
+  var y=72+70;
   ['1','2'].forEach(function(n){
     var g=by[n];
     if(y>440){ doc.addPage(); y=50; }
@@ -2533,6 +2548,17 @@ $('#alertBtn').addEventListener('click', function(){
   var b=$('#pendBox'); if(b&&b.scrollIntoView) b.scrollIntoView({behavior:'smooth', block:'start'});
 });
 $('#waSetBtn').addEventListener('click', function(){ $('#waNum').value=ownerWa; var d=$('#dlgWa'); if(!d.open) d.showModal(); });
+$('#coBtn').addEventListener('click', function(){
+  $('#coN').value=CO.n||''; $('#coA').value=CO.a||''; $('#coC').value=CO.c||''; $('#coP').value=CO.p||''; $('#coS').value=CO.s||''; $('#coT').value=CO.t||'';
+  var d=$('#dlgCo'); if(!d.open) d.showModal();
+});
+$('#coCancel').addEventListener('click', function(){ $('#dlgCo').close(); });
+$('#fCo').addEventListener('submit', async function(e){
+  e.preventDefault(); $('#dlgCo').close();
+  if(!isOwner||!db) return;
+  var v=function(id){ return $(id).value.trim().replace(/\s+/g,' '); };
+  if(await saveSettings({co:{n:v('#coN')||'Oxygen Planterium',a:v('#coA'),c:v('#coC'),p:v('#coP'),s:v('#coS'),t:v('#coT')}})) toast('Company details saved');
+});
 $('#waCancel').addEventListener('click', function(){ $('#dlgWa').close(); });
 $('#fWa').addEventListener('submit', async function(e){
   e.preventDefault();
@@ -2577,23 +2603,40 @@ function taskText(){
   });
   return L.join('\n');
 }
+/* company letterhead: logo on the left, company details on the right */
+var CO={n:'Oxygen Planterium',a:'',c:'',p:'',s:'',t:''};
+function letterhead(doc){
+  var W=doc.internal.pageSize.getWidth(), L=36, Rr=W-36, top=26;
+  try{ var img=document.querySelector('img.logo'); if(img&&img.src) doc.addImage(img.src,'JPEG',L,top,52,52); }catch(e){}
+  var lines=[], co=CO;
+  var l2=[co.c,[co.s,co.p].filter(Boolean).join(' - ')].filter(Boolean).join(', ');
+  if(co.a) lines.push(co.a); if(l2) lines.push(l2); if(co.t) lines.push('Phone: '+co.t);
+  doc.setTextColor(42,127,62); doc.setFontSize(15); doc.setFont(undefined,'bold');
+  doc.text(co.n||'Oxygen Planterium', Rr, top+14, {align:'right'});
+  doc.setFont(undefined,'normal'); doc.setTextColor(70,70,70); doc.setFontSize(9);
+  lines.forEach(function(t,i){ doc.text(t, Rr, top+29+i*11, {align:'right', maxWidth:W-L*2-70}); });
+  doc.setDrawColor(42,127,62); doc.setLineWidth(1.4); doc.line(L, top+60, Rr, top+60);
+  doc.setLineWidth(0.4); doc.setDrawColor(200,200,200); doc.line(L, top+64, Rr, top+64);
+  doc.setTextColor(0,0,0); doc.setDrawColor(0,0,0);
+  return top+64;
+}
 function pdfBase(title){
   var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
-  var doc=new J({unit:'pt',format:'a4'});
-  doc.setFontSize(16); doc.text('Nursery Daily Manager - '+title, 40, 46);
+  var doc=new J({unit:'pt',format:'a4'}); letterhead(doc);
+  doc.setFontSize(16); doc.text('Nursery Daily Manager - '+title, 40, 46+70);
   doc.setFontSize(10);
-  doc.text('Date: '+fmtLong(selDate), 40, 66);
-  doc.text('Supervisor: '+((day&&day.supervisor)||'-'), 40, 80);
+  doc.text('Date: '+fmtLong(selDate), 40, 66+70);
+  doc.text('Supervisor: '+((day&&day.supervisor)||'-'), 40, 80+70);
   return doc;
 }
 function secStart(doc,title,first){
   if(!first) doc.addPage();
-  doc.setFontSize(14); doc.text(title, 40, first?106:46); doc.setFontSize(10);
-  return first?116:58;
+  doc.setFontSize(14); doc.text(title, 40, first?106+70:46); doc.setFontSize(10);
+  return first?116+70:58;
 }
 function pdfStock(d0,first){
   var doc=d0||pdfBase('Stock Report'); if(!doc) return null;
-  var y=d0 ? secStart(doc,'1. Stock',first) : 94;
+  var y=d0 ? secStart(doc,'1. Stock',first) : 94+70;
   var R=function(){ return {halign:'right'}; };
   ['1','2'].forEach(function(n){
     var items=rowsOf(n), s=sums(items);
@@ -2638,7 +2681,7 @@ function nurHead(doc,y,n,line){
 }
 function pdfTasks(d0,first){
   var doc=d0||pdfBase('Daily Tasks'); if(!doc) return null;
-  var y=d0 ? secStart(doc,'2. Daily Tasks',first) : 94;
+  var y=d0 ? secStart(doc,'2. Daily Tasks',first) : 94+70;
   ['1','2'].forEach(function(n){
     var items=visibleTasksOf(n), c=taskCounts(items);
     y=nurHead(doc,y,n,c.done+' done, '+c.notdone+' not done, '+c.pending+' pending');
@@ -2658,7 +2701,7 @@ function pdfTasks(d0,first){
 }
 function pdfAtt(d0,first){
   var doc=d0||pdfBase('Attendance'); if(!doc) return null;
-  var y=d0 ? secStart(doc,'3. Attendance',first) : 94;
+  var y=d0 ? secStart(doc,'3. Attendance',first) : 94+70;
   ['1','2'].forEach(function(n){
     var items=attShown(n), c=attCounts(items);
     y=nurHead(doc,y,n,c.P+' present, '+c.H+' half day, '+c.A+' absent, '+c.N+' not marked');
@@ -2948,12 +2991,12 @@ function renderSalDlg(){
     wa.addEventListener('click', async function(){
       var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
       if(!downloads){ toast('Saving files is not available in this view.'); return; }
-      var doc=new J({unit:'pt',format:'a5'}), W=doc.internal.pageSize.getWidth();
-      doc.setFontSize(16); doc.text('Salary Slip - '+mon, 36, 44);
-      doc.setFontSize(10); doc.text('Oxygen Planterium'+' - '+NURS[nursery], 36, 62);
-      doc.setFontSize(12); doc.text('Name: '+rec.n+(salDlg.kind==='sup'?'  (Supervisor)':''), 36, 84);
+      var doc=new J({unit:'pt',format:'a5'}), W=doc.internal.pageSize.getWidth(); var hy=letterhead(doc)-26;
+      doc.setFontSize(16); doc.text('Salary Slip - '+mon, 36, 44+hy);
+      doc.setFontSize(10); doc.text(NURS[nursery], 36, 62+hy);
+      doc.setFontSize(12); doc.text('Name: '+rec.n+(salDlg.kind==='sup'?'  (Supervisor)':''), 36, 84+hy);
       var body=rows2.slice(); 
-      doc.autoTable({startY:96, theme:'grid', styles:{fontSize:10,cellPadding:5}, body:body, foot:foot, showFoot:'lastPage', footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{1:{halign:'right',cellWidth:90}}, margin:{left:36,right:36}});
+      doc.autoTable({startY:96+hy, theme:'grid', styles:{fontSize:10,cellPadding:5}, body:body, foot:foot, showFoot:'lastPage', footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{1:{halign:'right',cellWidth:90}}, margin:{left:36,right:36}});
       var y=doc.lastAutoTable.finalY+16; doc.setFontSize(10);
       if(m.paid){ doc.text('Salary paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):''), 36, y); y+=14; }
       if(m.carryOut>0){ doc.text('Rs. '+fmtN(m.carryOut)+' carried forward to next month as advance.', 36, y, {maxWidth:W-72}); y+=14; }
@@ -3054,6 +3097,7 @@ async function boot(){
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
     ownerWa = String(d.ownerWa||'');
+    var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||''};
     team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
     res = d.res||{};
     syncSup(); renderAll();
