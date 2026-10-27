@@ -70,8 +70,18 @@ textarea{resize:vertical; min-height:76px}
 .statusline{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:.9rem; color:var(--muted)}
 .statusline.edit-on #dstat{color:var(--accent)}
 [hidden]{display:none!important}
-.tabs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:8px; border:1px solid var(--line); border-radius:16px}
-.teamnav{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; border:1px solid var(--line); border-radius:16px}
+.tabs{display:flex; flex-wrap:wrap; gap:6px; padding:6px; border:1px solid var(--line); border-radius:14px}
+.tabs .tab{flex:1 1 auto; min-height:38px; padding:0 10px; font-size:.82rem; border-radius:10px; white-space:nowrap}
+.salbtn{width:100%; min-height:38px; font-size:.85rem; padding:0 10px}
+.dgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
+.dcard{display:flex; flex-direction:column; gap:4px; padding:12px; text-align:left; cursor:pointer; font:inherit; color:inherit}
+.dcard b{font-size:1.35rem; font-variant-numeric:tabular-nums}
+.dcard span{font-size:.82rem; color:var(--muted)}
+#salSubs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; padding:6px; border:1px solid var(--line); border-radius:14px}
+.sline{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.sline .grow{flex:1 1 120px; min-width:0}
+.sline input,.sline select{width:auto; padding:8px 10px}
+.sline input[type=number]{width:110px}
 .rrow{display:flex; flex-direction:column; gap:8px}
 .rtop{display:flex; align-items:center; gap:12px}
 input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(--accent)}
@@ -81,7 +91,6 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .rqty input,.rown input[type=number],.addtask>input[type=number]{width:96px; flex:0 0 auto; text-align:center; padding:8px 6px}
 .rown input[type=text]{flex:1 1 140px; width:auto; padding:8px 12px}
 .rown select{flex:1 1 130px; width:auto; padding:8px 10px}
-.tabs .tab{font-size:.92rem; padding:0 4px; line-height:1.2}
 .tab{min-height:54px; border-radius:12px; border:1px solid var(--line); background:var(--card); font-weight:600; font-size:1.05rem; cursor:pointer}
 .tab[aria-selected="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .pane{display:flex; flex-direction:column; gap:12px}
@@ -207,6 +216,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
+  <button class="btn salbtn" id="salBtn" hidden>💰 Salary</button>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -224,11 +234,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   </section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" id="tabDash" role="tab" aria-selected="false">📊 Dashboard</button>
     <button class="tab" id="tabStock" role="tab" aria-selected="true">📦 Stock</button>
     <button class="tab" id="tabTasks" role="tab" aria-selected="false">✅ Tasks</button>
     <button class="tab" id="tabAtt" role="tab" aria-selected="false">🧑‍🌾 Attendance</button>
-  </nav>
-  <nav class="teamnav" id="teamNav" aria-label="Team and resources">
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>👥 Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">🧰 Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">🧾 Customers</button>
@@ -375,6 +384,28 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <div class="card state" id="rstate">No tools or resources yet.</div>
     <div class="tl" id="rlist"></div>
+  </section>
+
+  <section class="pane" id="paneDash" role="tabpanel" aria-labelledby="tabDash" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <p class="pmeta" id="dashDate"></p>
+    <div class="dgrid" id="dashGrid"></div>
+  </section>
+
+  <section class="pane" id="paneSal" role="tabpanel" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <nav id="salSubs" aria-label="Salary sections">
+      <button class="tab" data-sub="adv" aria-selected="true">Advances</button>
+      <button class="tab" data-sub="ded" aria-selected="false">Deductions</button>
+      <button class="tab" data-sub="bon" aria-selected="false">Bonuses</button>
+      <button class="tab" data-sub="pay" aria-selected="false">Monthly Pay</button>
+    </nav>
+    <label class="f card" style="padding:10px 14px"><span>Month</span><input type="month" id="salMonth"></label>
+    <div id="salBody" class="pane"></div>
   </section>
 
   <section class="pane" id="paneTeam" role="tabpanel" aria-labelledby="tabTeam" hidden>
@@ -773,12 +804,14 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='stock';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
+  if(tab==='sal' && !isOwner) tab='stock';
+  var tb={dash:'#tabDash',stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
   $('#tabTeam').hidden=!isOwner;
-  $('#teamNav').style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
+  $('#salBtn').hidden=!isOwner;
+  $('#salBtn').classList.toggle('primary', tab==='sal');
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs';
-  $('.acts').hidden=tab==='team';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneDash').hidden=tab!=='dash'; $('#paneSal').hidden=tab!=='sal';
+  $('.acts').hidden=(tab==='team'||tab==='sal');
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
   $('#tabTasks').textContent='✅ Tasks'+(pendSug?' 🔔'+pendSug:'');
@@ -1122,7 +1155,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderDash(); renderSal(); }
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
@@ -2243,6 +2276,8 @@ $('#report').addEventListener('change', function(){
   save({report:{text:text, who:nameNow(), at:Date.now()}});
 });
 $('#daySel').addEventListener('change', function(){ goTo(this.value); });
+$('#tabDash').addEventListener('click', function(){ tab='dash'; renderAll(); });
+$('#salBtn').addEventListener('click', function(){ if(isOwner){ tab='sal'; renderAll(); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
@@ -2643,6 +2678,110 @@ $('#importFile').addEventListener('change', async function(){
   }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check your internet connection and that supabase.sql was run.', 9000); }
   finally{ b.disabled=false; b.textContent=old; }
 });
+
+/* ---------- dashboard ---------- */
+function renderDash(){
+  if(tab!=='dash') return;
+  var g=$('#dashGrid'); g.textContent='';
+  $('#dashDate').textContent=day ? fmtLong(selDate)+' · '+NURS[nursery] : (day===undefined?'Loading…':'No report was saved for this date.');
+  if(!day) return;
+  var rows=rowsOf(nursery), low=0, qty=0;
+  rows.forEach(function(it){ var b=bal(it[1]); qty+=Math.max(b,0); if(b<=0) low++; });
+  var tc=taskCounts(visibleTasksOf(nursery)), ac=attCounts(attList(nursery)), cs=csItems(nursery), tot=0;
+  cs.forEach(function(it){ tot+=Number(it[1].amt)||0; });
+  var cards=[
+    ['stock','📦',rows.length+' items','Stock · '+fmtN(qty)+' plants in hand'+(low?' · '+low+' out of stock':'')],
+    ['tasks','✅',tc.done+' / '+(tc.done+tc.notdone+tc.pending),'Tasks done · '+tc.notdone+' not done · '+tc.pending+' pending'],
+    ['att','🧑‍🌾',String(ac.P+ac.H),'Attendance · '+ac.P+' present · '+ac.H+' half · '+ac.A+' absent · '+ac.N+' not marked'],
+    ['cs','🧾',cs.length+(cs.length===1?' sale':' sales'),'Customers · ₹'+fmtMoney(tot)]
+  ];
+  cards.forEach(function(c){
+    var b=mk('button','card dcard'); b.type='button';
+    b.append(mk('span',null,c[1]+' '+c[3]), mk('b',null,c[2]));
+    b.addEventListener('click', function(){ tab=c[0]; renderAll(); });
+    g.append(b);
+  });
+}
+
+/* ---------- salary (owner only) ---------- */
+var salSub='adv', salData={e:{},b:{}}, salSubbed=false, salMonth=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); })();
+var SALK={adv:['Advance','Advances'],ded:['Deduction','Deductions'],bon:['Bonus','Bonuses']};
+function salSave(patch){
+  var d=db.doc('meta/salary');
+  return d.update(patch).catch(function(e){
+    if(e&&e.code==='not_found'){ return d.set(JSON.parse(JSON.stringify(patch,function(k,v){ return v===null?undefined:v; }))); }
+    throw e;
+  }).catch(function(){ toast('Could not save. Check your internet and try again.',4000); });
+}
+function salStaff(){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nursery; }); }
+function salEntries(kind){
+  var e=salData.e||{};
+  return Object.keys(e).filter(function(id){ return e[id] && e[id].k===kind && (e[id].nid||'1')===nursery && e[id].m===salMonth; })
+    .map(function(id){ return [id,e[id]]; }).sort(function(a,b){ return (a[1].d||'').localeCompare(b[1].d||'') || (a[1].at||0)-(b[1].at||0); });
+}
+function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
+function renderSal(){
+  if(tab!=='sal'||!isOwner||!db) return;
+  if(!salSubbed){ salSubbed=true; db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); }, function(){}); }
+  document.querySelectorAll('#salSubs .tab').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.sub===salSub); });
+  var mi=$('#salMonth'); if(document.activeElement!==mi) mi.value=salMonth;
+  var body=$('#salBody');
+  if(body.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName) && document.activeElement.dataset.keep) return;
+  body.textContent='';
+  if(salSub==='pay') return salPay(body);
+  var staff=salStaff(), kind=salSub, nm=SALK[kind];
+  var f=mk('div','card sline'), sel=mk('select','grow'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
+  staff.forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; sel.append(o); });
+  amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount';
+  note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60;
+  if(!staff.length) body.append(mk('p','pmeta','No staff in this nursery yet. Add staff in the Team tab.'));
+  else{
+    f.append(sel,amt,note,add); body.append(f);
+    add.addEventListener('click', function(){
+      var a=Math.round(Number(amt.value)||0);
+      if(!(a>0)){ toast('Enter an amount.'); return; }
+      var id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={e:{}}, d=todayKey();
+      p.e[id]={k:kind,sid:sel.value,n:(team.staff[sel.value]||{}).n||'',amt:a,note:note.value.trim(),m:salMonth,d:d,nid:nursery,at:Date.now()};
+      salSave(p); amt.value=''; note.value='';
+    });
+  }
+  var items=salEntries(kind);
+  body.append(mk('p','pmeta',items.length+' '+(items.length===1?nm[0].toLowerCase():nm[1].toLowerCase())+' · Total ₹'+fmtN(salSum(kind))));
+  items.forEach(function(it){
+    var e=it[1], c=mk('div','card sline');
+    c.append(mk('span','grow',e.n+(e.note?' · '+e.note:'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
+    var del=mk('button','btn small','Delete'); del.type='button';
+    del.addEventListener('click', function(){
+      if(del.dataset.arm!=='1'){ del.dataset.arm='1'; del.textContent='Tap to confirm'; setTimeout(function(){ del.dataset.arm=''; del.textContent='Delete'; },3000); return; }
+      var p={e:{}}; p.e[it[0]]=null; salSave(p);
+    });
+    c.append(del); body.append(c);
+  });
+}
+function salPay(body){
+  var staff=salStaff(), grand=0;
+  if(!staff.length){ body.append(mk('p','pmeta','No staff in this nursery yet. Add staff in the Team tab.')); return; }
+  body.append(mk('p','pmeta','Monthly salary − advances − deductions + bonuses. Enter each person\'s monthly salary once; it is remembered.'));
+  var totEl=mk('p','pmeta'); totEl.style.fontWeight='700';
+  staff.forEach(function(it){
+    var sid=it[0], base=Number((salData.b||{})[sid])||0, c=mk('div','card'), top=mk('div','sline'), inp=mk('input');
+    inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='Monthly ₹'; inp.value=base||''; inp.dataset.keep='1';
+    var adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid), net=base-adv-ded+bon; grand+=net;
+    var netEl=mk('b',null,'₹'+fmtN(net));
+    top.append(mk('b','grow',it[1].n), inp);
+    c.append(top);
+    c.append(mk('p','pmeta','Advances ₹'+fmtN(adv)+' · Deductions ₹'+fmtN(ded)+' · Bonuses ₹'+fmtN(bon)));
+    var l=mk('div','sline'); l.append(mk('span','grow','Pay this month'), netEl); c.append(l);
+    inp.addEventListener('change', function(){
+      var v=Math.round(Number(inp.value)||0), p={b:{}}; p.b[sid]=v>0?v:null; salSave(p);
+    });
+    body.append(c);
+  });
+  totEl.textContent='Total to pay: ₹'+fmtN(grand);
+  body.insertBefore(totEl, body.children[1]);
+}
+$('#salSubs').addEventListener('click', function(e){ var b=e.target.closest('.tab'); if(!b) return; salSub=b.dataset.sub; renderSal(); });
+$('#salMonth').addEventListener('change', function(){ if(this.value){ salMonth=this.value; renderSal(); } });
 
 /* ---------- start ---------- */
 async function boot(){
