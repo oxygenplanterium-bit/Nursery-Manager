@@ -671,6 +671,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <summary>✅ Tasks</summary>
       <div class="fdattin"><div class="fdgrid" id="fdTk"></div></div>
     </details>
+    <details class="card fddrop" id="fdSalBox" open hidden>
+      <summary>💰 Salary</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdSal"></div><p class="pmeta" id="fdSalNote"></p></div>
+    </details>
   </div>
 </div>
 
@@ -1279,6 +1283,24 @@ function renderFull(){
   var tasks=(sel==='all'?taskList('1').concat(taskList('2')):taskList(sel)), tdone=[], tpend=[], tnot=[], treas=[];
   tasks.forEach(function(it){ var t=it[1]; if(t.status==='done') tdone.push(it); else if(t.status==='notdone'){ tnot.push(it); if(t.reason) treas.push(it); } else tpend.push(it); });
   [['✅ Tasks done',tdone.length],['🕓 Pending tasks',tpend.length],['⚠️ Not done',tnot.length],['💬 Reasons given',treas.length]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); tg.append(d); });
+  var sb=$('#fdSalBox'); sb.hidden=!isOwner; var sg=$('#fdSal'); sg.textContent='';
+  if(isOwner){
+    salSubscribe(); loadSalAtt();
+    var vm=todayKey().slice(0,7), t0=new Date(), ws=new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()-t0.getDay()), wd=[], q;
+    for(q=0;q<7;q++) wd.push(keyOf(new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+q)));
+    var people=(sel==='all'?['1','2']:[sel]).reduce(function(a,n){ return a.concat(teamList('staff').filter(function(it){ return (it[1].nid||'1')===n; }).map(function(it){ return [it[0],'staff']; }), teamList('sup').filter(function(it){ return (it[1].nid||'1')===n; }).map(function(it){ return [it[0],'sup']; })); },[]);
+    var mS=0,wS=0,tD=0,tA=0;
+    people.forEach(function(p){
+      var info=salCalc(p[0],p[1],vm)[vm]; if(!info) return;
+      mS+=info.gross-info.absDed; tD+=info.dedAll; tA+=info.advAll===undefined?(info.adv+info.carryIn):info.advAll;
+      var att=Object.assign({},salAtt[p[0]]||{}); var cu=day&&day.att&&day.att[p[0]]; if(cu) att[selDate]=cu.s||undefined;
+      var ab=0; wd.forEach(function(d){ if(att[d]==='A') ab+=1; else if(att[d]==='H') ab+=0.5; });
+      wS+=info.rate*(7-ab);
+    });
+    var mn=new Date(+vm.slice(0,4),+vm.slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    [['💰 Monthly Salary',mS],['🗓️ Weekly Salary',wS],['➖ Total Deductions',tD],['💵 Total Advances',tA]].forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,'₹'+fmtN(Math.round(c[1])))); sg.append(d); });
+    $('#fdSalNote').textContent='Monthly: '+mn+' · Weekly: '+fmtShort(new Date(ws))+' to '+fmtShort(new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+6))+'. Salary is after absent and half-day deductions. Deductions include absent days; advances include amounts carried from last month.';
+  }
   var ag=$('#fdAtt'); ag.textContent='';
   var staff=(sel==='all'?attList('1').concat(attList('2')):attList(sel)), ac=attCounts(staff), pay=0, noRate=0;
   if(isOwner){ salSubscribe(); staff.forEach(function(it){ var w=(it[1].s==='P'?1:it[1].s==='H'?0.5:0); if(!w) return; var r=rateOf(it[0]); if(!r) noRate++; pay+=r*w; }); }
@@ -2919,7 +2941,7 @@ function loadSalAtt(){
   salAttBusy=true;
   db.list('days/','att').then(function(rows){
     var o={}; rows.forEach(function(r){ var d=r.path.slice(5), a=(r.data&&r.data.att)||{}; Object.keys(a).forEach(function(sid){ if(a[sid]&&a[sid].s){ (o[sid]=o[sid]||{})[d]=a[sid].s; } }); });
-    salAtt=o; salAttFor=key; salAttBusy=false; if(tab==='sal') renderSal(); if(tab==='att') renderAtt();
+    salAtt=o; salAttFor=key; salAttBusy=false; if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull();
   }).catch(function(){ salAttBusy=false; salAttFor=key; });
 }
 function salStaff(){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nursery; }); }
