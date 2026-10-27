@@ -118,6 +118,12 @@ h2.dwide{margin:6px 2px 0; font-size:1rem}
 #rowMoveBar{position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:30; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px; background:var(--card); border:2px solid var(--accent); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #rowMoveBar span{flex:1 1 100%; font-weight:700; overflow-wrap:anywhere}
 #rowMoveBar .btn{flex:1 1 80px; min-height:44px}
+.pane[role="tabpanel"]:not([hidden]){position:fixed; inset:0; z-index:35; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 70px) max(16px, calc((100vw - 728px)/2)) 40px}
+#winBar{position:fixed; top:0; left:0; right:0; z-index:36; background:var(--bg); border-bottom:1px solid var(--line); padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px, calc((100vw - 728px)/2)) 10px}
+.winrow{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.winrow b{font-size:1.2rem}
+.winrow .btn{min-height:44px; padding:0 18px}
+#rowMoveBar{z-index:45!important}
 .salh{margin:8px 2px 0; font-size:1.05rem}
 .salp{display:flex; flex-direction:column; gap:10px; border:1px solid var(--line)}
 .salgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
@@ -681,6 +687,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 
 <div id="rowMoveBar" hidden><span id="rmName"></span><button class="btn" id="rmUp" type="button">Up</button><button class="btn" id="rmDown" type="button">Down</button><button class="btn primary" id="rmDone" type="button">Done</button></div>
 
+<div id="winBar" hidden><div class="winrow"><b id="winTitle"></b><button class="btn" id="winClose" type="button">Close</button></div><p class="pmeta" id="winHint" style="color:var(--warn);margin:6px 0 0" hidden>Choose your name on the home screen to mark tasks and attendance.</p></div>
+
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
@@ -708,7 +716,8 @@ var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
 
 var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
 var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
-var tab='stock', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
+var winPushed=false, winPane=null;
+var tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
 var CK='nurseryCache1', cache={idx:null,days:{}}, cacheT=null, indexLive=false, dayLive=false;
 try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; } }catch(e){}
 function cacheSave(){
@@ -891,16 +900,22 @@ function renderTop(){
     else if(isOwner){ cb.hidden=false; cb.textContent='Reopen day'; }
     else cb.hidden=true;
   }else cb.hidden=true;
-  if(tab==='team' && !isOwner) tab='stock';
+  if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
-  if(tab==='sal' && !isOwner) tab='stock';
+  if(tab==='sal' && !isOwner) tab='';
   var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn'};
   $('#tabTeam').hidden=!isOwner;
   $('#salBtn').hidden=!isOwner;
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
   $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
-  $('.acts').hidden=(tab==='team'||tab==='sal');
+  $('.acts').hidden=tab!=='';
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
+  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary'};
+  var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs')); }
+  document.body.style.overflow=(tab||fdOpen)?'hidden':'';
+  if(tab && !winPushed){ winPushed=true; try{ history.pushState({win:1},''); }catch(e){} }
+  if(!tab && winPushed){ winPushed=false; }
+  var pdel=document.querySelector('.pane[role="tabpanel"]:not([hidden])'); if(pdel && pdel!==winPane){ winPane=pdel; pdel.scrollTop=0; } else if(!pdel) winPane=null;
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
   $('#tabTasks').textContent='Tasks'+(pendSug?' '+pendSug:'');
   $('#pdfBtn').textContent = 'Download full report PDF';
@@ -1259,7 +1274,7 @@ function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock();
 var fdOpen=false;
 function renderFull(){
   var ov=$('#fdash'); ov.hidden=!fdOpen;
-  document.body.style.overflow=fdOpen?'hidden':'';
+  document.body.style.overflow=(fdOpen||tab)?'hidden':'';
   if(!fdOpen) return;
   var sel=$('#fdNurs').value||'all', g=$('#fdGrid'), nl=$('#fdNew'), ml=$('#fdMod');
   g.textContent=''; nl.textContent=''; ml.textContent='';
@@ -2495,6 +2510,9 @@ $('#report').addEventListener('change', function(){
 });
 $('#daySel').addEventListener('change', function(){ goTo(this.value); });
 $('#salBtn').addEventListener('click', function(){ if(isOwner){ salAttFor=''; tab='sal'; renderAll(); } });
+function closeWin(fromPop){ if(!tab) return; tab=''; if(!fromPop && winPushed){ winPushed=false; try{ history.back(); }catch(e){} } renderAll(); }
+$('#winClose').addEventListener('click', function(){ closeWin(false); });
+window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
