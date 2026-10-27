@@ -2963,17 +2963,21 @@ function renderSalDlg(){
   }else{
     var f=mk('div','sline'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
     amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount'; note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60; add.type='button';
-    f.append(amt,note,add); b.append(f);
+    var dt=mk('input'); dt.type='date'; dt.setAttribute('aria-label','Date of entry'); dt.style.cssText='flex:0 1 150px;width:auto;min-width:0;padding:8px 8px;font-size:14px';
+    var q0=salMonth.split('-'), mFirst=salMonth+'-01', mLast=salMonth+'-'+('0'+new Date(+q0[0],+q0[1],0).getDate()).slice(-2), t0=todayKey();
+    dt.min=mFirst; dt.max=mLast; dt.value=(t0>=mFirst&&t0<=mLast)?t0:mLast;
+    f.append(dt,amt,note,add); b.append(f);
     add.addEventListener('click', function(){
       var a=Math.round(Number(amt.value)||0); if(!(a>0)){ toast('Enter an amount.'); return; }
       var id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={e:{}};
-      p.e[id]={k:k,sid:sid,n:rec.n,amt:a,note:note.value.trim(),m:salMonth,d:todayKey(),nid:nursery,at:Date.now()};
+      var dv=(dt.value>=mFirst&&dt.value<=mLast)?dt.value:todayKey();
+      p.e[id]={k:k,sid:sid,n:rec.n,amt:a,note:note.value.trim(),m:salMonth,d:dv,nid:nursery,at:Date.now()};
       salSave(p); amt.value=''; note.value='';
     });
     var items=salEntries(k).filter(function(it){ return it[1].sid===sid; });
     var elsewhere=[];
     if(k==='adv'){
-      items=m.advItems.map(function(x){ return [x.id,x]; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+      items=m.advItems.map(function(x){ return [x.id,x]; }).sort(function(a,b){ return (a[1].d||'').localeCompare(b[1].d||'') || (a[1].at||0)-(b[1].at||0); });
       var all=salCalc(sid,salDlg.kind); Object.keys(all).forEach(function(mm){ if(mm!==salMonth) all[mm].advItems.forEach(function(x){ if(x.m===salMonth) elsewhere.push([mm,x]); }); });
       if(m.carryIn>0){ var ci=mk('div','sline'); ci.style.cssText='border:1px solid var(--line);border-radius:10px;padding:8px 10px;justify-content:space-between'; ci.append(mk('span',null,'Advance recovered from previous month'), mk('b',null,'₹'+fmtN(m.carryIn))); b.append(ci); }
     }
