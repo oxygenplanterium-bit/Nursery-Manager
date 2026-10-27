@@ -2433,8 +2433,10 @@ function invAddLine(){
   rowsOf(nursery).forEach(function(it){
     var o=mk('option',null,it[1].name+' (available '+fmtN(bal(it[1]))+')'); o.value=it[0]; sel.append(o);
   });
-  q.type='number'; q.min='1'; q.step='1'; q.inputMode='numeric'; q.placeholder='Qty'; q.setAttribute('aria-label','Quantity'); q.style.width='80px';
-  r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate'); r.style.width='100px';
+  q.type='number'; q.min='1'; q.step='1'; q.inputMode='numeric'; q.placeholder='Qty'; q.setAttribute('aria-label','Quantity');
+  r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate');
+  el.style.cssText='display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px';
+  sel.style.cssText='grid-column:1/-1;width:100%;min-width:0;max-width:100%'; q.style.cssText='width:100%;min-width:0'; r.style.cssText='width:100%;min-width:0';
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
