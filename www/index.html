@@ -294,6 +294,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">Customers</button>
     <button class="tab" id="salBtn" role="tab" aria-selected="false" hidden>Salary</button>
+    <button class="tab" id="tabInv" type="button" role="tab" aria-selected="false">Invoices</button>
     <button class="tab" id="fdBtn" type="button">Dashboard</button>
   </nav>
 
@@ -419,6 +420,27 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <p class="pmeta" id="csEmpty">No sales entered yet.</p>
       <div class="tl" id="csList"></div>
       <div id="padSold"></div>
+    </section>
+  </section>
+
+  <section class="pane" id="paneInv" role="tabpanel" aria-labelledby="tabInv" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <section class="card team" id="invBox">
+      <h2>Invoices</h2>
+      <p class="pmeta">Items come from this nursery's Stock. A sales invoice adds to the Sales column and a purchase invoice adds to the Purchases column of today's stock.</p>
+      <div class="two">
+        <button class="btn primary" id="invNewS" type="button">New Sales Invoice</button>
+        <button class="btn primary" id="invNewP" type="button">New Purchase Invoice</button>
+      </div>
+      <p class="pmeta" id="invHint" style="color:var(--warn)" hidden>Invoices can be created only on the open (latest) day.</p>
+      <label class="f"><span>Show</span>
+        <select id="invFilter" aria-label="Filter invoices"><option value="">All invoices</option><option value="S">Sales invoices</option><option value="P">Purchase invoices</option></select>
+      </label>
+      <div class="bar" id="invBar" hidden><span class="tsum" id="invSum"></span></div>
+      <p class="pmeta" id="invEmpty">No invoices yet.</p>
+      <div class="tl" id="invList"></div>
     </section>
   </section>
 
@@ -581,6 +603,25 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <a class="btn primary" id="sentWa" target="_blank" rel="noopener" href="https://wa.me/" hidden>Notify owner on WhatsApp</a>
     </div>
   </div>
+</dialog>
+
+<dialog id="dlgInv">
+  <form id="fInv" novalidate>
+    <h2 id="invHead">New invoice</h2>
+    <p id="invNo"></p>
+    <label><span id="invPartyL">Customer name</span><input type="text" id="invParty" maxlength="80" autocomplete="off"></label>
+    <div class="two">
+      <label>Phone (optional)<input type="tel" id="invPhone" maxlength="16" inputmode="numeric" autocomplete="off"></label>
+      <label>Invoice date<input type="date" id="invDate"></label>
+    </div>
+    <label>Address (optional)<input type="text" id="invAddr" maxlength="120" autocomplete="off"></label>
+    <div id="invLines" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button type="button" class="btn small" id="invAddLine">Add item</button>
+    <label>GST % (optional)<input type="number" id="invGst" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0"></label>
+    <p id="invTot" style="font-weight:700;color:var(--ink)"></p>
+    <p id="invErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="invCancel">Cancel</button><button type="submit" class="btn primary" id="invSave">Save invoice</button></div>
+  </form>
 </dialog>
 
 <dialog id="dlgRst">
@@ -919,14 +960,14 @@ function renderTop(){
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
   if(tab==='sal' && !isOwner) tab='';
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv'};
   $('#tabTeam').hidden=!isOwner;
   $('#salBtn').hidden=!isOwner;
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv';
   $('.acts').hidden=tab!=='';
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
-  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary'};
+  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices'};
   var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs')); }
   document.body.style.overflow=(tab||fdOpen)?'hidden':'';
   if(tab && !winPushed){ winPushed=true; try{ history.pushState({win:1},''); }catch(e){} }
@@ -1284,7 +1325,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
+function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderInv(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
 
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
@@ -2309,6 +2350,185 @@ $('#fCs').addEventListener('submit', function(e){
   });
 });
 
+/* ---------- invoices (sales and purchase, using Stock as inventory) ---------- */
+var invData={i:{}}, invSubbed=false, invType='S', invEls=new Map();
+function invSubscribe(){
+  if(invSubbed||!db) return; invSubbed=true;
+  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; if(tab==='inv') renderInv(); }, function(){});
+}
+function invSave(patch){
+  var d=db.doc('meta/invoices');
+  return d.update(patch).catch(function(e){
+    if(e&&e.code==='not_found'){ return d.set(JSON.parse(JSON.stringify(patch,function(k,v){ return v===null?undefined:v; }))); }
+    throw e;
+  }).then(function(){ return true; }, function(){ toast('Could not save the invoice. Check your internet and try again.',4000); return false; });
+}
+function invList(){
+  var o=invData.i||{};
+  return Object.keys(o).filter(function(id){ return o[id] && (o[id].nid||'1')===nursery; })
+    .map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
+}
+function invCalc(lines,gst){
+  var sub=0; (lines||[]).forEach(function(l){ sub+=Math.round((Number(l.q)||0)*(Number(l.r)||0)*100)/100; });
+  gst=Number(gst)||0; var g=Math.round(sub*gst)/100; g=Math.round(g*100)/100;
+  return {sub:Math.round(sub*100)/100, gst:g, total:Math.round((sub+g)*100)/100};
+}
+function invLabel(x){ return (x.ty==='S'?'SI':'PI')+'-'+(x.nid==='2'?'R':'C')+'-'+('000'+(x.no||0)).slice(-4); }
+function invNext(ty){
+  var m=0, o=invData.i||{}; Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.ty===ty&&(x.nid||'1')===nursery&&(x.no||0)>m) m=x.no; });
+  return m+1;
+}
+function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
+function makeInv(id){
+  var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), row=mk('div','sline');
+  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice');
+  pdf.type='button'; vd.type='button'; row.append(pdf,vd);
+  pdf.addEventListener('click', function(){ invPdf(id); });
+  vd.addEventListener('click', function(){ arm(vd,'inv'+id,'Cancel invoice', function(){ invVoid(id); }); });
+  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd};
+  return el;
+}
+function updateInv(el,x){
+  var R=el._r, c=invCalc(x.l,x.g);
+  R.t.textContent=invLabel(x)+' · '+(x.ty==='S'?'Sales':'Purchase')+' · '+x.party+(x.void?' (cancelled)':'');
+  R.meta.textContent=[fmtIso(x.d), (x.l||[]).length+((x.l||[]).length===1?' item':' items'), 'Total ₹'+fmtMoney(c.total), x.by?'By '+x.by:''].filter(Boolean).join(' · ');
+  R.vd.hidden=!!x.void;
+  el.style.opacity=x.void?'.6':'';
+}
+function renderInv(){
+  var items=invList(), f=$('#invFilter').value, list=$('#invList'), seen=new Set(), pos=0, st=0, pt=0, ed=editable();
+  $('#invNewS').disabled=!ed; $('#invNewP').disabled=!ed; $('#invHint').hidden=ed||!day;
+  items.forEach(function(it){ var x=it[1]; if(x.void) return; var c=invCalc(x.l,x.g); if(x.ty==='S') st+=c.total; else pt+=c.total; });
+  var shown=items.filter(function(it){ return !f||it[1].ty===f; });
+  $('#invBar').hidden=!items.length;
+  $('#invSum').textContent='Sales ₹'+fmtMoney(st)+' · Purchases ₹'+fmtMoney(pt);
+  $('#invEmpty').hidden=shown.length>0;
+  shown.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=invEls.get(id); if(!el){ el=makeInv(id); invEls.set(id,el); }
+    updateInv(el,it[1]);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  invEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); invEls.delete(id); } });
+}
+$('#invFilter').addEventListener('change', renderInv);
+function invTotals(){
+  var c=invCalc(invReadLines(true), $('#invGst').value);
+  $('#invTot').textContent='Subtotal ₹'+fmtMoney(c.sub)+(c.gst?' · GST ₹'+fmtMoney(c.gst):'')+' · Total ₹'+fmtMoney(c.total);
+}
+function invReadLines(loose){
+  var out=[];
+  document.querySelectorAll('#invLines .invl').forEach(function(el){
+    var id=el.querySelector('select').value, q=parseInt(el.querySelector('.iq').value,10), r=parseFloat(el.querySelector('.ir').value);
+    if(!id && loose) return;
+    out.push({id:id, q:isFinite(q)?q:0, r:isFinite(r)?r:0});
+  });
+  return out;
+}
+function invAddLine(){
+  var box=$('#invLines'), el=mk('div','sline invl'), sel=mk('select','grow'), q=mk('input','iq'), r=mk('input','ir'), x=mk('button','btn small danger','Remove');
+  sel.setAttribute('aria-label','Stock item');
+  var o0=mk('option',null,'Select item'); o0.value=''; sel.append(o0);
+  rowsOf(nursery).forEach(function(it){
+    var o=mk('option',null,it[1].name+' (available '+fmtN(bal(it[1]))+')'); o.value=it[0]; sel.append(o);
+  });
+  q.type='number'; q.min='1'; q.step='1'; q.inputMode='numeric'; q.placeholder='Qty'; q.setAttribute('aria-label','Quantity'); q.style.width='80px';
+  r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate'); r.style.width='100px';
+  x.type='button';
+  x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
+  [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
+  el.append(sel,q,r,x); box.append(el);
+}
+$('#invAddLine').addEventListener('click', invAddLine);
+$('#invGst').addEventListener('input', invTotals);
+$('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
+function openInv(ty){
+  if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  invType=ty;
+  $('#invHead').textContent=ty==='S'?'New Sales Invoice':'New Purchase Invoice';
+  $('#invPartyL').textContent=ty==='S'?'Customer name':'Supplier name';
+  $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
+  $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
+  $('#invLines').textContent=''; invAddLine(); invTotals();
+  var d=$('#dlgInv'); if(!d.open) d.showModal();
+}
+$('#invNewS').addEventListener('click', function(){ openInv('S'); });
+$('#invNewP').addEventListener('click', function(){ openInv('P'); });
+$('#fInv').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var err=$('#invErr'), ty=invType, f=ty==='S'?'sales':'purchase';
+  if(!editable()){ err.textContent='Invoices can be created only on the open (latest) day.'; return; }
+  var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=cleanName($('#invAddr').value), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
+  if(!party){ err.textContent='Enter the '+(ty==='S'?'customer':'supplier')+' name.'; return; }
+  if(digits && digits.length!==10){ err.textContent='The phone number must be exactly 10 digits.'; return; }
+  if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
+  var lines=invReadLines(false), need={}, i;
+  if(!lines.length){ err.textContent='Add at least one item.'; return; }
+  for(i=0;i<lines.length;i++){
+    var L=lines[i];
+    if(!L.id){ err.textContent='Select an item on every line.'; return; }
+    if(!(L.q>0)){ err.textContent='Enter a quantity of 1 or more on every line.'; return; }
+    need[L.id]=(need[L.id]||0)+L.q;
+  }
+  var ids=Object.keys(need), patch={rows:{}}, no=invNext(ty), label=invLabel({ty:ty,nid:nursery,no:no});
+  for(i=0;i<ids.length;i++){
+    var r=day.rows&&day.rows[ids[i]];
+    if(!r){ err.textContent='An item is no longer in stock.'; return; }
+    if(ty==='S' && bal(r)<need[ids[i]]){ err.textContent='Only '+fmtN(bal(r))+' available for '+r.name+'.'; return; }
+    patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
+    if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
+  }
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
+    l:lines.map(function(L){ var r=day.rows[L.id]; return {id:L.id, n:r.name, q:L.q, r:L.r}; })};
+  var btn=$('#invSave'); btn.disabled=true;
+  var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
+  var ok=await invSave(p);
+  if(ok) ok=await save(patch);
+  btn.disabled=false;
+  if(ok){ $('#dlgInv').close(); toast(label+' saved'); }
+  else err.textContent='Could not post to stock. Check that the invoice list does not show a duplicate, then try again.';
+});
+async function invVoid(id){
+  var x=(invData.i||{})[id]; if(!x||x.void) return;
+  if(!editable()){ toast('Invoices can be cancelled only on the open (latest) day.'); return; }
+  var f=x.ty==='S'?'sales':'purchase', patch={rows:{}}, need={};
+  (x.l||[]).forEach(function(L){ need[L.id]=(need[L.id]||0)+L.q; });
+  var ids=Object.keys(need);
+  for(var i=0;i<ids.length;i++){
+    var r=day.rows&&day.rows[ids[i]]; if(!r) continue;
+    var take=Math.min(need[ids[i]], r[f]||0), next=Object.assign({},r); next[f]=(r[f]||0)-take;
+    if(bal(next)<0){ toast('Cannot cancel: stock for '+r.name+' has already been used.',4000); return; }
+    patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=next[f];
+  }
+  if(ids.length && Object.keys(patch.rows).length && !(await save(patch))) return;
+  var p={i:{}}; p.i[id]={void:{at:Date.now(), by:nameNow()||(isOwner?'Owner':'')}};
+  if(await invSave(p)) toast(invLabel(x)+' cancelled and stock reversed');
+}
+async function invPdf(id){
+  var x=(invData.i||{})[id]; if(!x) return;
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26, c=invCalc(x.l,x.g);
+  doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'SALES INVOICE':'PURCHASE INVOICE')+(x.void?' (CANCELLED)':''), 36, y);
+  doc.setFont(undefined,'normal'); doc.setFontSize(10);
+  doc.text('Invoice no: '+invLabel(x), W-36, y-10, {align:'right'}); doc.text('Date: '+fmtIso(x.d), W-36, y+4, {align:'right'});
+  y+=24; doc.text(NURS[x.nid||'1'], 36, y); y+=15;
+  doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
+  if(x.phone){ doc.text('Phone: '+x.phone, 36, y); y+=14; }
+  if(x.addr){ doc.text(x.addr, 36, y, {maxWidth:W-72}); y+=14; }
+  var body=(x.l||[]).map(function(L,i){ return [String(i+1), L.n, fmtN(L.q), 'Rs. '+fmtMoney(L.r), 'Rs. '+fmtMoney(L.q*L.r)]; });
+  var foot=[[{content:'Subtotal',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.sub)]];
+  if(c.gst) foot.push([{content:'GST '+(Number(x.g)||0)+'%',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.gst)]);
+  foot.push([{content:'Total',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.total)]);
+  doc.autoTable({startY:y+6, theme:'grid', styles:{fontSize:10,cellPadding:5}, head:[['#','Item','Qty','Rate','Amount']], body:body, foot:foot, showFoot:'lastPage',
+    headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:28},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
+  var buf=doc.output('arraybuffer');
+  try{ await downloads.save({filename:'invoice-'+invLabel(x)+'.pdf', data:buf}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+}
+
 /* ---------- weekly attendance report ---------- */
 function fmtShort(d){ return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
 function weekStartOf(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()); }
@@ -2534,6 +2754,7 @@ $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); }
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
 $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
+$('#tabInv').addEventListener('click', function(){ tab='inv'; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
 function setMode(m){
@@ -2666,8 +2887,8 @@ function openRst(m){
   rstMode=m;
   $('#rstHead').textContent = m==='all' ? 'Reset All' : 'Reset All Transactions';
   $('#rstWhat').textContent = m==='all'
-    ? 'Deletes EVERYTHING: all saved days, stock items and quantities, tasks, attendance, resources, customers and sales, team (supervisors and staff), per-day salaries, advances, deductions, bonuses and notepads. Only the owner login, owner PIN, company details and owner WhatsApp number are kept. The app starts fresh with an empty register.'
-    : 'Clears on every saved day: customers and sales, attendance marks, task done / not-done marks and reasons, and resource checks. Also clears all salary entries (advances, deductions, bonuses and paid marks). Stock items and quantities, tasks, resources, team and per-day salaries stay.';
+    ? 'Deletes EVERYTHING: all saved days, invoices, stock items and quantities, tasks, attendance, resources, customers and sales, team (supervisors and staff), per-day salaries, advances, deductions, bonuses and notepads. Only the owner login, owner PIN, company details and owner WhatsApp number are kept. The app starts fresh with an empty register.'
+    : 'Clears on every saved day: customers and sales, all invoices, attendance marks, task done / not-done marks and reasons, and resource checks. Also clears all salary entries (advances, deductions, bonuses and paid marks). Stock items and quantities, tasks, resources, team and per-day salaries stay.';
   $('#rstIn').value=''; $('#rstErr').textContent='';
   var d=$('#dlgRst'); if(!d.open) d.showModal();
 }
@@ -2685,6 +2906,7 @@ $('#fRst').addEventListener('submit', async function(e){
       for(var i=0;i<days.length;i++){ await db.doc(days[i].path).delete(); n++; }
       await db.doc('meta/index').delete().catch(function(){});
       await db.doc('meta/salary').delete().catch(function(){});
+      await db.doc('meta/invoices').delete().catch(function(){});
       await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});
       try{ localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
     }else{
@@ -2694,6 +2916,7 @@ $('#fRst').addEventListener('submit', async function(e){
         await db.doc(days[j].path).update(p); n++;
       }
       await db.doc('meta/salary').update({e:null, p:null}).catch(function(){});
+      await db.doc('meta/invoices').delete().catch(function(){});
     }
     $('#dlgRst').close();
     toast(rstMode==='all' ? 'Everything was reset. Reloading...' : 'All transactions were reset ('+n+' days).', 3000);
@@ -3248,6 +3471,7 @@ async function boot(){
   }, function(){ if(!index) index=cache.idx||{}; renderAll(); });
   subscribeDay(selDate);
   if(accountOwner) db.doc('meta/security').onSnapshot(function(s){ pinData=s.exists ? s.data() : null; renderAll(); }, function(){});
+  invSubscribe();
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
     ownerWa = String(d.ownerWa||'');
