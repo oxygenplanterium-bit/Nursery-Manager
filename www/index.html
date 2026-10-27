@@ -2835,8 +2835,8 @@ function salPeople(kind){
 function salMonthInfo(sid,kind){
   var ym=salMonth.split('-'), dim=new Date(+ym[0],+ym[1],0).getDate(), rate=rateOf(sid), A=0,H=0;
   if(kind==='staff'){ var at=salAtt[sid]||{}; Object.keys(at).forEach(function(d){ if(at[d]==='A')A++; else if(at[d]==='H')H++; }); }
-  var gross=rate*dim, absDed=Math.round(rate*(A+H*0.5)), adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid);
-  return {dim:dim,rate:rate,A:A,H:H,gross:gross,absDed:absDed,adv:adv,ded:ded,bon:bon,net:gross-absDed-adv-ded+bon};
+  var gross=rate*dim, absA=Math.round(rate*A), absH=Math.round(rate*H*0.5), absDed=absA+absH, adv=salSum('adv',sid), ded=salSum('ded',sid), bon=salSum('bon',sid);
+  return {dim:dim,rate:rate,A:A,H:H,absA:absA,absH:absH,dedAll:ded+absDed,gross:gross,absDed:absDed,adv:adv,ded:ded,bon:bon,net:gross-absDed-adv-ded+bon};
 }
 function renderSal(){
   if(tab!=='sal'||!isOwner||!db) return;
@@ -2852,7 +2852,7 @@ function renderSal(){
       top.append(mk('b','grow',it[1].n), mk('span','pmeta',m.rate?'₹'+fmtN(m.rate)+' per day':'No per-day salary set'));
       c.append(top);
       var gr=mk('div','salgrid');
-      [['adv','Advances',m.adv],['ded','Deductions',m.ded],['bon','Bonuses',m.bon],['pay','Monthly Pay',m.net]].forEach(function(k){
+      [['adv','Advances',m.adv],['ded','Deductions',m.dedAll],['bon','Bonuses',m.bon],['pay','Monthly Pay',m.net]].forEach(function(k){
         var b=mk('button','salbox'+(k[0]==='pay'?' pay':'')); b.type='button';
         b.append(mk('span',null,k[1]), mk('b',null,(k[2]<0?'− ':'')+'₹'+fmtN(Math.abs(k[2]))));
         b.addEventListener('click', function(){ salDlg={sid:sid,kind:g[0],k:k[0]}; var d=$('#dlgSalP'); if(!d.open) d.showModal(); $('#salPBody').dataset.k=''; renderSalDlg(); });
@@ -2890,7 +2890,12 @@ function renderSalDlg(){
       salSave(p); amt.value=''; note.value='';
     });
     var items=salEntries(k).filter(function(it){ return it[1].sid===sid; });
-    b.append(mk('p',null,items.length+' entr'+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(salSum(k,sid))));
+    if(k==='ded' && salDlg.kind==='staff'){
+      var al=mk('div','sline'); al.style.cssText='flex-direction:column;align-items:stretch;border:1px solid var(--line);border-radius:10px;padding:8px 10px;gap:4px';
+      [['Absent: '+m.A+(m.A===1?' day':' days')+' × ₹'+fmtN(m.rate),m.absA],['Half days: '+m.H+' × ₹'+fmtN(m.rate)+' × ½',m.absH]].forEach(function(r){ var x=mk('div','sline'); x.style.justifyContent='space-between'; x.append(mk('span',null,r[0]), mk('b',null,'₹'+fmtN(r[1]))); al.append(x); });
+      b.append(al);
+    }
+    b.append(mk('p',null,items.length+(k==='ded'&&salDlg.kind==='staff'?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:salSum(k,sid))));
     items.forEach(function(it){
       var e=it[1], c=mk('div','sline');
       c.append(mk('span','grow',(e.note||'—')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
