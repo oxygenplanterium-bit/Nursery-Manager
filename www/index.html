@@ -2906,11 +2906,11 @@ $('#fRst').addEventListener('submit', async function(e){
     var days=await db.list('days/'), n=0;
     if(rstMode==='all'){
       for(var i=0;i<days.length;i++){ await db.doc(days[i].path).delete(); n++; }
-      await db.doc('meta/index').delete().catch(function(){});
-      await db.doc('meta/salary').delete().catch(function(){});
-      await db.doc('meta/invoices').delete().catch(function(){});
+      var delDoc=function(path){ return db.doc(path).delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; }); };
+      await delDoc('meta/index'); await delDoc('meta/salary'); await delDoc('meta/invoices');
       await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});
-      try{ localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
+      salData={e:{},b:{},cfg:{}}; salAtt={}; invData={i:{}}; cache.idx=null; cache.days={};
+      try{ localStorage.removeItem(CK); localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
     }else{
       for(var j=0;j<days.length;j++){
         var d=days[j].data||{}, p={cs:null, att:null, rs:null}, tk=d.tasks||{};
