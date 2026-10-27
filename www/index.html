@@ -785,8 +785,11 @@ function makeRow(id){
     edit.addEventListener('click', function(){ openEdit('item',id); });
     top.append(edit);
     mv=moveBtn(); mv.addEventListener('click', function(){ moveRow(id,mv); });
+    top.append(mv);
+  }
+  if(canWrite){
     xf=mk('button','edit','Transfer stock'); xf.type='button'; xf.addEventListener('click', function(){ openXfer(id); });
-    top.append(xf,mv);
+    top.append(xf);
   }
   nm.append(top); idw.append(sl,nm); el.append(idw);
   var R={sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
@@ -829,7 +832,7 @@ function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
   R.sl.textContent=n; R.name.textContent=r.name;
   if(R.edit) R.edit.hidden=!ed;
-  if(R.xf) R.xf.hidden=!(ed&&isOwner);
+  if(R.xf) R.xf.hidden=!(ed&&canWrite);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
   FIELDS.forEach(function(f){
     var v=r[f]||0;
@@ -846,12 +849,18 @@ function updateRow(el,id,r,n){
     var el=mk('span','note xfer'); el.append(mk('b',null,(e.k==='in'?'Transferred in ':'Transferred out ')+e.q));
     el.append(document.createTextNode((e.k==='in'?' from ':' to ')+NURS[e.o||'1']+(e.n?' · '+e.n:'')));
     var meta=[e.by,fmtTime(e.at)].filter(Boolean).join(' '); if(meta) el.append(mk('small',null,meta));
+    if(ed&&canWrite){
+      var ub=mk('button','btn small','Undo transfer'); ub.type='button'; ub.style.marginTop='6px';
+      if(armed['ux'+e.xid]) ub.textContent='Tap again to confirm';
+      ub.addEventListener('click', function(){ undoXfer(e.xid,ub); });
+      el.append(document.createElement('br'),ub);
+    }
     R.notes.append(el);
   });
 }
 function xferEntries(r){
   var x=(r&&r.x)||{};
-  return Object.keys(x).map(function(k){ return x[k]; }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
+  return Object.keys(x).map(function(k){ return Object.assign({xid:k},x[k]); }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
 }
 function sortItems(items){
   if(!sortMode) return items;
@@ -1430,7 +1439,8 @@ $('#mvAllRes').addEventListener('click', function(){
 /* ---------- stock transfer between nurseries (owner only) ---------- */
 var xfCtx=null;
 function openXfer(id){
-  if(!isOwner||!editable()) return;
+  if(!canWrite||!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
   var r=day&&day.rows&&day.rows[id]; if(!r||r.removed) return;
   var from=r.nid||'1', dest=otherN(from), b=bal(r);
   xfCtx={id:id};
@@ -1452,24 +1462,46 @@ $('#xfFull').addEventListener('click', function(){
 $('#xfCancel').addEventListener('click', function(){ $('#dlgXfer').close(); });
 $('#fXfer').addEventListener('submit', async function(e){
   e.preventDefault();
-  if(!isOwner||!editable()||!xfCtx) return;
+  if(!canWrite||!editable()||!xfCtx) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
   var id=xfCtx.id, r=day&&day.rows&&day.rows[id]; if(!r||r.removed) return;
   var from=r.nid||'1', dest=otherN(from), q=Math.floor(num($('#xfQty').value)), avail=bal(r), err=$('#xfErr');
   if(!(q>0)){ err.textContent='Enter a quantity of 1 or more.'; return; }
   if(q>avail){ err.textContent='Only '+fmtN(avail)+' available in '+NURS[from]+'.'; return; }
   var dr=destRow(r,dest);
   if(dr&&dr[1].pending){ err.textContent='This item is still waiting for approval in '+NURS[dest]+'.'; return; }
-  var rows=day.rows, maxO=0, at=Date.now(), by=nameNow()||'Owner', note=$('#xfNote').value.trim().replace(/\s+/g,' ');
+  var rows=day.rows, maxO=0, at=Date.now(), by=nameNow()||(isOwner?'Owner':'Supervisor'), note=$('#xfNote').value.trim().replace(/\s+/g,' ');
   Object.keys(rows).forEach(function(i){ maxO=Math.max(maxO,rows[i].order||0); });
   var xid='x'+at.toString(36)+Math.random().toString(36).slice(2,5), did;
   var patch={rows:{}};
   patch.rows[id]={x:{}}; patch.rows[id].x[xid]={k:'out', q:q, o:dest, by:by, at:at, n:note};
   if(dr){ did=dr[0]; patch.rows[did]={x:{}}; }
-  else { did='i'+at.toString(36)+Math.random().toString(36).slice(2,6); patch.rows[did]={order:maxO+1, name:r.name, total:0, purchase:0, sales:0, damages:0, nid:dest, x:{}}; }
+  else { did='i'+at.toString(36)+Math.random().toString(36).slice(2,6); patch.rows[did]={order:maxO+1, name:r.name, total:0, purchase:0, sales:0, damages:0, nid:dest, auto:true, x:{}}; }
   patch.rows[did].x[xid]={k:'in', q:q, o:from, by:by, at:at, n:note};
   $('#dlgXfer').close();
   if(await save(patch)) toast(fmtN(q)+' '+r.name+' transferred to '+NURS[dest]);
 });
+
+function undoXfer(xid,btn){
+  if(!canWrite||!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var rows=(day&&day.rows)||{}, hit=Object.keys(rows).filter(function(i){ return rows[i].x&&rows[i].x[xid]; });
+  if(!hit.length){ toast('That transfer was already undone.'); return; }
+  /* after removing it, no row may end with a negative balance */
+  for(var n=0;n<hit.length;n++){
+    var r=rows[hit[n]], e=r.x[xid], after=bal(r)+(e.k==='in'?-e.q:e.q);
+    if(after<0){ toast('Cannot undo: '+r.name+' in '+NURS[r.nid||'1']+' has already used some of the transferred quantity.', 6000); return; }
+  }
+  arm(btn,'ux'+xid,'Undo transfer', async function(){
+    var patch={rows:{}};
+    hit.forEach(function(i){
+      var r=rows[i], left=Object.keys(r.x).filter(function(k){ return k!==xid&&r.x[k]&&r.x[k].q>0; }).length;
+      patch.rows[i]={x:{}}; patch.rows[i].x[xid]=null;
+      if(r.auto && !left && !(r.total||0) && !(r.purchase||0) && !(r.sales||0) && !(r.damages||0)) patch.rows[i].removed=true;
+    });
+    if(await save(patch)) toast('Transfer undone');
+  });
+}
 
 /* ---------- team: supervisors and staff ---------- */
 function saveSettings(patch){
