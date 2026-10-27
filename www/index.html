@@ -430,6 +430,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
+    <label class="f card" style="padding:10px 14px"><span>Full-attendance bonus (₹, added automatically when present all days of the month)</span><input type="number" id="salBonusCfg" min="0" step="1" inputmode="numeric" placeholder="₹ 0 = no automatic bonus"></label>
     <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="salPrev" aria-label="Previous month">‹</button><b id="salMonthLbl"></b><button class="btn" type="button" id="salNext" aria-label="Next month">›</button></div>
     <div id="salBody" class="pane"></div>
   </section>
@@ -438,7 +439,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <section class="card team">
       <h2 id="supHead">Supervisors</h2>
       <p class="pmeta">Assign tasks to them. Each supervisor picks their own name at the top of the app.</p>
-      <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><input type="number" id="supRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><button class="btn primary" type="submit">Add</button></form>
+      <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><input type="number" id="supRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><select id="supNur" aria-label="Supervisor nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
       <p class="pmeta" id="supWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="supEmpty">No supervisors yet.</p>
       <div class="tl" id="supList"></div>
@@ -1796,7 +1797,7 @@ async function addTeam(kind,raw){
     var k=normName(n); if(have[k]){ dups.push(n); return; }
     have[k]=1; maxO++; added++;
     var id=(kind==='sup'?'s':'w')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    patch.team[kind][id]={n:n, o:maxO}; if(rateV>0) rp.b[id]=rateV; if(kind==='staff') patch.team[kind][id].nid=$('#staffNur').value==='2'?'2':'1';
+    patch.team[kind][id]={n:n, o:maxO}; if(rateV>0) rp.b[id]=rateV; patch.team[kind][id].nid=$('#'+(kind==='sup'?'supNur':'staffNur')).value==='2'?'2':'1';
   });
   if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter a name first.'); return false; }
   if(await saveSettings(patch)){
@@ -1839,13 +1840,13 @@ function makeTeam(kind,id){
   rin.style.cssText='flex:0 0 92px; width:92px; padding:8px 6px; text-align:center';
   rin.addEventListener('change', function(){ var v=Math.round(Number(rin.value)||0), p={b:{}}; p.b[id]=v>0?v:null; salSave(p); });
   var nsel=null;
-  if(kind==='staff'){
+  {
     nsel=document.createElement('select'); nsel.setAttribute('aria-label','Nursery');
     nsel.style.cssText='flex:1 1 140px; width:auto; padding:8px 6px';
     nsel.innerHTML='<option value="1">'+NURS['1']+'</option><option value="2">'+NURS['2']+'</option>';
-    nsel.addEventListener('change', function(){ var p={team:{staff:{}}}; p.team.staff[id]={nid:nsel.value}; saveSettings(p); });
+    nsel.addEventListener('change', function(){ var p={team:{}}; p.team[kind]={}; p.team[kind][id]={nid:nsel.value}; saveSettings(p); });
     el.append(inp,rin,nsel,btn);
-  } else el.append(inp,rin,btn);
+  }
   el._r={inp:inp,nsel:nsel,rin:rin}; el._kind=kind;
   return el;
 }
@@ -2233,7 +2234,7 @@ async function weeklyPdf(startKey,W){
   var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
   var w=W||await loadWeek(startKey), dates=w.dates, keysW=w.keysW, today=w.today, docs=w.docs;
   var by={'1':{names:{},order:[]},'2':{names:{},order:[]}};
-  teamList('staff').forEach(function(it){ var g=by[it[1].nid==='2'?'2':'1']; g.names[it[0]]=it[1].n; g.order.push(it[0]); });
+  teamList('staff').concat(teamList('sup')).forEach(function(it){ var g=by[it[1].nid==='2'?'2':'1']; g.names[it[0]]=it[1].n; g.order.push(it[0]); });
   var known={}; ['1','2'].forEach(function(n){ by[n].order.forEach(function(id){ known[id]=1; }); });
   keysW.forEach(function(k){
     var a=(docs[k]&&docs[k].att)||{};
@@ -2297,7 +2298,7 @@ var ATT_TXT={P:'Present',H:'Half day',A:'Absent','':'Not marked'};
 function attList(n){
   n=n||nursery;
   var out=[], seen={}, att=(day&&day.att)||{};
-  teamList('staff').forEach(function(it){
+  teamList('staff').concat(teamList('sup')).forEach(function(it){
     seen[it[0]]=1;
     if((it[1].nid||'1')!==n) return;
     var a=att[it[0]]||{};
@@ -2830,10 +2831,10 @@ function salEntries(kind){
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
   if(salSubbed||!db||!isOwner) return; salSubbed=true;
-  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; if(tab==='sal') renderSal(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; if(tab==='sal') renderSal(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function salPeople(kind){
-  var l=teamList(kind); return kind==='staff' ? l.filter(function(it){ return (it[1].nid||'1')===nursery; }) : l;
+  var l=teamList(kind); return l.filter(function(it){ return (it[1].nid||'1')===nursery; });
 }
 function ymIdx(m){ var q=m.split('-'); return (+q[0])*12+(+q[1])-1; }
 function ymOf(i){ return Math.floor(i/12)+'-'+('0'+(i%12+1)).slice(-2); }
@@ -2847,9 +2848,10 @@ function salCalc(sid,kind){
   var att=Object.assign({},salAtt[sid]||{}); var cur=day&&day.att&&day.att[sid]; if(cur) att[selDate]=cur.s||undefined;
   for(i=lo;i<=hi;i++){
     var m=ymOf(i), q=m.split('-'), dim=new Date(+q[0],+q[1],0).getDate(), A=0,H=0;
-    if(kind==='staff') Object.keys(att).forEach(function(d){ if(d.slice(0,7)===m){ if(att[d]==='A')A++; else if(att[d]==='H')H++; } });
+    var Pn=0; Object.keys(att).forEach(function(d){ if(d.slice(0,7)===m){ if(att[d]==='A')A++; else if(att[d]==='H')H++; else if(att[d]==='P')Pn++; } });
     var ded=0,bon=0; Object.keys(e).forEach(function(id){ var x=e[id]; if(x&&x.sid===sid&&x.m===m){ if(x.k==='ded') ded+=Number(x.amt)||0; else if(x.k==='bon') bon+=Number(x.amt)||0; } });
-    M[m]={m:m,dim:dim,rate:rate,A:A,H:H,absA:Math.round(rate*A),absH:Math.round(rate*H*0.5),gross:rate*dim,ded:ded,bon:bon,adv:0,advItems:[],carryIn:0,paid:null};
+    var bonusCfg=Number((salData.cfg||{}).bonus)||0, full=(Pn===dim&&dim>0), auto=(full&&bonusCfg>0)?bonusCfg:0; bon+=auto;
+    M[m]={m:m,dim:dim,rate:rate,A:A,H:H,full:full,autoBon:auto,absA:Math.round(rate*A),absH:Math.round(rate*H*0.5),gross:rate*dim,ded:ded,bon:bon,adv:0,advItems:[],carryIn:0,paid:null};
     order.push(m);
   }
   advs.sort(function(a,b){ return (a.at||0)-(b.at||0); });
@@ -2874,6 +2876,7 @@ function salMonthInfo(sid,kind){
 function renderSal(){
   if(tab!=='sal'||!isOwner||!db) return;
   salSubscribe(); loadSalAtt();
+  var bc=$('#salBonusCfg'); if(document.activeElement!==bc) bc.value=(salData.cfg&&salData.cfg.bonus)||'';
   var ym0=salMonth.split('-'); $('#salMonthLbl').textContent=new Date(+ym0[0],+ym0[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var body=$('#salBody'); body.textContent='';
   [['sup','👤 Supervisors'],['staff','🧑‍🌾 Staff']].forEach(function(g){
@@ -2907,7 +2910,7 @@ function renderSalDlg(){
   if(k==='pay'){
     var l=mk('dl'); l.style.cssText='margin:0;display:grid;grid-template-columns:1fr auto;gap:6px 12px';
     var rows=[['Salary ('+m.dim+' days × ₹'+fmtN(m.rate)+')','₹'+fmtN(m.gross)]];
-    if(salDlg.kind==='staff') rows.push(['Absent ('+m.A+(m.A===1?' day':' days')+') and half days ('+m.H+')','− ₹'+fmtN(m.absDed)]);
+    rows.push(['Absent ('+m.A+(m.A===1?' day':' days')+') and half days ('+m.H+')','− ₹'+fmtN(m.absDed)]);
     rows.push(['Deductions','− ₹'+fmtN(m.ded)],['Bonuses','+ ₹'+fmtN(m.bon)],['Advances','− ₹'+fmtN(m.adv)]);
     if(m.carryIn>0) rows.push(['Advance recovered from previous month','− ₹'+fmtN(m.carryIn)]);
     rows.push([m.balance<0?'Excess advance to recover':'Balance to pay',(m.balance<0?'₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))]);
@@ -2935,7 +2938,7 @@ function renderSalDlg(){
     b.append(pbox);
     var R=function(n){ return 'Rs. '+fmtN(n); }, mon=new Date(+salMonth.slice(0,4),+salMonth.slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
     var rows2=[['Per day salary',R(m.rate)],['Salary for '+m.dim+' days',R(m.gross)]];
-    if(salDlg.kind==='staff') rows2.push(['Absent '+m.A+' day(s) and half day '+m.H,'- '+R(m.absDed)]);
+    rows2.push(['Absent '+m.A+' day(s) and half day '+m.H,'- '+R(m.absDed)]);
     if(m.ded) rows2.push(['Deductions','- '+R(m.ded)]);
     if(m.bon) rows2.push(['Bonus','+ '+R(m.bon)]);
     if(m.adv) rows2.push(['Advances','- '+R(m.adv)]);
@@ -2947,7 +2950,7 @@ function renderSalDlg(){
       if(!downloads){ toast('Saving files is not available in this view.'); return; }
       var doc=new J({unit:'pt',format:'a5'}), W=doc.internal.pageSize.getWidth();
       doc.setFontSize(16); doc.text('Salary Slip - '+mon, 36, 44);
-      doc.setFontSize(10); doc.text('Oxygen Planterium'+(salDlg.kind==='staff'?' - '+NURS[nursery]:''), 36, 62);
+      doc.setFontSize(10); doc.text('Oxygen Planterium'+' - '+NURS[nursery], 36, 62);
       doc.setFontSize(12); doc.text('Name: '+rec.n+(salDlg.kind==='sup'?'  (Supervisor)':''), 36, 84);
       var body=rows2.slice(); 
       doc.autoTable({startY:96, theme:'grid', styles:{fontSize:10,cellPadding:5}, body:body, foot:foot, showFoot:'lastPage', footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{1:{halign:'right',cellWidth:90}}, margin:{left:36,right:36}});
@@ -2981,12 +2984,13 @@ function renderSalDlg(){
       var all=salCalc(sid,salDlg.kind); Object.keys(all).forEach(function(mm){ if(mm!==salMonth) all[mm].advItems.forEach(function(x){ if(x.m===salMonth) elsewhere.push([mm,x]); }); });
       if(m.carryIn>0){ var ci=mk('div','sline'); ci.style.cssText='border:1px solid var(--line);border-radius:10px;padding:8px 10px;justify-content:space-between'; ci.append(mk('span',null,'Advance recovered from previous month'), mk('b',null,'₹'+fmtN(m.carryIn))); b.append(ci); }
     }
-    if(k==='ded' && salDlg.kind==='staff'){
+    if(k==='bon' && m.autoBon>0){ var ab=mk('div','sline'); ab.style.cssText='border:1px solid var(--line);border-radius:10px;padding:8px 10px;justify-content:space-between'; ab.append(mk('span',null,'Full attendance bonus (present all '+m.dim+' days)'), mk('b',null,'₹'+fmtN(m.autoBon))); b.append(ab); }
+    if(k==='ded'){
       var al=mk('div','sline'); al.style.cssText='flex-direction:column;align-items:stretch;border:1px solid var(--line);border-radius:10px;padding:8px 10px;gap:4px';
       [['Absent: '+m.A+(m.A===1?' day':' days')+' × ₹'+fmtN(m.rate),m.absA],['Half days: '+m.H+' × ₹'+fmtN(m.rate)+' × ½',m.absH]].forEach(function(r){ var x=mk('div','sline'); x.style.justifyContent='space-between'; x.append(mk('span',null,r[0]), mk('b',null,'₹'+fmtN(r[1]))); al.append(x); });
       b.append(al);
     }
-    b.append(mk('p',null,items.length+(k==='ded'&&salDlg.kind==='staff'?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?m.advAll:salSum(k,sid)))));
+    b.append(mk('p',null,items.length+(k==='ded'||(k==='bon'&&m.autoBon>0)?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?m.advAll:(k==='bon'?m.bon:salSum(k,sid))))));
     items.forEach(function(it){
       var e=it[1], c=mk('div','sline');
       c.append(mk('span','grow',(e.note||'—')+(e.m!==salMonth?' (given in '+new Date(+e.m.slice(0,4),+e.m.slice(5)-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})+')':'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
@@ -3001,6 +3005,7 @@ function renderSalDlg(){
   }
   var cl=mk('button','btn','Close'); cl.type='button'; cl.addEventListener('click', function(){ d.close(); }); var ac=mk('div','actions'); ac.append(cl); b.append(ac);
 }
+$('#salBonusCfg').addEventListener('change', function(){ var v=Math.round(Number(this.value)||0); salSave({cfg:{bonus:v>0?v:null}}); });
 function salShift(n){ var q=salMonth.split('-'), d=new Date(+q[0],+q[1]-1+n,1); salMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); salAttFor=''; renderSal(); }
 $('#salPrev').addEventListener('click', function(){ salShift(-1); });
 $('#salNext').addEventListener('click', function(){ salShift(1); });
