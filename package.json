@@ -1,0 +1,23 @@
+{
+  "name": "nursery-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nursery Daily Manager - Android app (Capacitor + Firebase)",
+  "scripts": {
+    "build:web": "esbuild src/platform.js --bundle --minify --format=iife --target=es2019 --outfile=www/platform.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/share": "^6.0.2",
+    "firebase": "^10.14.1",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.5.31",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.1"
+  }
+}

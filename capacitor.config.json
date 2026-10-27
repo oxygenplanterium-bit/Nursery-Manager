@@ -1,0 +1,6 @@
+{
+  "appId": "com.oxygenplanterium.nursery",
+  "appName": "Nursery Daily Manager",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

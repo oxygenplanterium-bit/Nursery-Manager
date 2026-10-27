@@ -1,0 +1,2495 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><title>Nursery Daily Manager</title></head><body>
+<style>
+/* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
+:root{
+  --bg:#0F1713; --card:#1A2620; --line:#2C3D33; --field:#111A15; --ink:#E9F1EB; --muted:#9DB1A4;
+  --accent:#6DBE6F; --accent-ink:#0B1A10; --accent-soft:#223A2A;
+  --bal-bg:#2E6B5B; --bal-ink:#F0FFF8; --bal-line:#4C9A84; --bal-zero:#FFD6CD;
+  --buy:#6DBE6F; --sell:#8DB6F2; --loss:#FF9381; --warn:#E8B64D; --warn-soft:#362C12; --loss-soft:#3B1F1A;
+  --f:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D;
+    --accent:#2A7F3E; --accent-ink:#FFFFFF; --accent-soft:#DDEFE1;
+    --bal-bg:#CFEFE2; --bal-ink:#0B4636; --bal-line:#8FD1B9; --bal-zero:#A62A1A;
+    --buy:#2A7F3E; --sell:#2A5CA6; --loss:#B0301F; --warn:#8F5B00; --warn-soft:#F8EBCB; --loss-soft:#F8E1DC;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D;
+  --accent:#2A7F3E; --accent-ink:#FFFFFF; --accent-soft:#DDEFE1;
+    --bal-bg:#CFEFE2; --bal-ink:#0B4636; --bal-line:#8FD1B9; --bal-zero:#A62A1A;
+  --buy:#2A7F3E; --sell:#2A5CA6; --loss:#B0301F; --warn:#8F5B00; --warn-soft:#F8EBCB; --loss-soft:#F8E1DC;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4;
+  padding-block:22px 40px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
+.brand{display:flex; align-items:center; gap:12px}
+.logo{width:64px; height:64px; border-radius:50%; flex:0 0 auto; background:#fff}
+h1{margin:0; font-size:1.6rem; line-height:1.15; font-weight:700; text-wrap:balance}
+h2{margin:0; font-size:1.15rem; font-weight:700}
+.sub{margin:6px 0 0; color:var(--muted); font-size:.95rem}
+button,input,select,textarea{font:inherit; font-size:16px; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px}
+input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:12px; padding:12px 14px; min-width:0}
+input[readonly]{color:var(--muted); text-align:center}
+textarea{resize:vertical; min-height:76px}
+.btn{display:inline-flex; align-items:center; justify-content:center; text-align:center; gap:6px; min-height:48px; padding:10px 14px; border-radius:12px; border:1px solid var(--line); background:var(--field); color:var(--ink); font-weight:600; cursor:pointer; text-decoration:none}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:disabled{opacity:.45; cursor:default}
+.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.danger{color:var(--loss); border-color:var(--loss)}
+.btn.small{min-height:38px; padding:6px 12px; font-size:.9rem}
+.addwide{flex:1 1 100%; order:-1; width:100%; min-height:54px; font-size:1.05rem; border-radius:12px}
+.modes{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.modes .btn{min-height:54px; font-size:1.05rem; border-radius:12px}
+.modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.alertcard{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--warn-soft); border-color:var(--warn)}
+.alertcard>div{flex:1; min-width:0; font-weight:600}
+#pendList{display:flex; flex-direction:column; gap:3mm}
+.pitem{display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--line); border-radius:14px; background:var(--field)}
+.pname{font-weight:600; overflow-wrap:anywhere}
+.pmeta{font-size:.84rem; color:var(--muted); margin:0}
+.pact{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.pact input{width:120px; text-align:right}
+.fields{display:flex; flex-direction:column; gap:12px}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.f{display:flex; flex-direction:column; gap:6px; min-width:0}
+.f>span{font-size:.9rem; color:var(--muted)}
+.statusline{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:.9rem; color:var(--muted)}
+.statusline.edit-on #dstat{color:var(--accent)}
+[hidden]{display:none!important}
+.tabs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:8px; border:1px solid var(--line); border-radius:16px}
+.teamnav{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; border:1px solid var(--line); border-radius:16px}
+.rrow{display:flex; flex-direction:column; gap:8px}
+.rtop{display:flex; align-items:center; gap:12px}
+input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(--accent)}
+.rname{flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere}
+.rown{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.rqty{display:flex; align-items:center; gap:8px; font-size:.9rem; color:var(--muted)}
+.rqty input,.rown input[type=number],.addtask>input[type=number]{width:96px; flex:0 0 auto; text-align:center; padding:8px 6px}
+.rown input[type=text]{flex:1 1 140px; width:auto; padding:8px 12px}
+.rown select{flex:1 1 130px; width:auto; padding:8px 10px}
+.tabs .tab{font-size:.92rem; padding:0 4px; line-height:1.2}
+.tab{min-height:54px; border-radius:12px; border:1px solid var(--line); background:var(--card); font-weight:600; font-size:1.05rem; cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.pane{display:flex; flex-direction:column; gap:12px}
+.bar{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.bar input[type=search]{flex:1 1 180px}
+.bar select#sortSel{flex:1 1 170px; width:auto; font-weight:600}
+.chip{font-size:.82rem; font-weight:600; padding:4px 10px; border-radius:99px; background:var(--warn-soft); color:var(--warn)}
+.state{color:var(--muted); text-align:center; padding:22px 14px; display:flex; flex-direction:column; align-items:center; gap:12px}
+
+#ledger{padding:0; background:none; border:0; border-radius:0; display:flex; flex-direction:column; gap:3mm}
+#list,#tlist{display:flex; flex-direction:column; gap:3mm}
+.head,.row{display:grid; grid-template-columns:52px minmax(0,1fr) repeat(5,86px); column-gap:8px; align-items:center; padding:8px 12px}
+.head{padding:0 13px; font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.head .r{text-align:center; padding:0}
+.row{background:var(--card); border:1px solid var(--line); border-radius:14px}
+.id{display:contents}
+.sl{color:var(--muted); font-variant-numeric:tabular-nums}
+.nm{min-width:0}
+.nmtop{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.name{font-weight:600; overflow-wrap:anywhere}
+.edit{border:0; background:transparent; color:var(--muted); cursor:pointer; padding:2px 6px; font-size:.85rem; text-decoration:underline}
+.c{display:flex; flex-direction:column; min-width:0}
+.lab{display:none; font-size:.68rem; color:var(--muted); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.c input{text-align:center; font-variant-numeric:tabular-nums; padding:8px 8px; height:42px; border-radius:10px; -moz-appearance:textfield; appearance:textfield}
+.c input::-webkit-outer-spin-button,.c input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.c input:disabled{background:transparent; border-color:transparent; opacity:1; -webkit-text-fill-color:currentColor}
+.c.purchase input:not(:disabled),.c.purchase .val{color:var(--buy)}
+.c.sales input:not(:disabled),.c.sales .val{color:var(--sell)}
+.c.damages input:not(:disabled),.c.damages .val{color:var(--loss)}
+.val{text-align:center; padding:0 8px; font-variant-numeric:tabular-nums; min-height:42px; display:flex; align-items:center; justify-content:center}
+.bal .val{font-weight:400; font-size:16px; height:42px; padding:0 8px; color:var(--bal-ink); background:var(--bal-bg); border:1px solid var(--bal-line); border-radius:10px}
+.bal .val.zero{color:var(--bal-zero)}
+.notes{display:flex; flex-direction:column; gap:4px; margin-top:6px; grid-column:2/-1}
+.notes:empty{display:none}
+.note{display:block; text-align:left; border:0; background:var(--field); border-radius:8px; padding:6px 10px; font-size:.85rem; color:var(--ink); cursor:pointer; overflow-wrap:anywhere}
+span.note{cursor:default}
+.note b{margin-right:6px}
+.note.purchase b{color:var(--buy)} .note.sales b{color:var(--sell)} .note.damages b{color:var(--loss)}
+.note small{color:var(--muted); margin-left:6px}
+.note.add{background:transparent; border:1px dashed var(--line); color:var(--muted)}
+.note.add.need{border-color:var(--warn); color:var(--warn); background:var(--warn-soft)}
+.totals{background:var(--field); font-weight:700}
+.totals .val{color:var(--ink)}
+.totals .bal .val{color:var(--bal-ink); font-weight:700}
+.foot{margin:0; padding:0 4px; font-size:.82rem; color:var(--muted)}
+.rep{display:flex; flex-direction:column; gap:8px}
+.rep label{font-weight:700}
+.rep p{margin:0; font-size:.82rem; color:var(--muted)}
+
+.task{display:flex; flex-direction:column; gap:10px}
+.task.done{background:var(--accent-soft)}
+.ttop{display:flex; gap:10px; align-items:flex-start}
+.ttitle{flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere}
+.tmeta{font-size:.82rem; color:var(--muted)}
+.seg{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.seg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.seg .btn.nd[aria-pressed="true"]{background:var(--loss); border-color:var(--loss); color:var(--bg)}
+.tsum{display:flex; gap:8px; flex-wrap:wrap; font-size:.9rem; color:var(--muted)}
+.addtask{display:flex; gap:10px; flex-wrap:wrap}
+.addtask>input[type=text],.addtask>.mw{flex:1 1 160px; width:auto}
+.mw{display:block; position:relative; width:100%; min-width:0}
+.mw:has(>[hidden]){display:none}
+.mw>input,.mw>textarea{padding-right:52px}
+.bar .mw{flex:1 1 180px}
+.micbtn{position:absolute; right:6px; top:50%; transform:translateY(-50%); width:38px; height:38px; padding:0; border-radius:50%; border:1px solid var(--line); background:var(--card); cursor:pointer; font-size:1rem; line-height:1}
+.micbtn.ta{top:8px; transform:none}
+.micbtn.on{background:var(--loss); color:var(--bg); border-color:var(--loss)}
+.addtask select{flex:1 1 140px; width:auto}
+.tassign{display:flex; align-items:center; gap:8px; font-size:.9rem; color:var(--muted)}
+.tassign select{flex:1; padding:8px 10px}
+.tmove{justify-content:space-between}
+.tmove .btn{flex:1; white-space:nowrap}
+.tmove span{display:none}
+.team{display:flex; flex-direction:column; gap:10px}
+.tl{display:flex; flex-direction:column; gap:3mm}
+.trow{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.trow input{flex:1; padding:8px 12px}
+.arow{display:flex; flex-direction:column; gap:10px}
+.aseg{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.aseg .btn{padding:8px 4px; font-size:.92rem}
+.aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.aseg .btn.h[aria-pressed="true"]{background:var(--warn); border-color:var(--warn); color:var(--bg)}
+.aseg .btn.a[aria-pressed="true"]{background:var(--loss); border-color:var(--loss); color:var(--bg)}
+.addtask .btn{flex:0 0 auto}
+.acts{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+
+dialog{border:1px solid var(--line); border-radius:16px; background:var(--card); color:var(--ink); padding:0; width:min(460px, calc(100vw - 32px))}
+dialog::backdrop{background:rgba(3,9,6,.6)}
+dialog form,dialog .dbody{padding:18px; display:flex; flex-direction:column; gap:12px}
+dialog label{display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.92rem}
+dialog p{margin:0; color:var(--muted); font-size:.9rem}
+.actions{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap}
+#toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; font-size:.92rem; max-width:calc(100vw - 32px); z-index:50}
+
+@media (max-width:640px){
+  .head{display:none}
+  .row{grid-template-columns:repeat(5,minmax(0,1fr)); column-gap:6px; row-gap:6px; padding:12px 12px}
+  .id{display:flex; gap:10px; grid-column:1/-1; align-items:flex-start}
+  .nm{flex:1}
+  .notes{grid-column:1/-1}
+  .lab{display:block; text-align:center}
+  .c input{padding:8px 4px; text-align:center}
+  .val,.bal .val{padding:0 4px; justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="brand">
+    <img class="logo" alt="Oxygen Planterium logo" width="64" height="64" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCADAAMADASIAAhEBAxEB/8QAHQAAAwACAwEBAAAAAAAAAAAAAAYHBQgBAgQDCf/EAEgQAAEDBAAEAwUEBQkHAwUAAAECAwQABQYRBxIhQQgTMRQiUWFxMlKBkRUWI0KhJDNjcoKDkrHBFxgmNGKi0TZzwjhEsrPh/8QAGwEAAwEBAQEBAAAAAAAAAAAAAAECAwQFBgf/xAAyEQACAQIFAQYFBAIDAAAAAAABAgADEQQSITFRQQUTIjJhcQaRsdHwFDPB4YGhQlLx/9oADAMBAAIRAxEAPwDf6iiiiEKKKKIQoopXzHiDjWDx44u8l16fLVyQrVBaMiZNV91plPvK+Z6JHcigm0TMFFzGilPK+JWFYY+iJfb6yi4O/wAzbYyVSJb3w5GGwVn66186V0WrijxCIeyC4u4DYV9U2q1Opcubyf6aV1Szv7rQKh9+m7FOH+H4Sw4nGrFFhuu9X5ei5IfPcuPLJWs/1iam5O0zzM3lFvf7RYGacT8j/wDSPDZNpiq+zPy6X7KT8xFZC3PwUUGj9ReJ15Xz5JxdlQm1dVRMZtjMNKfl5r3muH67FU0ACijLzDu7+Yk/npJmvgbiM4H9YbrluQEjR/SWQSlJP9hC0p/hXQ+Hbgso7d4fWt9X3pCnHSfxUsmqfRRkXiHc0+qiS/8A3deCoO2+HtqZP3mC40R9ClQIrsjgVh0ED9XbnluPken6MyCUhKf7K1qT/CqdRRkXiHcU+iiTA4HxPs6ivGeMEuY2nqmJk9sZmJV8i6z5Tg+uzXBzXinjXXL+GiLxET9u4YhL9pUB8TFeCHPwSVmqhXBANGXiHdW8pI/PWKWJ8TsIzR9cOxX1lVxa/nrZJSqNMZPcLYcAWNfHWvnTdSxlnDzDc4YbRk1hizXWurMvRbkMH4tvIIWg/Qik9dq4qcO9vY7cXeIFgR1Vabs6lu6MJ/oZXRL+vuugKP36LkbwzMvmF/b7Sr0Uq4ZxDxnOY8gWeS6zPiK5JtqnNGPMhK+66yr3k/I9UnsTTVTBvtNFYMLiFFFFOOFFFFEIUUUUQhRRUnv9/vnErKpmC4LcHrbZYLnkZBk0Y++hf70KIr0L2vtuejYOh73oibSHfLPdkOe3q+ZHKwnhczGmXWMryrnfJKSuDZyf3Va/npGvRlJ6eqykdDmcM4c2XEXn7qp2ReMimAe3X64kOS5P/Tza022OzaAEj4d6zmOY3ZMTxyLYcetzMC3xk8rTDQ6DuSSeqlE7JUdkkkk1laQHUxKhJzNv9Ieg1RRXlk3O3Q30My58VhxY2hDrqUFQ+QJ61UskDeeqiuqVoWgLQoKSeoIOwa7URwrqpxCVpSpaQpXQAnRP0pey/LImK2fz1gOy3dpYY3rmPxP/AEioNcb7d7td/wBJTZ7ynwrmQpKikN/AJA9K+f7W+IKPZ7CnbM3HA/OkhnAmzlFT/h9nRviBaLqsfpBtO23PTz0j/wCQ7/Gn5a0oQVrUEpA2SToAV6uCxtLGUhWpHQ/lpQNxedqKn994y4JY5Co6rmue8k6UiCjzQD81dE/xrM4VnVnzq1yJtpS+17O75TjT4AWnpsHoT0I/yNWmKou/dqwJ4kCqhOUHWM9FFFdE0iZmvDayZg+xdUPSLNkcMH2G/wBtIblxj90n0cbPdte0kdh61hccz+92PJYuD8VGI0K7SFeXbL5GBRAvJH7qd/zL+vVlR6+qCR0FNrEZLjNjy/GpVgyK3Mz7fJTyuMuD8QpJHVKgeoUNEEbFSR1EyZCDmXeZeipLjuQ3zhvlcPAc9uDtxtM1fk49k8g+88rtDlq9A+B9hfo6B97e61TBvKR8whRRRTlwoopW4g5i3hOEPXZuIqfcXnEQ7bb0HSpstw8rTI+qupPZIUe1BNomYKLmLmfZBeb9k7fC3CJq4lzksiRebuz1NnhKJG0n09od0UtjsOZZ6JG3bG8cs+J4vCx6wwm4dvhthtllHXQ9SST1UonZKj1JJJrCcOMLcxDFnDdJSZ+Q3N4z7zcddZMpYHNr4NoACEJ7JSPnTjUgdTIRSfE2/wBIUUUVU0nBOkkk6+dfntxYzF3NuLV2vKnCuKh0xoaT+4yglKdfDfVX41vfmM1y3cPL7PaJS5Ht77qCOxDaiK/NkHaQSdnWya5cS1gBPmfiOuQqUx11jJj2dZhij6XsfyO4QdHflIdKm1fVCtpP5VsVw38UMOc43aeIjTMB09E3VhOmVf8AuJ/c+o2PpWqXNsa/jXivDxZsUpY3sNkb+vT/AFrCnUYGwM8PBdoV6DgI2nB2m3OUZArJsjeuqXedhXuxwDsBr93X19fxrD1rzwh4jOWq4sYteXyq3Pq5Izqz/wAus+id/cJ/I1sP0HqK/Mu2sHXw2KbvzfNrfmfZ0awrLm6zhu5Ls8hF0bkeQqMoOhz7uq8md8Wb1nQEaMpdvtHKP5K2rq6e5cPf+r6D50nZtdVLkptTKtIRpbuu6uw/D1rFW5X8gRvtv/Ouzs81aGHIDWDdJy18QcxprtPvrQ12qweHec6zxAuNvCj5UiEVlO+nMhY0fyUajzzrbaCpakpSPUqOgKZeF3FHE8HzKXdbquXJT7KplCIbXOSoqSepJA9BXrdlBv1KMNhOelVWlUDObCbpUVr0rxbYgHuVGM3tSPvEtA/lzVn7J4nOGF1eSzMlXC0LP702MeT/ABIKtfjX3Aqoes9Ne08KxsKglmory264wLva2LlbJbMuI+gLafZUFIWk9wRXqrSdoN9RMRk2M2bL8Um47f4SJdvmN+W62rofiFJPqlQOiFDqCARSRw+yK9WPJ3uFWczVS7vEZMi0Xd0aN5hAgc57ee3sJcHfosdFGqdSVxLwp7L8Wads8pMDJbU8J9luBH/LyUjoFfFtY2hae6VH4CpI6iZupBzrv9Y60UrcPcyZznBY959lVBnIWuJcbe4ffhS2zyusq/qqB0e4KT3ppqgb6zRSGFxCpZaEf7QeO03JHh5liw9blstiT9l64KTqU/8APy0kMpPYl2mfiXlD+H8MLpeYLYeuXImNbmPXzZbqg0wnXfbi07+QNenBMVYwrh5asZYcLyobAS8+fV94kqddPzWtS1H61J1Npm3iYLxr9ox616UUUVU1hRRRRCYfK4C7rgt5tjY2uVBfZSPmpsgfxNfmvyqR7ihpSehB7EetfptOuMC2xFSrjNjxGE+rshxLaR+JIFfndxQRjNl4t3mJZr3b5lvcfMiM7HfC08q/e5djptJJH4Vy4lSQCJ8z8R0cwRx00i1XivLRdsEpKRs+WT+XX/SvalbbqOZpaXAe6TsVwFIcZ9NpUNEf51yL4TefKqSjAyZg9Ro6+BFbUYHlbuQcI03R1zmmRGXGX1E9SttOwo/UaP51rBcIioNzdjEHSVe6fintVC4Y39VuwzMreFe85EQtkb9XFnyR/wDmn8q4viHBjFYYMBqpH+zY/npPqcHWytcbERvfmGdKVIcO3Hkh4/2q9Mi5xrRZm3HveWoe42PVR/8AHzrB3N1FlyhiI8SGvZ1sA/FSCCB9SN0uXm5OyFLlOnalaQ2jsNnQArzcPgRWK/8AWYVaxQ+s9F0u8u5ubkOENg+62n7I/wDNdIqORrmPqrrXwaYLhBPVI9T8a9o+Ar3FRUXKosJ4uJqE6TgqJ2NV0G99ASewHeux71TuBOAO5zxWiqfYKrVbFJmTFn0OjtDf1UoDp8Aa1Rbm0yw9Fq1QU13M3J4bWNWN8Jcesi0lLkaC2HAeyyOZX8VGmmuB6VzXpjSfpaKEUKOkKKKKJUlF0R/s74/w780PLx/NFot9wSOiGLmhP8ne+XmoBaUe6kt/Gqv2pY4hYm3m/Da7Y0p0svSWdxZAOjHkIIWy6D2KXEoV+FfLhplbmacLbRf5Tfkz3GizPY9CzKaUW30a7acQr8NVI0NpkvhYrzr94v5gP1j494Xif2otqQ9k01HYqb/YRQf7xxxY+bXyqlgaFTbBB+l+NXEXJVe8hiVFsEdR/dTHYDrgH95JV+VUqheY6et25P8AUKKKKqaQrFZM5eWsOujuOoaXdkRXFQ0up5kqdCSUgjv11WVo1RERcWn5hZNlWUZZeXZuU3abPl8xCkyVHTZB6pCPROj2ApaudvTPigJ0l1HVB/0rbrxAeHuZOuUrOsDhF514l24Wpoe8tXd1odyfVSe56juK1UcQ406tl1tTbiDyqQsEKSfgQeoNO158Ti6NXD1fH8+YmtvS7fJPlOOMOpPUD/Ud6YLLfw/PMaUEtl07SQenP3Hy36/WibGDg29E9oT2Ug6Wn/zWGfiWxKFLRLeZWnqEuo1o/Wsnpht5LBKw1GsYcmt4fhic2B5jPRXzT/8AyuvDG2PXjihbYCOcseYJD6B6KS374B/tBNbIeFGdwmyaO5ZcitcZ3M0hQT+kVBxuUydjbKT7oUAdKGt9x09Pp4SsWszfHriJNiRkLjWpZhQg4AstoVIc9Ce/K2BusKmHZ6LUwbEj5T0MDgXUIGYG5+UnPGvF7xaCiXJgPRVOJE+MXE65wOitf+Kl0CR+mrm0pIUliOnnXvus9APw61uz4v75jlt4OM26bHEjIJz/AJdpQ2f2jZ6Bxeu6eU8uu5Umtesh4GZXwt4bW/Ir4uEY8vkL6WlnzIzi08wQsEdgCNg+ornoYP8AS0e7U3ttF2ph2Qs1MX/i8RZ0xi3wS85oAdEp39o9hWKVksOO0EJ8yQ5+8pA0Ce+iax8hm45LLVIjhKITKuRCnVBIJ7nr6167bi0Z6QBIne0aPvJij3R9Vnp+VUTSpjxnWedRwGZRn3M9Vtva7pPTFYgO7PqrmBCB8TX6AcB1cP4XDtmz4ddWpkpI86eXU+XIW6fVSkHqE9hrYA71pVEhxLfG8mIwhpHfXqfmT3pmwW35Vc8+t8fDVyGrt5gLTzJI8od1qPZAHrvofSuSnj7VPAun+57OAw6YV8yrcn80n6D0V8YiJDcBlEt1Lz6W0hxxKeULVrqQOwJ2dV9q9yfRQoooohCpfg//AA3x2zrDT7kW4FnJ4KD/AE+2pIHyDrQV/e/OqhUxzYfofj7w5yNHuImLm4/JV94Os+e0D/bjf91S3QzKrpZuD/U7cCyJfC5+/wC9qvN6uVxKta2Fy3An/tQmqZUx8PPXwxYW4TtTluS6o/EqUpRP5k1TqE8ohR/bX2hRRRVTWFFFFEIUk5fwl4f5y4p/IcbivSz/APeM7Ze/FadE/junaiiQ6K4swuJAnvCPw1ckc7dxyFlve/KElCh+ZRumfHvDnwlx95L6cYRc3k+jl1cMnX9lXu/wqrUUTBMFQQ5lQXmpnH7w02a3Y7M4j8L47tlu1r/lr8CEopbcSnqpxkDq24nXNodCAegNI3g9zmz4xN4g3DJLiliOi3tXN6Q6rZUlDigo/NRLidDuTW9EhlqTFcjvoC2nElC0n0UkjRH5GvyKyS3rsObXyxtLWlEWc/EKQdBSUOkAH4+gonHi1GHqLVQSvs8Y7BlviXXxS4kszXrbax5loskZvzCSk/sWySQlIBJcUo+qvjT2u48W/Fzfm7axEGM4BHfC3nQCpBIPTazrznfgkaSn1Nerw2eGnH8oxGHxCzxpU6NKUVQLXspbUhKiPMd11UCQdJ9NdTveq3NgwIVtt7MC3xGIkVlPI0wwgIQhPwSkdAKJWHw9Sot6h0Ovv7zUm++DIW1YdxO6NXRpI6R7qsoWD8ikch/IUv8A+77xUbWGG8ZZCU9AUS2QkD/FW71FcVbA06puxPznV+jpdBaao414XsnmPIdyi7w7bH/eainz3T8t9Ej69a2HwvAMZwK0mFj8ANKXrzpLh5nnj8VK/wBBoD4Uz0VrRwtOjqo1mtOiieUQoooromsKKKKIQqZcbyYmC2e/DW7Pkdrm73rSfakNK/7XVCqbUw8Qw5fDTlbut+RGbkD6tvNr/wDjUtsZlW/bY+kPDxseGTD2j6tQiyofAocWkj8xVPqY8Cf5Jw0m2AgBVmv1zt5SP3QmW4tI/wAK01TqE8ohR/bX2hRXzdkMMcnnvNtc6w2jnUE8yj6JG/Un4V9KqawoooohCiiuN/X8qITmiujrzTKCt5xDaR3WoAfxpXvnEzh7jcZb18zSxwko9UuTEFf4JBKj+VERYDeM8h9qLFckvuJbaaSVrWo6CUgbJP4CvyMyq6ovuf3u+NA+XOuD8pA/6VuKUP4EVs/x88VkHJMamYVw2En2SWkszbw6gteY2eim2UnqAodCo66bAHXdalhJ10TSJnidoYhahCprafo14UMyt+S+Ha12lp5Ht9i3AlMj1SAoqbVr4KSR1+INXKvyd4fcQsq4Z5i1kWLTfIfA8t5lwczUlveyhxPcfxB6g1upgvjF4d36I0xlzUrGJ+gFqcQX4yj8UuJGwP6wH1oBnXhMajIFc2Imx1FK1o4k8P78yl20ZpYZYV6Buc3zf4Sd/wAKZGZMeQnmjvtOj4oWFf5U56AYHYz60Ub+tFEcKKKKIQoorjmTzcuxv4UQnNTDxEHfhjzBsersIMgfErcQkD81VT6mHHYe2cNIOPjRN6v1st4B7hUttav+1tVS/lMyr602HpDAj+h+OnEjGVHlbkSYmQR0n95MhgNOEf3kY/4qp9S/M/8AhrxAYTl/2It1Q9jE1fYKc/bxSf7xtaPq586p4OxQumkKel14P9zXzinj2cjj/acjsEHJ7lCYQ1I8xuPFmx4hSdKajsuqSW3VgbLpOwFdK2BaXzspWUKQSAeVXqPkaTuJlmv96w5UbHZF2RLDgHkW24IgKeB93S31IUpCBvmPIOY60K+/DViJb+G1rsjN4ttzk21hMWY9AkF5AfA24CSoq3zEn3jvr2pKLEyUXK5HOsba6rSFtlJJAPwOj+ddqTOLWVS8J4JZNlMAAy4MFbjBI2A4dJSSO+ioH8KubMQoJMwOc5twcxO5ew5rmDcGYobMU3GQXAPiUNqJT+IFfLGrBwU4g21y4YzKYvbCTpxTF1krKCeyklzafxAqL+HLgHh2b8NzxH4jRHMkud5kPLSJb6+VCUrKStXKQVLUoKJJPQaArBcSMWheG3xL4blOBOvxLPeXvJlWzzVLTyhxCXG9nqUFLgIB3pSelE4e9fKKjKMp+ctcLCPDVk2Xy8SiQrHcbzFKxIt6pjy3UFB0raVL7H1rz5Rww8LWEPRW8qxzFrQ5MJ9nTJcWlTutA6HNs+o/OkzxOcPp+KX+Fx/wV9EC7Wt9s3JKSEh0bCEu6/ePXkWP3kkfCsJwUx+68f8AjdN42Z0lhVttTyY9utiV86EOpAKU6P7iN83X7Slb7UWiZxn7vIM38cyl23hx4V7xmsjELbYcXkX2OVB23JccDqeX7XulXXW+tenKuFnhiweExKy3G8Zs7MhZQyqW4tHmKA2Qkc2zoUkeKHh9dMdvtu49YIDHu9odbVcg2PtoHRLxHcAe4v4pI+FK3D9u6+KTxFJzzJrcYuJY2htLNvKudtTvRQa3+9tW1q+QSmiDMFbu8gzdNOnMsN94UeGTGMcav+Q41jNttzqQpqRKdWgOAjY5QVbUdEHQG6wuLYr4Qs1u4tWMW7FJ84jaYyVutuL/AKqVkFX4bqZWawM+Izxm5SjNJMhzH8c8xti3tuFAKEO+UhA19kKIUtRHU+m678W8F8NUK/ptmL51FwHJrRLSmQplqVISkjqeg3pxPQhSVfI0pJcEZgq29esr+VcLfC7hCYrmXY3i9nEoqDBmOLR5nLrm5fe662PzrBMo8HEZQ9mn4mwf6Kc8j/JVTvxbXC33HGeFNyN0N5gOtOOrnJRyGW3pnmc5emiobOu2681nvvgyvOQwbPEwW+iRMkNxmi4HQnmWoJG/2x6bIotE1RRUKgKNt5sHPs3ArF7/AG2yXGfDtk+4pSqHGcu0lCngo8qSkeZ6E9BTjcIGHYXYX77c5z1st8RIU7Jk3F/kbBIA3zLPcgfjWpXi4x+bffEXh+M2FlJmSrSiNFa5uXavNc5Ug9vTQ/CvueMjue+CbMcPyd1beW2OMy0+l/3XJLSZDaQ4QevOkjlWPjo96cv9SFZ1I229dJuRYL3Z8ixyLecfuLNwtshJLEplfOlwAkEg9+oI/CslUj8MX/0p4l/7L3/73KrlE7abZkDHrA+lRyz4vZcn8Qp4lWLPFSWgwOe2ttqClpRzse6skbYK0rOuUgqSSFU9cRMv/Ufh/MyFMZqQ42ttppD7vlNBbjiUJLrmj5bYKtqWegGzS5watuLvYkrLrBjTtmcuiloU0uaZbYQh1egwrmKQwVFa0hISDzb0N1BsTaQ5DOE/zKZUvzw/pjjvw2xlO1IjSJmQSEj91LDPktk/VyQPyqoVLsKP6y8fs4zDquLa0s4xBX2Ja/bSSP7xxCfq3TbiOrrZeT/cYuKGKP5lwru1lgueVc/LTJtz3oWpbKg6woHt+0Qn8Ca9XD/LGM44b2jJ2Wy0qYwFPsHoph5JKXWj80rSpJ+lMtSizKPDvj5Oxp0+XYMxW5dLWT9lm4JG5TA+HmJAeSPiHaDobwbwsG50+0qb7KH462XAShaSlQB0dEaPWo/g9gsnCjOnMUxvHcqubdycaE26qjpEOEkIWWhsBPMTs8ykg6J2oj0qyD0pP4l49k2TcP5FpxS9KtM9brai8h5TJW2FbW2HEgqRsdwN9Nd90MOsdRf+Q3EcN7rA5pi8PNeH14xS4KUiPcoq4ylpGyjmHRQ+YOj+FGKQrrYcEtduya8ouNxjsoZkTlHlDy96H2up9QOvU/U1nqqV5hrNJcLzziz4Z48nAsq4dzshszb63YMyFzhPvHZKHAlQKVH3uU6Ukk178fx7iR4kOPVmzvNMZex3D7GtLkeLISpPm8qucISFAFalKCeZegAE6FblaFdHl+VHW7rfKkq18dDdE5hhdlLeEdJqZxWTmPHvxBQuFlst11tmGWh8u3G4uxlttyFo+2sFQAVrfIgdySr0rGCwZV4YPEQmZjNnu954fX3lD7EVlchTCQeoPKD+0bJ2kn7SSR61ULH4gbrcsUut7exmA63FsyrugwpjjiWiHQ37O+pTYCHDvmHLzdEmn3ijxFVw9wmPdotrRcrhLfSzGgrkBjzNIU44ec+nKhCz8zod6LzPu0a9TNrvf+J7+JLS7lwQypqKw5IW/ZpQaaS2SpZLKtAJ1vZ6dPWph4P7XcLV4cEx7nbZUCQbnJX5cplTSyDyaVpQB109flTFkfHG3WK8WFTdtMmx3eyruouvmcqYxOgylwa91C1KCObspQrhPErN5lzwVq241YzHyuEJTa5E91K46ksJedSoBoggBWknfXvqi82JQ1A99Rp87SM5vjnELgF4jbnxVwjG3shxq9lap0RhKlFsrUFLQoJBUj3xzJXojro1OOKt9vPGG3Tr1ifASTZQ04mVdLyYinJTyvshIUEJ2CSNgAk62dAVtXZ+Ll2u2WZNATaLaiLZHJzZHmSPOdEcHR35XlDmOunPsb9Kwdl8QM+fid8ur1ktT7lusTV6SmDNdUkeYrl8hzzG0kK77SFJ6etK85npIwKhrA30tInxtsWRf7F+CZjYzdZzkCBzSY7URxakEJZPIsBJ5SeUjr86Z2/EWuNKQ+14XpjTzagpC0ReVSSPQg+z7Bq4XPitIt8jJGxZW3BZ7xbbWk+eR5olhklZ6dCnzj0767bpOvniQcsqcniKxdLlytV8Fthx/aSBLjhakLkb5egR5a9gb0eXr1ovGyBCWD2/xx/5FTirbb1dfG9wpvcex3ExAxGW86mOtSGf2q1ELUBoEA9d1hPFbwLmquK+JuE2595ckhq8QobZUpRPQPpSnqd9AsfQ/GtxU9Ug1zTm74VXDA9dZKvDdBm27wwYpDuEN+JJQw5zsvtltadvLI2k9R0IqpOutssLedUEIQkqUo9gBsmu9LV6znH7Fllox6fLbEy5v+ztpS4glpZSpTfmJ3zJCykpSdaKulIm02UCmoUnaIWPZC7xTu0zJMFyC5QYsZ1qLKtt4YRKt9wYI5gtCUq22spJ6ggjoFpqvstNsMJaZbS22gcqUISEhI7AAelYe0Yljlhvdxu9ltTEGVcilUsx9oQ8pO9LKAeXm69VAbPTZOqzZOhs0lFt4U1IHi3izxBy1nB+G13yZxsvORGD7PHHUvvqPIy0B3KnFIT+Nebhhij2GcK7TY5rnm3ENmRcH/Uuy3VF19ZPfbi1fhqla7q/2i8f4WOtftLBhi0XO5KH2H7kpO4zHz8pBLyh2Upuqx2oGpvEviYtxp94Uq8Q8NRm+EPWpqWYFyYcRNtlwSNqhy2zzNOj5A9CO6Sod6aqKZF9JoyhhYxN4b5qvMsVWbjEFvyC2vGBebaT1iykAcwHxQoELQrulQ+dOXapfxBx+9Y7lTfFfB4Tky5R2RHvdnZ6G8Qk7Puj09oa2VNnuOZHcU9Y1klny3FoWRWCaiZbpjYdZeR3HcEeqVA7BSeoIINIHoZCMR4W3+sTeIPDYZxl9pn3y9vfq1b21OvWrzPLbLwOw8SB73u8w6kFBCVJINZLhtxEx7PscMixvqX7P7qm1OF5SW+ZSW1LXrXMtKQsp2VDmHNo06qSlSSlQBB6EHvUy4l4RmNzstltvDO9M4wxFkLW+1EPsyTse4vSE+8lKtqLfTm2NnpohFtRJYFDmUSnVwtIWgoUNgjRpLsfEG3z7xeLc8zMRCs3Kw/kEhtLUKQ+khLqELJ6FKyAe29gHpTrTBvNFYMNIvqwrG1cPTg/6OAsRjeyeyBxQHl/d5t83473Xgb4YYT5ENmZZhc24RdVHTdXnJwbLgSFnTyldkADfp11rZpvopwKKdxE5vhZgjdkFo/QDS4ItrlnDDji1pEVxfmKa6n05gCD6jQ1rVZSPh2PRV2BTFvCTYGVMW086j5CFNhsj1973QB13WdoohkXiKEXhniMO9z7pGiTG3Z633JLQnv+Q4p4EOKLPPybOz1107V2kcNMKlQzFfsqVNG0osZT5q/+TQrmS16+gPf1+dNtFEMi8RQm8MMKuGZJyiXaCu4hxl5R9odDTjjI00tbQVyLUjQ0SCRofCvnL4UYBPfffl46y66+JIccK18x9ocS691305loSfl21s050UQyLxADQ1RXzdfZYQFPOobSpQQCtQAJJ0B17knVS/PeLqbNgLF8xJmNNMic9blSpyXUMQnmgvaHkpSVhSlo8tI0NqUnro9UWAFzE7hBcxwyjI3IFvn23HXLbPyoQnJMGzvy0tOSCAdHXry776122PWpfgtpj8ZMDuj2eQo0m4w7gqLEu3sLcK5RVNpQr3kJKiy425zBPXqAlWuvX12rh5KvPFvHuKCYEqFEnpFyuFouCgiTb5vs5bQpKtFRRyqUlTPME70rXqKsjUaOytxbLDba3Vc7ikJAK1aA2dep0ANn4VABY3MyANQ3bbjmfRKeVATzFWhrZ9TSZxKzVzDsWbTaoqbhkV0eECy23fWTKUOm/g2gbWtXZKT8qzuT5LZsQxObkd/moiW+G35jrqup+ASkeqlE6ASOpJAFI3D3Hb1fsnd4rZ1CXEu0tkx7PaHTs2aEog8qu3nuaCnD26I9Aapj0Et2PkXf6Rm4e4a3g+DsWhctU64OuLmXK4LHvzZbh5nXlfVXQDskJHamqiimBbSaKAosIUUUU44VI7/YL5wxyqbneCW565WKc4X8gxiMPfK/3psNPp52vtt+jgGx73rXKKRF5DpmmJxzJLJluNxb/jtyZuFulI52n2T0PxBHqlQPQpOiCCCKy1THIcAvmPZLKzfhS9GiXKSrzbpYJKiiDeD3UdfzEjXo6kaPosH1GcwriTY8ycftgbkWjIYYHt9guSQ1Lin48votB7OI2kjv2pA9DEr2OVt504k4jd81w39VrVcY1rizJCDOllBW620hYc/Yp+yVlSQNq6AEnR9KL0+3ww4PzpNrZuN2kQ2lGO1IdXJkTJLitIClHqStxY36Ab6aAp1HUVwRsU7dYympI3k4xPiHel45ZUZzjsm2Xu53NVsjx2mSjz+VsrMjy1nmbbASreyda31BFURp9l4KLLqHOVRSrlIOiPUHXf5VjpuO2ufkcC+yWVKn29p5qK6FkeUHQkLIHpshIG/UdfialFg4LXzB8eyv9WMjadu1ytqINvkeSYpZUFLUp50gqC3iXAS5oE8g6UtRIu6aWvLZsfGgnQ2aj1ztHFW28M5VvhXu6vzkZKz7NLBakyv0Z5zeyv7IWdc5I6HlOqaeKb+YM4THbwlT6LrIuUSP5jKRtDS3QHFEqQsIATvaik69dUZvSV3mhJEd9jVBIHrU9lO5jDzp2JEEyU2jFFrafd2tlU9Lmk8wASgrIIPQAkDsKXYY42XfhjeYc15Me9qbgyoUhLaIK1pWhC5MYH3whaSHGwsg65getBaI1LaWlgVJjoaS6p9sIUQEqKgASewNKPFLM5eA8MpuTwbfHnPR3WGwzIdLTZ8x1KCSoAka5t+lIUTgpdr3wWseK5BdjarjZ7k9MhyYzhlqaaU6tSEknlSpwJWBzFJAKdgdassq2wrhbhCuUdqayFIWUSEBQUpBCkqI9NhQB+opAkjiF3ZTpaJzbth40cGHm1R50ONcWi0tt9tTEmE+k7B0dELbWAoKHwBFezAOH9swO0OMQjuTLQyuetsqS0/IQgIU8lsk8ql62o7JJ0TTgOlBIA2arLreUEF8x3h6ViMlyexYhjUq/wCRXFmBb4yeZx509z0CUgdVKJ6BI2SToCsFmvEqyYe+xaUMyb1kkwH2GwW0ByXIP3iPRtsd3F6SB3PpWFxzh/er5ksXOOKr8add46vMtlkjErgWbfdO/wCef16vKHT0QAOpRPQSWqXOVd/pPDjuO33iVlkPPs+t7tus8Ffn49jEge80rtMlp9C+R9hv0bB+96VyiimBaUiBRCiiinLhRRRRCFFFFEIUqZnw6xnOWo7l2jvR7lDPNBu8B0x5sJXxaeT1HzSdpPcGmuigi8TKGFjJQi88U+Hf7HJrY5nthR0TeLOylFyZT8X4o0l7XdTRBP3Kc8Uz3Ec2iLfxm/RJ6m+j0dKih9g/dcaVpaD8lAUyUoZXwwwjM5KJt7sbX6Sb/mrpEWqLMa+HK+2UrH03r5VNiNpnlZfKb+/3jfRUvGF8Vcb6YjxKavURP2IGXw/PUB8BKZKHPxUlZoGe8TrMoIybg9OltjoZeM3NmahXzDbpacH00aM3MO8t5gR+ekp+h8K5qYL47YZBH/ENuyzHz3/SmPy0Af2kIUn+NcDxFcFd6c4hWpk/dfDjRH1CkgijOvMO+pjdhKhqjQqXnxFcFT0b4hWt4/dYDjpP0CUkmuUcdcOnjWO2vLchJ9P0Zj8pST/bWhKf40Z15h39PowlPoqXnPOKN5UUYzwflQm1dBLye6Mw0p+flM+a4fp0rg4TxTyX/wBYcTE2iIr7dvxCJ7MT8jKeK3PxSEGjNxDvb+UE/nrGvLOIGH4RGQ5kt9iwnHTpmLsuSHz8G2U7Ws/JINJq7rxV4i7Zx+3u8P8AH19Ddbq0ly6Pp/oY3VLG/vOkqHryU1YnwywjC31y7FYmUXB3+euclSpMx74877hUs7+G9U3UWJ3hlZvMbe33irhnDzGMFjyDZorrs+Wrnm3Wc6ZEyar7zryveV8h0SOwFNVFFMC200ChRYQooopxwoooohP/2Q==">
+    <h1>Nursery Daily Manager</h1>
+  </header>
+
+  <nav class="modes" aria-label="Mode">
+    <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
+    <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
+  </nav>
+
+  <section class="card alertcard" id="alertBox" hidden>
+    <div id="alertText"></div>
+    <button class="btn small primary" id="alertBtn">Review</button>
+  </section>
+
+  <section class="card fields">
+    <div class="two">
+      <label class="f"><span>Date (automatic)</span><input id="todayField" readonly></label>
+      <label class="f"><span>Supervisor</span><input id="supName" type="text" placeholder="Supervisor name" maxlength="40" autocomplete="name"><select id="supSel" hidden aria-label="Choose your name"></select></label>
+    </div>
+    <label class="f"><span>Open a previous day</span><select id="daySel"></select></label>
+    <div class="statusline" id="statusline"><span id="dstat"></span><button class="btn small" id="closeBtn" hidden>Close day</button></div>
+    <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name above to mark tasks and attendance.</p>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" id="tabStock" role="tab" aria-selected="true">📦 Stock</button>
+    <button class="tab" id="tabTasks" role="tab" aria-selected="false">✅ Tasks</button>
+    <button class="tab" id="tabAtt" role="tab" aria-selected="false">🧑‍🌾 Attendance</button>
+  </nav>
+  <nav class="teamnav" id="teamNav" aria-label="Team and resources">
+    <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>👥 Team</button>
+    <button class="tab" id="tabRes" role="tab" aria-selected="false">🧰 Resources</button>
+    <button class="tab" id="tabCs" role="tab" aria-selected="false">🧾 Customers</button>
+  </nav>
+
+  <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <section class="card pane" id="pendBox" hidden>
+      <h2>Waiting for approval</h2>
+      <p class="pmeta" id="pendSub"></p>
+      <div id="pendList"></div>
+    </section>
+    <div class="bar" id="stockBar" hidden>
+      <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
+      <input type="search" id="filter" placeholder="Search item name">
+      <select id="sortSel" aria-label="Sort stock">
+        <option value="">↕ Sort: Default order</option>
+        <option value="name-asc">Name A to Z</option>
+        <option value="name-desc">Name Z to A</option>
+        <option value="bal-desc">Bal Qty: high to low</option>
+        <option value="bal-asc">Bal Qty: low to high</option>
+        <option value="total-desc">Total Qty: high to low</option>
+        <option value="sales-desc">Sales: high to low</option>
+        <option value="purchase-desc">Purchases: high to low</option>
+        <option value="damages-desc">Damages: high to low</option>
+      </select>
+      <button class="btn small" id="mvAllStock" hidden></button>
+      <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
+      <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
+      <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
+      <span class="chip" id="pending" hidden></span>    </div>
+    <div class="card state" id="state">Loading register…</div>
+    <section class="card" id="ledger" hidden>
+      <div class="head" role="presentation">
+        <span>Sl.No.</span><span>Item Name</span><span class="r">Total Qty</span><span class="r">Purchases</span><span class="r">Sales</span><span class="r">Damages</span><span class="r">Bal Qty</span>
+      </div>
+      <div id="list"></div>
+      <div class="row totals" id="totals"></div>
+      <p class="foot">Only the owner can change Total Qty. When a new day opens, each item's Bal Qty becomes its Total Qty and the other columns start at zero.</p>
+    </section>
+    <section class="card rep" id="reportBox" hidden>
+      <label for="report">Supervisor's report</label>
+      <textarea id="report" rows="4" maxlength="2000" placeholder="Brief summary of the day: deliveries, customer orders, plant health, anything the owner should know."></textarea>
+      <p id="reportMeta"></p>
+    </section>
+  </section>
+
+  <section class="pane" id="paneTasks" role="tabpanel" aria-labelledby="tabTasks" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <form class="card addtask" id="fTask" hidden>
+      <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
+      <input type="text" id="taskTitle" maxlength="120" placeholder="New task, for example Water the shade house" required>
+      <select id="taskTo" aria-label="Assign task to" hidden></select>
+      <button class="btn primary" type="submit">Add task</button>
+    </form>
+    <div class="bar" id="taskBar" hidden>
+      <span class="tsum" id="tsum"></span>
+      <button class="btn small" id="mvAllTasks" hidden></button>
+      <button class="btn small" id="resetTasks" style="margin-left:auto" hidden>Reset All Tasks</button>
+      <button class="btn small danger" id="deleteTasks" hidden>Delete All</button>
+    </div>
+    <div class="card state" id="tstate">No tasks yet. The owner adds the task list.</div>
+    <div class="pane" id="tlist"></div>
+    <section class="card team" id="sugBox" hidden>
+      <h2 id="sugHead">Suggest tasks for tomorrow</h2>
+      <p class="pmeta" id="sugHelp">Add one task at a time. The owner reviews each one, and approved tasks are listed under Tasks for tomorrow.</p>
+      <form class="addtask" id="fSug" hidden><input type="text" id="sugIn" maxlength="120" placeholder="Suggested task for tomorrow" aria-label="Suggested task for tomorrow" required><button class="btn primary" type="submit">Suggest</button></form>
+      <p class="pmeta" id="sugEmpty">No suggestions yet.</p>
+      <div class="tl" id="sugList"></div>
+    </section>
+  </section>
+
+  <section class="pane" id="paneAtt" role="tabpanel" aria-labelledby="tabAtt" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <section class="card team" id="weekBox">
+      <h2>Weekly attendance report</h2>
+      <p class="pmeta" id="weekHelp">One PDF for all staff, Sunday to Saturday.</p>
+      <label class="f"><span>Week (Sunday to Saturday)</span><select id="weekSel"></select></label>
+      <p class="pmeta" id="weekInfo" role="status"></p>
+      <button class="btn" id="weekBtn">Download weekly attendance PDF</button>
+      <button class="btn" id="attPdfBtn" style="margin-top:8px">Download attendance PDF</button>
+      <p class="pmeta" id="attPdfHelp">Attendance for the selected date only. It does not need tasks, resources or other sections to be finished.</p>
+    </section>
+    <div class="bar" id="attBar" hidden>
+      <span class="tsum" id="asum"></span>
+      <button class="btn small" id="attAll" style="margin-left:auto" hidden>Mark all present</button>
+      <button class="btn small danger" id="attReset" hidden>Reset Attendance</button>
+    </div>
+    <div class="card state" id="astate">No staff yet.</div>
+    <div class="tl" id="alist"></div>
+  </section>
+
+  <section class="pane" id="paneCs" role="tabpanel" aria-labelledby="tabCs" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <section class="card team" id="csBox" hidden>
+      <h2>Customers and sales</h2>
+      <p class="pmeta">Enter every customer you attended. The customer's name or phone number is required. Bill no. and amount are optional.</p>
+      <form class="team" id="fCs" hidden novalidate>
+        <div class="two">
+          <label class="f"><span>Customer name</span><input type="text" id="csName" maxlength="60" autocomplete="off"></label>
+          <label class="f"><span>Phone number</span><input type="tel" id="csPhone" maxlength="16" inputmode="numeric" autocomplete="off" placeholder="10 digits"></label>
+        </div>
+        <div class="two">
+          <label class="f"><span>Bill no. (optional)</span><input type="text" id="csBill" maxlength="30" autocomplete="off"></label>
+          <label class="f"><span>Amount in ₹ (optional)</span><input type="number" id="csAmt" min="0" step="0.01" inputmode="decimal"></label>
+        </div>
+        <p class="pmeta" id="csErr" style="color:var(--warn)"></p>
+        <button class="btn primary" type="submit">Add Today's Customer</button>
+      </form>
+      <div class="bar" id="csBar" hidden><span class="tsum" id="csSum"></span></div>
+      <p class="pmeta" id="csEmpty">No sales entered yet.</p>
+      <div class="tl" id="csList"></div>
+    </section>
+  </section>
+
+  <section class="pane" id="paneRes" role="tabpanel" aria-labelledby="tabRes" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <section class="card team" id="resAdd" hidden>
+      <h2>Tools and resources</h2>
+      <p class="pmeta">Add everything handed to supervisors. Each supervisor ticks the box for every item that is available with them.</p>
+      <form class="addtask" id="fRes"><input type="text" id="resIn" maxlength="600" placeholder="Item, or several separated by commas" aria-label="Add tools and resources"><input type="number" id="resQty" min="0" max="99999" value="1" inputmode="numeric" aria-label="Quantity of each item"><select id="resTo" aria-label="Handed to" hidden></select><button class="btn primary" type="submit">Add</button></form>
+    </section>
+    <div class="bar" id="resBar" hidden>
+      <span class="tsum" id="rsum"></span>
+      <button class="btn small" id="mvAllRes" hidden></button>
+      <button class="btn small" id="resAll" style="margin-left:auto" hidden>Mark all available</button>
+      <button class="btn small danger" id="resReset" hidden>Reset Resources</button>
+    </div>
+    <div class="card state" id="rstate">No tools or resources yet.</div>
+    <div class="tl" id="rlist"></div>
+  </section>
+
+  <section class="pane" id="paneTeam" role="tabpanel" aria-labelledby="tabTeam" hidden>
+    <section class="card team">
+      <h2 id="supHead">Supervisors</h2>
+      <p class="pmeta">Assign tasks to them. Each supervisor picks their own name at the top of the app.</p>
+      <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><button class="btn primary" type="submit">Add</button></form>
+      <p class="pmeta" id="supWarn" style="color:var(--warn)"></p>
+      <p class="pmeta" id="supEmpty">No supervisors yet.</p>
+      <div class="tl" id="supList"></div>
+    </section>
+    <section class="card team">
+      <h2 id="staffHead">Staff</h2>
+      <p class="pmeta">Supervisors mark attendance for these people every day.</p>
+      <form class="addtask" id="fStaff"><input type="text" id="staffIn" maxlength="600" placeholder="Name, or several separated by commas" aria-label="Add staff"><select id="staffNur" aria-label="Staff nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
+      <p class="pmeta" id="staffWarn" style="color:var(--warn)"></p>
+      <p class="pmeta" id="staffEmpty">No staff yet.</p>
+      <div class="tl" id="staffList"></div>
+    </section>
+  </section>
+
+  <div class="acts">
+    <button class="btn primary" id="pdfBtn">Download stock PDF</button>
+    <button class="btn" id="backupBtn">Download all days backup</button>
+    <button class="btn" id="importBtn" hidden>Import backup file</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<dialog id="dlgNote">
+  <form id="fNote">
+    <h2 id="noteTitle"></h2>
+    <p id="noteSub"></p>
+    <label id="reasonWrap">Damage reason
+      <select id="noteReason">
+        <option value="">Select a reason</option>
+        <option>Pest or disease</option>
+        <option>Fungal rot or overwatering</option>
+        <option>Heat or water stress</option>
+        <option>Transport breakage</option>
+        <option>Handling error</option>
+        <option>Theft or loss</option>
+        <option>Other</option>
+      </select>
+    </label>
+    <label>Brief report
+      <textarea id="noteText" rows="3" maxlength="300"></textarea>
+    </label>
+    <div class="actions">
+      <button type="button" class="btn" id="noteSkip">Skip for now</button>
+      <button class="btn primary" type="submit">Save report</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgReason">
+  <form id="fReason">
+    <h2>Why was this task not done?</h2>
+    <p id="reasonTask"></p>
+    <label>Reason (required)
+      <textarea id="reasonText" rows="3" maxlength="200" required placeholder="Type, or tap the microphone on your keyboard"></textarea>
+    </label>
+    <p id="reasonErr" style="color:var(--warn)"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="reasonCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save as not done</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgEdit">
+  <form id="fEdit">
+    <h2 id="editHead">Edit</h2>
+    <label><span id="editLabel">Name</span>
+      <input type="text" id="editName" required maxlength="120">
+    </label>
+    <div class="actions">
+      <button type="button" class="btn danger" id="editRemove">Delete</button>
+      <button type="button" class="btn" id="editCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgAdd">
+  <form id="fAdd">
+    <h2 id="addHead">Add New Item</h2>
+    <p id="addHelp">One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.</p>
+    <input type="file" id="addFile" accept=".csv,.xlsx,.xls,text/csv" hidden>
+    <button type="button" class="btn" id="addFileBtn" style="width:100%">Upload CSV or Excel file</button>
+    <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
+    <label>Items
+      <textarea id="addText" rows="8" placeholder="Areca Palm 6 inch, 40&#10;Money Plant, 120&#10;Terracotta Pot 8 inch, 60"></textarea>
+    </label>
+    <p id="addCount"></p>
+    <p id="addWarn" style="color:var(--warn)"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="addCancel">Cancel</button>
+      <button class="btn primary" type="submit" id="addSubmit">Add to register</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSent">
+  <div class="dbody">
+    <h2>Request sent</h2>
+    <p id="sentMsg"></p>
+    <div class="actions">
+      <button class="btn" id="sentOk">Done</button>
+      <a class="btn primary" id="sentWa" target="_blank" rel="noopener" href="https://wa.me/" hidden>Notify owner on WhatsApp</a>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgWa">
+  <form id="fWa">
+    <h2>Owner WhatsApp number</h2>
+    <p>When a supervisor requests new items, they get a one-tap WhatsApp message addressed to this number. Everyone who opens the register can see it. Include the country code, digits only, for example 919876543210. Leave it empty to turn this off.</p>
+    <label>Number
+      <input type="tel" id="waNum" inputmode="numeric" maxlength="20" placeholder="91XXXXXXXXXX">
+    </label>
+    <div class="actions">
+      <button type="button" class="btn" id="waCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgPin">
+  <form id="fPin">
+    <h2>Owner PIN</h2>
+    <label>Enter your PIN
+      <input type="password" id="pinIn" inputmode="numeric" maxlength="6" autocomplete="off" required>
+    </label>
+    <p id="pinErr" style="color:var(--loss)"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="pinCancel">Cancel</button>
+      <button class="btn primary" type="submit">Unlock Owner Mode</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSetPin">
+  <form id="fSetPin">
+    <h2 id="spHead">Set owner PIN</h2>
+    <p>Owner Mode asks for this PIN each time you open the register or switch back from Supervisor Mode. Use 4 to 6 digits.</p>
+    <label id="spCurWrap">Current PIN
+      <input type="password" id="spCur" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <label>New PIN
+      <input type="password" id="spNew" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <label>Confirm new PIN
+      <input type="password" id="spNew2" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <p id="spErr" style="color:var(--loss)"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="spRemove" hidden>Remove PIN</button>
+      <button type="button" class="btn" id="spCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save PIN</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgLogin">
+  <div class="dbody">
+    <h2>Owner Mode</h2>
+    <p>Owner Mode is only for the owner. It opens when the page is viewed from the owner's Claude account and the owner's PIN is entered. If you need owner access, ask the owner to give you Editor access from the page's Share menu.</p>
+    <div class="actions"><button class="btn primary" id="loginOk">Got it</button></div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="platform.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = function(s){ return document.querySelector(s); };
+var pad = function(n){ return String(n).padStart(2,'0'); };
+var keyOf = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+var todayKey = function(){ return keyOf(new Date()); };
+var fmtLong = function(k){ var p=k.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); };
+var fmtTime = function(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : ''; };
+var num = function(v){ var n=parseInt(v,10); return isFinite(n)&&n>0?n:0; };
+var bal = function(r){ return (r.total||0)+(r.purchase||0)-(r.sales||0)-(r.damages||0); };
+var fmtN = function(n){ return Number(n).toLocaleString('en-IN'); };
+var FIELDS = ['total','purchase','sales','damages'];
+var LABELS = {total:'Total Qty',purchase:'Purchases',sales:'Sales',damages:'Damages'};
+var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
+
+var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
+var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
+var tab='stock', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
+var CK='nurseryCache1', cache={idx:null,days:{}}, cacheT=null, indexLive=false, dayLive=false;
+try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; } }catch(e){}
+function cacheSave(){
+  clearTimeout(cacheT);
+  cacheT=setTimeout(function(){
+    var ks=Object.keys(cache.days).sort();
+    while(ks.length>180) delete cache.days[ks.shift()];
+    try{ localStorage.setItem(CK, JSON.stringify(cache)); }
+    catch(e){
+      try{ var k2=Object.keys(cache.days).sort(); k2.slice(0,Math.ceil(k2.length/2)).forEach(function(k){ delete cache.days[k]; }); localStorage.setItem(CK, JSON.stringify(cache)); }catch(e2){}
+    }
+  }, 800);
+}
+var nursery='1', NURS={'1':'Chalmatti Nursery','2':'Raynal Nursery'}, sortMode='', team={sup:{},staff:{}}, res={}, resEls=new Map(), sugEls=new Map(), csEls=new Map(), supId='', attEls=new Map(), teamEls=new Map();
+var noteCtx=null, edCtx=null, edArmed=false, armed={}, selSig='', pendReady=false, seenPend={}, ownerWa='', pendEls=new Map(), pinData=null, pinFails=0, pinLockUntil=0;
+
+function toast(msg,ms){
+  var t=$('#toast'); t.textContent=msg; t.hidden=false;
+  clearTimeout(toast._t); toast._t=setTimeout(function(){ t.hidden=true; }, ms||3800);
+}
+function keys(){ return Object.keys(index||{}).sort(); }
+function latest(){ var k=keys(); return k.length ? k[k.length-1] : null; }
+function editable(){ return !!(canWrite && dayLive && day && !day.closed && selDate===latest()); }
+function sortedOf(map,key){
+  var o=(day&&day[map])||{};
+  return Object.keys(o).filter(function(id){ return !o[id].removed && !o[id].pending; })
+    .map(function(id){ return [id,o[id]]; })
+    .sort(function(a,b){ return (a[1].order||0)-(b[1].order||0) || a[0].localeCompare(b[0]); });
+}
+var rowsOf=function(n){ return sortedOf('rows').filter(function(it){ return (it[1].nid||'1')===n; }); };
+var sortedRows=function(){ return rowsOf(nursery); };
+function sortedPending(){
+  var o=(day&&day.rows)||{};
+  return Object.keys(o).filter(function(id){ return o[id].pending && !o[id].removed; })
+    .map(function(id){ return [id,o[id]]; })
+    .sort(function(a,b){ return (a[1].reqAt||0)-(b[1].reqAt||0); });
+}
+function notePending(){
+  var ps=day ? sortedPending() : [];
+  if(isOwner && pendReady){
+    var fresh=ps.filter(function(it){ return !seenPend[it[0]]; });
+    if(fresh.length) toast('New item request from '+(fresh[0][1].by||'a supervisor')+' is waiting for your approval.');
+  }
+  ps.forEach(function(it){ seenPend[it[0]]=1; });
+  if(day!==undefined) pendReady=true;
+}
+var sortedTasks=function(){ return sortedOf('tasks'); };
+function nameNow(){ return supName.trim(); }
+function arm(btn,key,label,fn){
+  if(!armed[key]){
+    armed[key]=true; btn.textContent='Tap again to confirm';
+    setTimeout(function(){ armed[key]=false; btn.textContent=label; }, 4000);
+    return;
+  }
+  armed[key]=false; btn.textContent=label; fn();
+}
+
+/* ---------- writes ---------- */
+function onWriteErr(e){
+  var code=e&&e.code;
+  if(code==='quota_exceeded') toast('The register is full. Contact the owner.');
+  else if(code==='invalid_argument'||code==='revoked') toast('This change could not be saved. You may have view-only access.');
+  else toast('Could not save. Check your connection and try again.');
+  renderAll();
+  return false;
+}
+function save(patch){
+  var k=selDate;
+  if(nameNow() && day && day.supervisor!==nameNow()) patch.supervisor=nameNow();
+  var p=chain.then(function(){ return db.doc('days/'+k).update(patch); });
+  chain=p.catch(function(){});
+  return p.then(function(){ return true; }, onWriteErr);
+}
+function setIndexClosed(k,closed){
+  var e={}; e[k]={closed:closed};
+  return db.doc('meta/index').update({d:e}).catch(function(){});
+}
+
+/* ---------- new day rollover ---------- */
+async function ensureToday(){
+  if(!db||!canWrite||ensuring||!index||!indexLive) return;
+  var t=todayKey(); if(index[t]) return;
+  ensuring=true;
+  try{
+    var lease=await db.doc('meta/lock').acquire({holder:uid||'viewer', ttlMs:20000});
+    if(!lease.acquired) return;
+    var is=await db.doc('meta/index').get();
+    var d=is.exists ? (is.data().d||{}) : {};
+    if(d[t]) return;
+    var prev=Object.keys(d).sort().filter(function(k){ return k<t; }).pop();
+    var rows={}, tasks={}, sg={};
+    if(prev){
+      var ps=await db.doc('days/'+prev).get();
+      if(ps.exists){
+        var pd=ps.data(), pr=pd.rows||{}, pt=pd.tasks||{};
+        Object.keys(pr).forEach(function(id){
+          var r=pr[id]; if(r.removed) return;
+          if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0};
+        });
+        Object.keys(pt).forEach(function(id){
+          var x=pt[id]; if(x.removed||x.once) return;
+          tasks[id]={order:x.order||0, title:x.title, to:x.to||'', nid:x.nid||'1', status:'', reason:'', note:''};
+        });
+        var psug=pd.sug||{}, mo=0;
+        Object.keys(tasks).forEach(function(id){ mo=Math.max(mo,tasks[id].order||0); });
+        Object.keys(psug).forEach(function(id){
+          var x=psug[id]; if(!x||!x.t) return;
+          if(!x.st) sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:''};
+          else if(x.st==='ok' && !x.added){ mo++; tasks['g'+id]={order:mo, title:x.t, to:x.to||'', nid:x.nid||'1', once:true, sgBy:x.by||'', status:'', reason:'', note:''}; sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:'ok', to:x.to||'', added:true}; }
+        });
+        if(!pd.closed) await db.doc('days/'+prev).update({closed:true, closedAt:Date.now(), auto:true});
+      }
+    }
+    await db.doc('days/'+t).set({date:t, closed:false, rows:rows, tasks:tasks, sug:sg});
+    var entry={}; entry[t]={c:Date.now()}; if(prev) entry[prev]={closed:true};
+    if(is.exists) await db.doc('meta/index').update({d:entry});
+    else await db.doc('meta/index').set({d:entry});
+  }catch(e){ /* another device may be mid-rollover; the next check retries */ }
+  finally{ ensuring=false; }
+}
+
+/* ---------- subscriptions ---------- */
+function subscribeDay(k){
+  if(unsubDay){ unsubDay(); unsubDay=null; }
+  selDate=k; day=cache.days[k]||undefined; dayLive=false; pendReady=false; renderAll();
+  unsubDay=db.doc('days/'+k).onSnapshot(function(s){
+    if(selDate!==k) return;
+    day=s.exists ? s.data() : null; dayLive=true;
+    if(day){ cache.days[k]=day; cacheSave(); }
+    notePending();
+    renderAll();
+  }, function(){ if(selDate===k){ if(!cache.days[k]) day=null; renderAll(); } });
+}
+function goTo(k){ followToday=(k===todayKey()); subscribeDay(k); }
+
+/* ---------- rendering helpers ---------- */
+function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',label)); return c; }
+
+function renderTop(){
+  $('#importBtn').hidden=!(isOwner&&canWrite);
+  $('#modeOwner').setAttribute('aria-pressed', isOwner);
+  $('#modeSup').setAttribute('aria-pressed', !isOwner && canWrite);
+  var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
+  ab.hidden=!(isOwner && pn>0);
+  if(!ab.hidden) $('#alertText').textContent='🔔 '+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
+  $('#todayField').value=fmtLong(todayKey());
+  var sel=$('#daySel'), ks=keys().slice().reverse(), t=todayKey();
+  if(!ks.length||ks[0]!==t){ if(canWrite) ks.unshift(t); }
+  var sig=ks.join(',')+'|'+JSON.stringify(index||{});
+  if(sig!==selSig){
+    selSig=sig; sel.textContent='';
+    ks.forEach(function(k){
+      var meta=(index&&index[k])||{};
+      var label = k===t ? 'Today ('+k+') – '+(!index||!index[k]?'preparing':(meta.closed?'closed':'working')) : k+' – saved';
+      var o=mk('option',null,label); o.value=k; sel.append(o);
+    });
+  }
+  if(document.activeElement!==sel) sel.value=selDate;
+  var lt=latest(), st='';
+  if(day===undefined) st='Loading…';
+  else if(day===null) st = selDate===t ? "Preparing today's register…" : 'No report was saved for this date.';
+  else if(selDate!==lt) st='Viewing '+fmtLong(selDate)+' · saved, read-only';
+  else if(day.closed) st=(selDate===t?'Today':fmtLong(selDate))+' is closed · read-only';
+  else if(!dayLive) st='Saved copy from this phone · view only until connected';
+  else if(!canWrite) st='Open · view only';
+  else st=(selDate===t?'Today':fmtLong(selDate))+' is open · changes save automatically';
+  $('#dstat').textContent=st;
+  var cb=$('#closeBtn');
+  if(canWrite && day && selDate===lt){
+    if(!day.closed){ cb.hidden=false; cb.textContent='Close day'; }
+    else if(isOwner){ cb.hidden=false; cb.textContent='Reopen day'; }
+    else cb.hidden=true;
+  }else cb.hidden=true;
+  if(tab==='team' && !isOwner) tab='stock';
+  document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs'};
+  $('#tabTeam').hidden=!isOwner;
+  $('#teamNav').style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
+  Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs';
+  $('.acts').hidden=tab==='team';
+  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
+  var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
+  $('#tabTasks').textContent='✅ Tasks'+(pendSug?' 🔔'+pendSug:'');
+  $('#pdfBtn').textContent = 'Download full report PDF';
+  $('#pdfBtn').disabled=!day;
+}
+
+/* ---------- stock tab ---------- */
+function otherN(n){ return (n||nursery)==='1'?'2':'1'; }
+function moveBtn(label){ var b=mk('button','edit mv',label||'Move'); b.type='button'; return b; }
+function mvLabel(n){ return 'Move to '+NURS[otherN(n)]; }
+function makeRow(id){
+  var el=mk('div','row'); el.dataset.id=id;
+  var idw=mk('div','id'), sl=mk('span','sl'), nm=mk('div','nm'), top=mk('div','nmtop'), name=mk('span','name');
+  var edit=null, mv=null;
+  top.append(name);
+  if(isOwner){
+    edit=mk('button','edit','Edit'); edit.type='button';
+    edit.addEventListener('click', function(){ openEdit('item',id); });
+    top.append(edit);
+    mv=moveBtn(); mv.addEventListener('click', function(){ moveRow(id,mv); });
+    top.append(mv);
+  }
+  nm.append(top); idw.append(sl,nm); el.append(idw);
+  var R={sl:sl,name:name,edit:edit,mv:mv,notes:mk('div','notes')};
+  FIELDS.forEach(function(f){
+    var c=cell(LABELS[f], f);
+    if(canWrite && (f!=='total'||isOwner)){
+      var inp=document.createElement('input');
+      inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='0';
+      inp.addEventListener('change', function(){ commit(id,f,inp); });
+      inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
+      c.append(inp); R[f]=inp;
+    }else{
+      var v=mk('span','val'); c.append(v); R[f+'V']=v; R[f]=null;
+    }
+    el.append(c);
+  });
+  var bc=cell('Bal Qty','bal'), bv=mk('span','val'); bc.append(bv); R.bal=bv; el.append(bc);
+  el.append(R.notes);
+  el._r=R; return el;
+}
+function noteEl(id,r,f,ed){
+  var n=(r.notes||{})[f], amt=r[f]||0;
+  if(amt<=0) return null;
+  var has = n && (n.text || n.reason);
+  if(!has){
+    if(!ed) return null;
+    var need = f==='damages';
+    var b=mk('button','note add'+(need?' need':''), need ? 'Damage reason needed' : (f==='sales'?'Add sale note':'Add purchase note'));
+    b.type='button'; b.addEventListener('click', function(){ openNote(id,f); }); return b;
+  }
+  var el=mk(ed?'button':'span','note '+f);
+  if(ed){ el.type='button'; el.addEventListener('click', function(){ openNote(id,f); }); }
+  el.append(mk('b',null,NOTE_LABELS[f]+' '+amt));
+  el.append(document.createTextNode([n.reason,n.text].filter(Boolean).join(' · ')));
+  var meta=[n.who, fmtTime(n.at)].filter(Boolean).join(' ');
+  if(meta) el.append(mk('small',null,meta));
+  return el;
+}
+function updateRow(el,id,r,n){
+  var R=el._r, ed=editable();
+  R.sl.textContent=n; R.name.textContent=r.name;
+  if(R.edit) R.edit.hidden=!ed;
+  if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
+  FIELDS.forEach(function(f){
+    var v=r[f]||0;
+    if(R[f]){
+      if(document.activeElement!==R[f]) R[f].value = (v===0 && f!=='total') ? '' : v;
+      R[f].disabled=!ed;
+      R[f].setAttribute('aria-label', LABELS[f]+' for '+r.name);
+    }else R[f+'V'].textContent = (v===0 && f!=='total') ? '–' : fmtN(v);
+  });
+  var b=bal(r); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
+  R.notes.textContent='';
+  ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
+}
+function sortItems(items){
+  if(!sortMode) return items;
+  var m=sortMode.split('-'), key=m[0], dir=m[1]==='desc'?-1:1;
+  var val=function(r){ return key==='bal' ? bal(r) : (r[key]||0); };
+  return items.map(function(it,i){ return {it:it,i:i}; }).sort(function(a,b){
+    var c;
+    if(key==='name') c=(a.it[1].name||'').localeCompare(b.it[1].name||'',undefined,{numeric:true,sensitivity:'base'})*dir;
+    else c=(val(a.it[1])-val(b.it[1]))*dir;
+    return c || a.i-b.i;
+  }).map(function(x){ return x.it; });
+}
+document.querySelectorAll('.nursel').forEach(function(sel){
+  sel.addEventListener('change', function(){
+    nursery=this.value==='2'?'2':'1';
+    try{ localStorage.setItem('nurseryNo', nursery); }catch(e){}
+    filter=''; $('#filter').value='';
+    renderAll();
+  });
+});
+$('#sortSel').addEventListener('change', function(){
+  sortMode=this.value;
+  try{ localStorage.setItem('nurserySort', sortMode); }catch(e){}
+  renderAll();
+});
+function renderRows(items,serial){
+  var list=$('#list'), q=filter.trim().toLowerCase(), seen=new Set(), pos=0;
+  items.forEach(function(it,i){
+    var id=it[0], r=it[1]; seen.add(id);
+    var el=rowEls.get(id); if(!el){ el=makeRow(id); rowEls.set(id,el); }
+    updateRow(el,id,r,serial[id]||i+1);
+    el.hidden = !!q && (r.name||'').toLowerCase().indexOf(q)===-1;
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  rowEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); rowEls.delete(id); } });
+}
+var totalsBuilt=null;
+function sums(items){
+  var s={total:0,purchase:0,sales:0,damages:0,bal:0};
+  items.forEach(function(it){ var r=it[1]; FIELDS.forEach(function(f){ s[f]+=r[f]||0; }); s.bal+=bal(r); });
+  return s;
+}
+function renderTotals(items){
+  var t=$('#totals');
+  if(!totalsBuilt){
+    t.textContent='';
+    var idw=mk('div','id'), nm=mk('div','nm'); nm.append(mk('span','name','Totals')); idw.append(mk('span','sl'), nm); t.append(idw);
+    totalsBuilt={};
+    FIELDS.concat(['bal']).forEach(function(f){
+      var c=cell(f==='bal'?'Bal Qty':LABELS[f], f), v=mk('span','val'); c.append(v); t.append(c); totalsBuilt[f]=v;
+    });
+  }
+  var s=sums(items);
+  Object.keys(s).forEach(function(f){ totalsBuilt[f].textContent=fmtN(s[f]); });
+}
+function renderStock(){
+  var items=day ? sortedRows() : [];
+  var show=!!day && items.length>0, q=filter.trim().toLowerCase();
+  $('#ledger').hidden=!show;
+  $('#stockBar').hidden=!(show || (day && ((canWrite && editable()) || isOwner)));
+  $('#filter').hidden=!show; $('#sortSel').hidden=!show; if($('#sortSel').value!==sortMode) $('#sortSel').value=sortMode;
+  $('#addBtn').hidden=!(canWrite && editable());
+  $('#addBtn').textContent = 'Add New Item';
+  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); if(!armed.mvas) ma.textContent='Move all to '+NURS[otherN()];
+  $('#waSetBtn').hidden=!isOwner;
+  $('#pinBtn').hidden=!isOwner;
+  $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
+  var pend=items.filter(function(it){ var r=it[1]; return (r.damages||0)>0 && !((r.notes||{}).damages||{}).reason; }).length;
+  var pc=$('#pending'); pc.hidden=!pend; pc.textContent = pend + (pend===1?' damage reason pending':' damage reasons pending');  var s=$('#state'); s.textContent=''; s.hidden=false;
+  if(day===undefined) s.textContent='Loading register…';
+  else if(day===null) s.textContent = (canWrite && selDate===todayKey() && !(index&&index[selDate])) ? "Preparing today's register…" : 'No report was saved for this date.';
+  else if(items.length===0){
+    if(isOwner && editable()){
+      s.append(mk('div',null,'No items in '+NURS[nursery]+' yet. Add your plants and pots with their opening quantities to start this nursery\u2019s register.'));
+      var b=mk('button','btn primary addwide','Add New Item'); b.type='button'; b.addEventListener('click', openAdd); s.append(b);
+    }else if(canWrite && editable()){
+      s.append(mk('div',null,'No items yet. You can request new items for the owner to approve.'));
+      var b2=mk('button','btn primary addwide','Add New Item'); b2.type='button'; b2.addEventListener('click', openAdd); s.append(b2);
+    }else s.textContent='The owner has not added any stock yet.';
+  }
+  else if(q && !items.some(function(it){ return (it[1].name||'').toLowerCase().indexOf(q)!==-1; })) s.textContent='No item matches "'+filter.trim()+'".';
+  else s.hidden=true;
+  if(show){
+    var serial={}; items.forEach(function(it,i){ serial[it[0]]=i+1; });
+    var sorted=sortItems(items);
+    renderRows(sorted,serial); renderTotals(items);
+  }
+  var box=$('#reportBox'), ta=$('#report'), meta=$('#reportMeta');
+  box.hidden=!day;
+  if(day){
+    var rp=day.report||{};
+    if(document.activeElement!==ta) ta.value=rp.text||'';
+    ta.disabled=!editable(); ta.readOnly=!editable();
+    meta.textContent = rp.at ? ('Last saved '+[rp.who?('by '+rp.who):'', fmtTime(rp.at)].filter(Boolean).join(' at ')) : (editable()?'Saved when you leave the box.':'No report was written for this day.');
+  }
+}
+
+/* ---------- tasks tab ---------- */
+function makeTask(id){
+  var el=mk('div','card task'); el.dataset.id=id;
+  var top=mk('div','ttop'), num_=mk('span','sl'), title=mk('div','ttitle'), edit=null;
+  top.append(num_,title);
+  var asgRow=mk('div','tassign'), asgSel=null, asgTxt=null;
+  asgRow.append(mk('span',null,'Assigned to'));
+  if(isOwner){
+    asgSel=document.createElement('select'); asgSel.setAttribute('aria-label','Assigned to');
+    asgSel.addEventListener('change', function(){ taskField(id,'to',asgSel.value); });
+    asgRow.append(asgSel);
+  } else { asgTxt=mk('b',null,''); asgRow.append(asgTxt); }
+  var mv=null, mvRow=null, mvLabelEl=null;
+  if(isOwner){ edit=mk('button','edit','Edit'); edit.type='button'; edit.addEventListener('click', function(){ openEdit('task',id); }); top.append(edit);
+    mv=mk('button','btn small','Move'); mv.type='button'; mv.addEventListener('click', function(){ moveTask(id,mv); });
+    mvRow=mk('div','tassign tmove'); mvLabelEl=mk('span',null,''); mvRow.append(mvLabelEl,mv); }
+  var seg=mk('div','seg');
+  var done=mk('button','btn','✔ Done'), nd=mk('button','btn nd','✖ Not done');
+  done.type='button'; nd.type='button';
+  done.addEventListener('click', function(){ setStatus(id,'done'); });
+  nd.addEventListener('click', function(){ setStatus(id,'notdone'); });
+  seg.append(done,nd);
+  var reason=document.createElement('input'); reason.type='text'; reason.maxLength=200; reason.placeholder='Reason it was not done (type or use keyboard mic)';
+  reason.addEventListener('change', function(){ taskField(id,'reason',reason.value.trim()); });
+  var note=document.createElement('input'); note.type='text'; note.maxLength=300; note.placeholder='Brief report (optional)';
+  note.addEventListener('change', function(){ taskField(id,'note',note.value.trim()); });
+  var meta=mk('div','tmeta');
+  el.append(top,asgRow); if(mvRow) el.append(mvRow); el.append(seg,reason,note,meta);
+  el._r={asgRow:asgRow,asgSel:asgSel,asgTxt:asgTxt,num:num_,title:title,edit:edit,mv:mv,mvRow:mvRow,mvLbl:mvLabelEl,done:done,nd:nd,reason:reason,note:note,meta:meta};
+  return el;
+}
+function updateTask(el,id,t,n){
+  var R=el._r, ed=editable(), st=t.status||'';
+  R.num.textContent=n; R.title.textContent=t.title;
+  R.asgRow.hidden=!(teamList('sup').length||t.to);
+  if(R.asgSel){ fillAssign(R.asgSel,t.to||''); R.asgSel.disabled=!ed; } else R.asgTxt.textContent=assigneeName(t.to);
+  if(R.edit) R.edit.hidden=!ed;
+  if(R.mv){ R.mvRow.hidden=!(ed&&isOwner); R.mvLbl.textContent='Nursery: '+NURS[t.nid||'1']; if(!armed['mvt'+id]) R.mv.textContent='\u21c4 '+mvLabel(t.nid||'1'); }
+  el.classList.toggle('done', st==='done');
+  R.done.setAttribute('aria-pressed', st==='done'); R.nd.setAttribute('aria-pressed', st==='notdone');
+  R.done.disabled=!ed; R.nd.disabled=!ed;
+  R.reason.hidden = st!=='notdone';
+  R.note.hidden = !ed && !t.note;
+  if(document.activeElement!==R.reason) R.reason.value=t.reason||'';
+  if(document.activeElement!==R.note) R.note.value=t.note||'';
+  R.reason.disabled=!ed; R.note.disabled=!ed;
+  R.reason.setAttribute('aria-label','Reason for '+t.title); R.note.setAttribute('aria-label','Brief report for '+t.title);
+  var bits=[];
+  if(st==='done') bits.push('Done'); else if(st==='notdone') bits.push(t.reason?'Not done':'Not done, reason needed'); else bits.push('Pending');
+  if(st && (t.who||t.at)) bits.push([t.who,fmtTime(t.at)].filter(Boolean).join(' '));
+  if(t.sgBy) bits.push('Suggested by '+t.sgBy);
+  R.meta.textContent=bits.join(' · ');
+}
+function taskCounts(items){
+  var c={done:0,notdone:0,pending:0};
+  items.forEach(function(it){ var s=it[1].status; if(s==='done') c.done++; else if(s==='notdone') c.notdone++; else c.pending++; });
+  return c;
+}
+function renderTasks(){
+  var items=day ? visibleTasks() : [];
+  var ed=editable(), list=$('#tlist'), seen=new Set(), pos=0;
+  $('#fTask').hidden=!(isOwner&&ed);
+  $('#taskTo').hidden=!teamList('sup').length; fillAssign($('#taskTo'),$('#taskTo').value);
+  $('#taskBar').hidden=!items.length;
+  var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); if(!armed.mvat) mt.textContent='Move all to '+NURS[otherN()];
+  $('#resetTasks').hidden=!(isOwner&&ed); $('#deleteTasks').hidden=!(isOwner&&ed);
+  var c=taskCounts(items);
+  $('#tsum').textContent=c.done+' done · '+c.notdone+' not done · '+c.pending+' pending';
+  var s=$('#tstate'); s.hidden=items.length>0;
+  s.textContent = day===undefined ? 'Loading tasks…' : (day===null ? 'No report was saved for this date.' : (isOwner&&ed ? 'No tasks yet. Add the daily routine tasks above.' : 'No tasks yet. The owner adds the task list.'));
+  items.forEach(function(it,i){
+    var id=it[0]; seen.add(id);
+    var el=taskEls.get(id); if(!el){ el=makeTask(id); taskEls.set(id,el); }
+    updateTask(el,id,it[1],i+1);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  taskEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); taskEls.delete(id); } });
+}
+
+/* ---------- items waiting for approval ---------- */
+function makePend(id){
+  var el=mk('div','pitem'), nm=mk('div','pname'), meta=mk('div','pmeta');
+  el.append(nm,meta);
+  var R={nm:nm,meta:meta,inp:null,ok:null,no:null};
+  if(isOwner){
+    var act=mk('div','pact');
+    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='Opening qty';
+    var ok=mk('button','btn small primary','Approve'), no=mk('button','btn small danger','Reject');
+    ok.type='button'; no.type='button';
+    ok.addEventListener('click', function(){ approveItem(id,inp); });
+    no.addEventListener('click', function(){ rejectItem(id); });
+    act.append(inp,ok,no); el.append(act);
+    R.inp=inp; R.ok=ok; R.no=no;
+  }
+  el._r=R; return el;
+}
+function updatePend(el,id,r){
+  var R=el._r, ed=editable();
+  R.nm.textContent=r.name+' ('+NURS[r.nid||'1']+')';
+  var meta='Requested by '+(r.by||'a supervisor')+(r.reqAt?' · '+fmtTime(r.reqAt):'');
+  if(!isOwner) meta+=' · Opening qty '+fmtN(r.total||0);
+  R.meta.textContent=meta;
+  if(R.inp){
+    if(document.activeElement!==R.inp) R.inp.value=r.total||0;
+    R.inp.disabled=!ed; R.ok.disabled=!ed; R.no.disabled=!ed;
+    R.inp.setAttribute('aria-label','Opening quantity for '+r.name);
+  }
+}
+function renderPending(){
+  var items=day ? sortedPending() : [], box=$('#pendBox'), list=$('#pendList'), seen=new Set(), pos=0;
+  box.hidden=!items.length;
+  $('#pendSub').textContent = isOwner ? 'Set the opening quantity if needed, then approve or reject each item. Approved items join the list.' : 'The owner approves these items before they appear in the list.';
+  items.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=pendEls.get(id); if(!el){ el=makePend(id); pendEls.set(id,el); }
+    updatePend(el,id,it[1]);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  pendEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); pendEls.delete(id); } });
+}
+async function approveItem(id,inp){
+  var r=day&&day.rows&&day.rows[id]; if(!r||!editable()||!isOwner) return;
+  var rows=day.rows, maxO=0;
+  Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
+  var p={rows:{}}; p.rows[id]={pending:false, order:maxO+1, total:num(inp.value), purchase:0, sales:0, damages:0, approvedAt:Date.now()};
+  if(await save(p)) toast(r.name+' approved and added to the list');
+}
+async function rejectItem(id){
+  var r=day&&day.rows&&day.rows[id]; if(!r||!editable()||!isOwner) return;
+  var p={rows:{}}; p.rows[id]={pending:false, removed:true};
+  if(await save(p)) toast('Request for '+r.name+' rejected');
+}
+function showSent(names,dups){
+  var a=$('#sentWa');
+  $('#sentMsg').textContent = names.length+(names.length===1?' item was':' items were')+' sent to the owner for approval. They appear in the list once approved.'+(dups&&dups.length?' Skipped because they are already listed: '+dups.join(', ')+'.':'');
+  if(ownerWa){
+    var text='Nursery Daily Manager: '+(nameNow()||'A supervisor')+' added '+names.length+(names.length===1?' new item':' new items')+' for your approval: '+names.join(', ')+'. Please open the register to approve.';
+    a.href='https://wa.me/'+ownerWa+'?text='+encodeURIComponent(text); a.hidden=false;
+  }else{
+    a.hidden=true;
+    $('#sentMsg').textContent+=' The owner will see the request the next time they open the register.';
+  }
+  var d=$('#dlgSent'); if(!d.open) d.showModal();
+}
+
+function renderAll(){ renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderRes(); renderSug(); renderTeam(); }
+
+/* ---------- stock entry ---------- */
+async function commit(id,f,inp){
+  var r=day&&day.rows&&day.rows[id];
+  var stored=r?(r[f]||0):0;
+  var reset=function(){ inp.value=(stored===0&&f!=='total')?'':stored; };
+  if(!r||!editable()){ reset(); return; }
+  var v=num(inp.value);
+  if(v===stored){ reset(); return; }
+  var next=Object.assign({},r); next[f]=v;
+  if(bal(next)<0){
+    toast(f==='total' ? 'Total Qty cannot be lower than what was already sold or damaged today.' : 'Only '+fmtN(bal(r)+stored)+' available for '+r.name+'.');
+    reset(); return;
+  }
+  var patch={rows:{}}; patch.rows[id]={}; patch.rows[id][f]=v;
+  if(f!=='total' && v===0){ patch.rows[id].notes={}; patch.rows[id].notes[f]=null; }
+  var ok=await save(patch);
+  if(ok && f!=='total' && v>0) openNote(id,f);
+}
+function openNote(id,f){
+  var r=day&&day.rows&&day.rows[id]; if(!r||!editable()) return;
+  noteCtx={id:id,f:f};
+  var n=(r.notes||{})[f]||{};
+  $('#noteTitle').textContent=NOTE_LABELS[f]+' report';
+  $('#noteSub').textContent=r.name+' · '+fmtN(r[f]||0)+' pcs';
+  var isD=f==='damages';
+  $('#reasonWrap').hidden=!isD; $('#noteReason').required=isD; $('#noteReason').value=n.reason||'';
+  $('#noteText').value=n.text||'';
+  $('#noteText').placeholder = isD ? 'What happened? Which batch or bench?' : (f==='sales' ? 'Customer name or bill number' : 'Supplier name or bill number');
+  var d=$('#dlgNote'); if(!d.open) d.showModal();
+}
+$('#fNote').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var c=noteCtx; if(!c) return;
+  var note={text:$('#noteText').value.trim(), who:nameNow(), at:Date.now()};
+  if(c.f==='damages') note.reason=$('#noteReason').value;
+  var patch={rows:{}}; patch.rows[c.id]={notes:{}}; patch.rows[c.id].notes[c.f]=note;
+  $('#dlgNote').close();
+  if(await save(patch)) toast('Report saved');
+});
+$('#noteSkip').addEventListener('click', function(){ $('#dlgNote').close(); });
+
+/* ---------- owner: edit, add ---------- */
+function openEdit(kind,id){
+  var o=day&&day[kind==='item'?'rows':'tasks']&&day[kind==='item'?'rows':'tasks'][id];
+  if(!o||!editable()||!isOwner) return;
+  edCtx={kind:kind,id:id}; edArmed=false;
+  $('#editHead').textContent = kind==='item' ? 'Edit item' : 'Edit task';
+  $('#editLabel').textContent = kind==='item' ? 'Item name' : 'Task';
+  $('#editName').value = kind==='item' ? o.name : o.title;
+  $('#editRemove').textContent = kind==='item' ? 'Remove item' : 'Delete task';
+  var d=$('#dlgEdit'); if(!d.open) d.showModal();
+}
+$('#fEdit').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var v=$('#editName').value.trim().replace(/\s+/g,' '); if(!v||!edCtx) return;
+  if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
+  var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
+  patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
+  $('#dlgEdit').close(); await save(patch);
+});
+$('#editCancel').addEventListener('click', function(){ $('#dlgEdit').close(); });
+$('#editRemove').addEventListener('click', async function(){
+  var label=edCtx.kind==='item' ? 'Remove item' : 'Delete task';
+  if(!edArmed){ edArmed=true; this.textContent='Tap again to confirm'; return; }
+  var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={removed:true};
+  $('#dlgEdit').close(); this.textContent=label;
+  if(await save(patch)) toast(edCtx.kind==='item' ? 'Item removed from the register' : 'Task deleted');
+});
+function parseAdd(){
+  var out=[];
+  $('#addText').value.split('\n').forEach(function(line){
+    line=line.trim(); if(!line) return;
+    var m=line.match(/^(.*?)\s*[,\t]\s*(\d+)\s*$/);
+    var clean=function(s){ return s.trim().replace(/\s+/g,' '); };
+    out.push(m ? {name:clean(m[1]), qty:parseInt(m[2],10)} : {name:clean(line.replace(/[,\t]+$/,'')), qty:0});
+  });
+  return out.filter(function(x){ return x.name; });
+}
+function openAdd(){
+  if(!canWrite||!editable()) return;
+  $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
+  $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
+  $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
+  $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
+  $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
+  var d=$('#dlgAdd'); if(!d.open) d.showModal();
+}
+function normName(s){ return String(s||'').trim().replace(/\s+/g,' ').toLowerCase(); }
+function existingNames(excludeId){
+  var o={}, rows=(day&&day.rows)||{}, nid=nursery;
+  if(excludeId && rows[excludeId]) nid=rows[excludeId].nid||'1';
+  Object.keys(rows).forEach(function(id){ if(id===excludeId||rows[id].removed||(rows[id].nid||'1')!==nid) return; o[normName(rows[id].name)]=1; });
+  return o;
+}
+function splitDups(list){
+  var ex=existingNames(), fresh=[], dups=[];
+  list.forEach(function(it){
+    var k=normName(it.name);
+    if(ex[k]) dups.push(it.name); else { ex[k]=1; fresh.push(it); }
+  });
+  return {fresh:fresh, dups:dups};
+}
+$('#addText').addEventListener('input', function(){
+  var sp=splitDups(parseAdd()), n=sp.fresh.length;
+  $('#addCount').textContent = n ? n+(n===1?' item':' items')+' ready to add' : '';
+  $('#addWarn').textContent = sp.dups.length ? 'Already listed, will be skipped: '+sp.dups.join(', ') : '';
+});
+function csvRows(text){
+  text=text.replace(/^﻿/,'');
+  var first=text.split(/\r?\n/)[0]||'', delim=(first.split(';').length>first.split(',').length)?';':(first.split('\t').length>first.split(',').length?'\t':',');
+  var rows=[], row=[], cur='', q=false, i, ch;
+  for(i=0;i<text.length;i++){
+    ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===delim){ row.push(cur); cur=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+    else cur+=ch;
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+function loadScript(src){
+  return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error('load')); }; document.head.appendChild(s); });
+}
+function rowsToItems(rows){
+  rows=rows.map(function(r){ return r.map(function(c){ return c==null?'':String(c).trim(); }); }).filter(function(r){ return r.some(function(c){ return c; }); });
+  if(!rows.length) return [];
+  var ni=-1, qi=-1, start=0, h=rows[0].map(function(c){ return c.toLowerCase(); });
+  var hasHead=h.some(function(c){ return /item|name|plant|particular|description/.test(c); }) && !h.some(function(c){ return /^\d+$/.test(c); });
+  if(hasHead){
+    start=1;
+    h.forEach(function(c,i){ if(ni<0 && /item|name|plant|particular|description/.test(c)) ni=i; });
+    h.forEach(function(c,i){ if(qi<0 && i!==ni && /total|qty|quantity|stock|opening|bal/.test(c)) qi=i; });
+  }
+  if(ni<0){ ni=0; if(rows[0].length>2 && /^\d+$/.test(rows[0][0]) && !/^\d+$/.test(rows[0][1])) ni=1; }
+  if(qi<0) qi=ni+1;
+  var out=[];
+  rows.slice(start).forEach(function(r){
+    var name=(r[ni]||'').replace(/\s+/g,' ').trim(); if(!name) return;
+    var n=parseInt(String(r[qi]||'').replace(/[, ]/g,''),10);
+    out.push({name:name.replace(/,/g,' ').replace(/\s+/g,' ').trim(), qty:isFinite(n)&&n>0?n:0});
+  });
+  return out;
+}
+$('#addFileBtn').addEventListener('click', function(){ $('#addFile').value=''; $('#addFile').click(); });
+$('#addFile').addEventListener('change', async function(){
+  var f=this.files&&this.files[0]; if(!f) return;
+  var info=$('#addFileInfo'); info.style.color='var(--muted)'; info.textContent='Reading '+f.name+'…';
+  try{
+    var rows;
+    if(/\.(xlsx|xls)$/i.test(f.name)){
+      if(!window.XLSX) await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      var wb=XLSX.read(await f.arrayBuffer(), {type:'array'});
+      rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false, defval:''});
+    } else {
+      rows=csvRows(await f.text());
+    }
+    var items=rowsToItems(rows);
+    if(!items.length){ info.style.color='var(--warn)'; info.textContent='No items found in '+f.name+'. Put item names in the first column and quantities in the second.'; return; }
+    var cur=$('#addText').value.trim();
+    $('#addText').value=(cur?cur+'\n':'')+items.map(function(x){ return x.name+', '+x.qty; }).join('\n');
+    $('#addText').dispatchEvent(new Event('input'));
+    info.textContent=items.length+(items.length===1?' item':' items')+' read from '+f.name+'. Check the list below, then add.';
+  }catch(e){
+    info.style.color='var(--warn)';
+    info.textContent = /\.(xlsx|xls)$/i.test(f.name) ? 'Could not read the Excel file. Save it as .csv and try again.' : 'Could not read that file.';
+  }
+});
+$('#addBtn').addEventListener('click', openAdd);
+$('#addCancel').addEventListener('click', function(){ $('#dlgAdd').close(); });
+$('#fAdd').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var list=parseAdd(); if(!list.length||!editable()||!canWrite) return;
+  var sp=splitDups(list);
+  if(!sp.fresh.length){ toast('Already in the list: '+sp.dups.join(', ')); return; }
+  var rows=(day&&day.rows)||{}, existing={}, maxO=0;
+  Object.keys(rows).forEach(function(id){ if(!rows[id].removed && (rows[id].nid||'1')===nursery) existing[normName(rows[id].name)]=1; maxO=Math.max(maxO,rows[id].order||0); });
+  var patch={rows:{}}, added=0, skipped=0, newNames=[], dupNames=[];
+  list.forEach(function(it){
+    var lk=normName(it.name);
+    if(existing[lk]){ skipped++; dupNames.push(it.name); return; }
+    existing[lk]=1; maxO++; added++;
+    var id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery};
+    if(!isOwner){ base.order=0; base.pending=true; base.by=nameNow()||'A supervisor'; base.reqAt=Date.now(); newNames.push(it.name); }
+    patch.rows[id]=base;
+  });
+  $('#dlgAdd').close();
+  if(!added){ toast('Already in the list: '+dupNames.join(', ')); return; }
+  if(await save(patch)){
+    if(isOwner) toast(added+(added===1?' item added':' items added')+(skipped?'. Skipped duplicates: '+dupNames.join(', '):''));
+    else showSent(newNames, dupNames);
+  }
+});
+
+/* ---------- tasks: marking and setup ---------- */
+function setStatus(id,s){
+  var t=day&&day.tasks&&day.tasks[id]; if(!t||!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var next = (t.status===s) ? '' : s;
+  if(next==='notdone'){
+    reasonCtx=id; $('#reasonTask').textContent=t.title; $('#reasonText').value=t.reason||''; $('#reasonErr').textContent='';
+    var dr=$('#dlgReason'); if(!dr.open) dr.showModal();
+    return;
+  }
+  var p={tasks:{}}; p.tasks[id]={status:next, who:next?nameNow():'', at:next?Date.now():null};
+  if(next!=='notdone') p.tasks[id].reason='';
+  save(p);
+}
+var reasonCtx=null;
+$('#reasonCancel').addEventListener('click', function(){ $('#dlgReason').close(); });
+$('#fReason').addEventListener('submit', function(e){
+  e.preventDefault();
+  var id=reasonCtx, t=day&&day.tasks&&day.tasks[id], r=$('#reasonText').value.trim();
+  if(!r){ $('#reasonErr').textContent='A reason is required when a task is not done.'; return; }
+  $('#dlgReason').close();
+  if(!t||!editable()) return;
+  var p={tasks:{}}; p.tasks[id]={status:'notdone', reason:r, who:nameNow(), at:Date.now()};
+  save(p);
+});
+function taskField(id,f,v){
+  var t=day&&day.tasks&&day.tasks[id]; if(!t||!editable()) return;
+  if(f==='reason' && t.status==='notdone' && !v){
+    toast('A reason is required when a task is not done.');
+    var te=taskEls.get(id); if(te) te._r.reason.value=t.reason||'';
+    return;
+  }
+  if(f!=='to' && needSup()){ toast('Choose your name at the top first.'); renderAll(); return; }
+  if((t[f]||'')===v) return;
+  var p={tasks:{}}; p.tasks[id]={}; p.tasks[id][f]=v; save(p);
+}
+$('#fTask').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var title=$('#taskTitle').value.trim(); if(!title||!editable()||!isOwner) return;
+  var tasks=(day&&day.tasks)||{}, maxO=0;
+  Object.keys(tasks).forEach(function(id){ maxO=Math.max(maxO,tasks[id].order||0); });
+  var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  var p={tasks:{}}; p.tasks[id]={order:maxO+1, title:title, nid:nursery, to:$('#taskTo').hidden?'':$('#taskTo').value, status:'', reason:'', note:''};
+  $('#taskTitle').value='';
+  await save(p);
+});
+$('#resetTasks').addEventListener('click', function(){
+  var b=this; arm(b,'reset','Reset All Tasks', async function(){
+    var p={tasks:{}};
+    taskList(nursery).forEach(function(it){ p.tasks[it[0]]={status:'', reason:'', note:'', who:'', at:null}; });
+    if(await save(p)) toast('All tasks reset for '+NURS[nursery]);
+  });
+});
+$('#deleteTasks').addEventListener('click', function(){
+  var b=this; arm(b,'delall','Delete All', async function(){
+    var p={tasks:{}};
+    taskList(nursery).forEach(function(it){ p.tasks[it[0]]={removed:true}; });
+    if(await save(p)) toast('All tasks deleted for '+NURS[nursery]);
+  });
+});
+
+/* ---------- move between nurseries (owner only) ---------- */
+function rowClash(name,dest,exId){
+  var rows=(day&&day.rows)||{}, k=normName(name);
+  return Object.keys(rows).some(function(i){ var r=rows[i]; return i!==exId && !r.removed && (r.nid||'1')===dest && normName(r.name)===k; });
+}
+function resClash(name,dest,exId){
+  var k=normName(name);
+  return resList().some(function(it){ return it[0]!==exId && (it[1].nid||'1')===dest && normName(it[1].n)===k; });
+}
+function moveRow(id,btn){
+  if(!isOwner||!editable()) return;
+  var r=day.rows&&day.rows[id]; if(!r||r.removed) return;
+  var from=r.nid||'1', dest=otherN(from);
+  if(rowClash(r.name,dest,id)){ toast(r.name+' is already in '+NURS[dest]+'.'); return; }
+  arm(btn,'mvr'+id,mvLabel(from), async function(){
+    var p={rows:{}}; p.rows[id]={nid:dest};
+    if(await save(p)) toast(r.name+' moved to '+NURS[dest]);
+  });
+}
+function moveTask(id,btn){
+  if(!isOwner||!editable()) return;
+  var t=day.tasks&&day.tasks[id]; if(!t||t.removed) return;
+  var from=t.nid||'1', dest=otherN(from);
+  arm(btn,'mvt'+id,'\u21c4 '+mvLabel(from), async function(){
+    var p={tasks:{}}; p.tasks[id]={nid:dest};
+    if(await save(p)) toast('Task moved to '+NURS[dest]);
+  });
+}
+function moveRes(id,btn){
+  if(!isOwner) return;
+  var r=res[id]; if(!r||r.x) return;
+  var from=r.nid||'1', dest=otherN(from);
+  if(resClash(r.n,dest,id)){ toast(r.n+' is already in '+NURS[dest]+'.'); return; }
+  arm(btn,'mvs'+id,mvLabel(from), async function(){
+    var p={res:{}}; p.res[id]={nid:dest};
+    if(await saveSettings(p)) toast(r.n+' moved to '+NURS[dest]);
+  });
+}
+$('#mvAllStock').addEventListener('click', function(){
+  if(!isOwner||!editable()) return;
+  var b=this, from=nursery, dest=otherN(from);
+  arm(b,'mvas','Move all to '+NURS[dest], async function(){
+    var rows=(day&&day.rows)||{}, p={rows:{}}, n=0, skip=0, seen={};
+    sortedRows().forEach(function(it){ var r=it[1], k=normName(r.name);
+      if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest}; n++; });
+    if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'No items to move.'); return; }
+    if(await save(p)) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
+  });
+});
+$('#mvAllTasks').addEventListener('click', function(){
+  if(!isOwner||!editable()) return;
+  var b=this, dest=otherN(nursery);
+  arm(b,'mvat','Move all to '+NURS[dest], async function(){
+    var p={tasks:{}}, n=0;
+    taskList(nursery).forEach(function(it){ p.tasks[it[0]]={nid:dest}; n++; });
+    if(n && await save(p)) toast(n+' task'+(n>1?'s':'')+' moved to '+NURS[dest]);
+  });
+});
+$('#mvAllRes').addEventListener('click', function(){
+  if(!isOwner) return;
+  var b=this, dest=otherN(nursery);
+  arm(b,'mvar','Move all to '+NURS[dest], async function(){
+    var p={res:{}}, n=0, skip=0, seen={};
+    resList().filter(function(it){ return (it[1].nid||'1')===nursery; }).forEach(function(it){
+      var k=normName(it[1].n);
+      if(resClash(it[1].n,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.res[it[0]]={nid:dest}; n++; });
+    if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'Nothing to move.'); return; }
+    if(await saveSettings(p)) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
+  });
+});
+
+/* ---------- team: supervisors and staff ---------- */
+function saveSettings(patch){
+  var d=db.doc('meta/settings');
+  return d.get().then(function(s){ return s.exists ? d.update(patch) : d.set(patch); }).then(function(){ return true; }, onWriteErr);
+}
+function teamList(kind){
+  var o=(team&&team[kind])||{};
+  return Object.keys(o).filter(function(id){ return o[id] && !o[id].x; })
+    .map(function(id){ return [id,o[id]]; })
+    .sort(function(a,b){ return (a[1].o||0)-(b[1].o||0) || a[0].localeCompare(b[0]); });
+}
+function needSup(){ return !isOwner && teamList('sup').length>0 && !supId; }
+function assigneeName(to){ return to ? (team.sup[to]&&!team.sup[to].x ? team.sup[to].n : 'Removed supervisor') : 'All supervisors'; }
+var taskList=function(n){ return sortedTasks().filter(function(it){ return (it[1].nid||'1')===n; }); };
+function visibleTasksOf(n){
+  var all=taskList(n); if(isOwner||!supId) return all;
+  return all.filter(function(it){ return !it[1].to || it[1].to===supId; });
+}
+var visibleTasks=function(){ return visibleTasksOf(nursery); };
+function fillAssign(sel,cur){
+  var l=teamList('sup'), sig=l.map(function(it){ return it[0]+it[1].n; }).join('|')+'#'+cur;
+  if(sel._sig===sig) return;
+  sel._sig=sig; sel.textContent='';
+  var o=mk('option',null,'All supervisors'); o.value=''; sel.append(o);
+  var found=!cur;
+  l.forEach(function(it){ var op=mk('option',null,it[1].n); op.value=it[0]; sel.append(op); if(it[0]===cur) found=true; });
+  if(!found){ var ro=mk('option',null,'Removed supervisor'); ro.value=cur; sel.append(ro); }
+  sel.value=cur||'';
+}
+function syncSup(){
+  var l=teamList('sup'), sel=$('#supSel'), inp=$('#supName');
+  if(!l.length){
+    sel.hidden=true; inp.hidden=false; supId='';
+    try{ supName=localStorage.getItem('nurserySupervisor')||supName; }catch(e){}
+    inp.value=supName; return;
+  }
+  inp.hidden=true; sel.hidden=false; sel.textContent='';
+  var o=mk('option',null,'Choose your name'); o.value=''; sel.append(o);
+  var found=false;
+  l.forEach(function(it){ var op=mk('option',null,it[1].n); op.value=it[0]; sel.append(op); if(it[0]===supId) found=true; });
+  if(!found) supId='';
+  sel.value=supId;
+  supName = supId ? team.sup[supId].n : '';
+}
+$('#supSel').addEventListener('change', function(){
+  supId=this.value;
+  try{ localStorage.setItem('nurserySupId', supId); }catch(e){}
+  supName = supId&&team.sup[supId] ? team.sup[supId].n : '';
+  renderAll();
+});
+function cleanName(s){ return s.trim().replace(/\s+/g,' '); }
+async function addTeam(kind,raw){
+  var names=raw.split(/[,;\n]+/).map(cleanName).filter(Boolean);
+  var have={}, maxO=0;
+  teamList(kind).forEach(function(it){ have[normName(it[1].n)]=1; maxO=Math.max(maxO,it[1].o||0); });
+  var patch={team:{}}, added=0, dups=[];
+  patch.team[kind]={};
+  names.forEach(function(n){
+    var k=normName(n); if(have[k]){ dups.push(n); return; }
+    have[k]=1; maxO++; added++;
+    var id=(kind==='sup'?'s':'w')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    patch.team[kind][id]={n:n, o:maxO}; if(kind==='staff') patch.team[kind][id].nid=$('#staffNur').value==='2'?'2':'1';
+  });
+  if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter a name first.'); return false; }
+  if(await saveSettings(patch)){
+    toast(added+(added===1?' name added':' names added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):''));
+    return true;
+  }
+  return false;
+}
+function dupWarn(kind,inp,out){
+  var have={}, seen={}, dups=[];
+  teamList(kind).forEach(function(it){ have[normName(it[1].n)]=1; });
+  inp.value.split(/[,;\n]+/).map(cleanName).filter(Boolean).forEach(function(n){
+    var k=normName(n); if(have[k]||seen[k]) dups.push(n); seen[k]=1;
+  });
+  out.textContent = dups.length ? 'Already in the list, will be skipped: '+dups.join(', ') : '';
+}
+$('#supIn').addEventListener('input', function(){ dupWarn('sup',this,$('#supWarn')); });
+$('#staffIn').addEventListener('input', function(){ dupWarn('staff',this,$('#staffWarn')); });
+$('#fSup').addEventListener('submit', async function(e){ e.preventDefault(); if(!isOwner) return; if(await addTeam('sup',$('#supIn').value)){ $('#supIn').value=''; $('#supWarn').textContent=''; } });
+$('#fStaff').addEventListener('submit', async function(e){ e.preventDefault(); if(!isOwner) return; if(await addTeam('staff',$('#staffIn').value)){ $('#staffIn').value=''; $('#staffWarn').textContent=''; } });
+function makeTeam(kind,id){
+  var el=mk('div','trow'), inp=document.createElement('input'), btn=mk('button','btn small danger','Remove');
+  inp.type='text'; inp.maxLength=60; btn.type='button';
+  inp.addEventListener('change', function(){
+    var v=cleanName(inp.value), cur=team[kind][id]&&team[kind][id].n;
+    if(!v||v===cur){ inp.value=cur||''; return; }
+    var clash=teamList(kind).some(function(it){ return it[0]!==id && normName(it[1].n)===normName(v); });
+    if(clash){ toast(v+' is already in the list.'); inp.value=cur||''; return; }
+    var p={team:{}}; p.team[kind]={}; p.team[kind][id]={n:v}; saveSettings(p);
+  });
+  btn.addEventListener('click', function(){
+    arm(btn,'rm'+kind+id,'Remove', async function(){
+      var p={team:{}}; p.team[kind]={}; p.team[kind][id]={x:true};
+      if(await saveSettings(p)) toast('Removed');
+    });
+  });
+  var nsel=null;
+  if(kind==='staff'){
+    nsel=document.createElement('select'); nsel.setAttribute('aria-label','Nursery');
+    nsel.style.cssText='flex:0 0 150px; width:150px; padding:8px 6px';
+    nsel.innerHTML='<option value="1">'+NURS['1']+'</option><option value="2">'+NURS['2']+'</option>';
+    nsel.addEventListener('change', function(){ var p={team:{staff:{}}}; p.team.staff[id]={nid:nsel.value}; saveSettings(p); });
+    el.append(inp,nsel,btn);
+  } else el.append(inp,btn);
+  el._r={inp:inp,nsel:nsel}; el._kind=kind;
+  return el;
+}
+function renderTeam(){
+  if(!isOwner) return;
+  [['sup','#supList','#supEmpty','#supHead','Supervisors'],['staff','#staffList','#staffEmpty','#staffHead','Staff']].forEach(function(d){
+    var kind=d[0], list=$(d[1]), l=teamList(kind), seen=new Set(), pos=0;
+    $(d[2]).hidden=l.length>0;
+    $(d[3]).textContent=d[4]+(l.length?' ('+l.length+')':'');
+    l.forEach(function(it){
+      var key=kind+it[0]; seen.add(key);
+      var el=teamEls.get(key); if(!el){ el=makeTeam(kind,it[0]); teamEls.set(key,el); }
+      el._r.inp.setAttribute('aria-label',d[4]+' name');
+      if(document.activeElement!==el._r.inp) el._r.inp.value=it[1].n;
+      if(el._r.nsel && document.activeElement!==el._r.nsel) el._r.nsel.value=it[1].nid||'1';
+      if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+      pos++;
+    });
+    teamEls.forEach(function(el,key){ if(el._kind===kind && !seen.has(key)){ el.remove(); teamEls.delete(key); } });
+  });
+}
+
+/* ---------- suggested tasks for tomorrow ---------- */
+function nextKey(k){ var q=k.split('-').map(Number); return keyOf(new Date(q[0],q[1]-1,q[2]+1)); }
+function sugItems(){
+  var o=(day&&day.sug)||{};
+  return Object.keys(o).filter(function(id){ return o[id]&&o[id].t; }).map(function(id){ return [id,o[id]]; })
+    .sort(function(a,b){ return (a[1].st?1:0)-(b[1].st?1:0) || (a[1].at||0)-(b[1].at||0); });
+}
+function buildCtl(tid){
+  var box=mk('div','task'), seg=mk('div','seg'), done=mk('button','btn','\u2714 Done'), nd=mk('button','btn nd','\u2716 Not done');
+  done.type=nd.type='button';
+  done.addEventListener('click', function(){ setStatus(tid,'done'); });
+  nd.addEventListener('click', function(){ setStatus(tid,'notdone'); });
+  seg.append(done,nd);
+  var reason=document.createElement('input'); reason.type='text'; reason.maxLength=200; reason.placeholder='Reason it was not done (type or use keyboard mic)';
+  reason.addEventListener('change', function(){ taskField(tid,'reason',reason.value.trim()); });
+  var note=document.createElement('input'); note.type='text'; note.maxLength=300; note.placeholder='Brief report (optional)';
+  note.addEventListener('change', function(){ taskField(tid,'note',note.value.trim()); });
+  var meta=mk('div','tmeta');
+  box.style.marginTop='4px';
+  box.append(seg,reason,note,meta);
+  return {el:box, done:done, nd:nd, reason:reason, note:note, meta:meta};
+}
+function fillCtl(C,t,ed){
+  var st=t.status||'';
+  C.done.setAttribute('aria-pressed', st==='done'); C.nd.setAttribute('aria-pressed', st==='notdone');
+  C.done.disabled=!ed; C.nd.disabled=!ed;
+  C.reason.hidden = st!=='notdone';
+  C.note.hidden = !ed && !t.note;
+  if(document.activeElement!==C.reason) C.reason.value=t.reason||'';
+  if(document.activeElement!==C.note) C.note.value=t.note||'';
+  C.reason.disabled=!ed; C.note.disabled=!ed;
+  var bits=[];
+  if(st==='done') bits.push('Done'); else if(st==='notdone') bits.push(t.reason?'Not done':'Not done, reason needed'); else bits.push('Pending');
+  if(st && (t.who||t.at)) bits.push([t.who,fmtTime(t.at)].filter(Boolean).join(' '));
+  C.meta.textContent=bits.join(' \u00b7 ');
+}
+function makeSug(id){
+  var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), act=mk('div','pact');
+  var sel=document.createElement('select'); sel.setAttribute('aria-label','Assign to');
+  var ok=mk('button','btn small primary','Approve'), no=mk('button','btn small danger','Reject'), rm=mk('button','btn small','Remove');
+  ok.type=no.type=rm.type='button';
+  ok.addEventListener('click', function(){ approveSug(id,sel.value); });
+  no.addEventListener('click', function(){ var p={sug:{}}; p.sug[id]={st:'no'}; if(editable()) save(p); });
+  rm.addEventListener('click', function(){ var p={sug:{}}; p.sug[id]=null; if(editable()) save(p); });
+  var C=buildCtl('g'+id); C.el.hidden=true;
+  act.append(sel,ok,no,rm); el.append(t,meta,act,C.el);
+  el._r={C:C,t:t,meta:meta,sel:sel,ok:ok,no:no,rm:rm,act:act};
+  return el;
+}
+function updateSug(el,id,x,ed){
+  var R=el._r, pend=!x.st;
+  R.t.textContent=x.t;
+  var stx = pend ? 'Waiting for owner approval' : (x.st==='ok' ? (x.added ? 'Approved · added to today\u2019s tasks' : 'Approved · will be listed in tomorrow\u2019s tasks') : 'Not approved');
+  R.meta.textContent=[x.by?'By '+x.by:'', fmtTime(x.at), stx].filter(Boolean).join(' · ');
+  R.sel.hidden = !(isOwner && pend && ed && teamList('sup').length);
+  if(isOwner) fillAssign(R.sel, x.sid||'');
+  R.ok.hidden=!(isOwner&&pend&&ed); R.no.hidden=R.ok.hidden;
+  R.rm.hidden=!(!isOwner&&pend&&ed);
+  R.act.hidden=R.sel.hidden&&R.ok.hidden&&R.rm.hidden;
+  var tk=day&&day.tasks&&day.tasks['g'+id];
+  R.C.el.hidden=!(x.st==='ok' && tk && !tk.removed);
+  if(!R.C.el.hidden) fillCtl(R.C,tk,ed);
+}
+async function approveSug(id,to){
+  var x=day&&day.sug&&day.sug[id]; if(!x||x.st||!editable()||!isOwner) return;
+  var p={sug:{}}; p.sug[id]={st:'ok', to:to||''};
+  if(x.d && x.d<=selDate){
+    var tasks=(day&&day.tasks)||{}, mo=0;
+    Object.keys(tasks).forEach(function(k){ mo=Math.max(mo,tasks[k].order||0); });
+    p.sug[id].added=true;
+    p.tasks={}; p.tasks['g'+id]={order:mo+1, title:x.t, to:to||'', nid:x.nid||'1', once:true, sgBy:x.by||'', status:'', reason:'', note:''};
+  }
+  if(await save(p)) toast(p.sug[id].added ? 'Approved and added to today\u2019s tasks' : 'Approved. It will be listed in tomorrow\u2019s tasks.');
+}
+function renderSug(){
+  var box=$('#sugBox'), ed=editable();
+  box.hidden=!day;
+  $('#sugHead').textContent = isOwner ? 'Task suggestions from supervisors' : 'Suggest tasks for tomorrow';
+  $('#sugHelp').hidden = isOwner;
+  $('#fSug').hidden=!(!isOwner&&ed);
+  var items=sugItems().filter(function(it){ return (it[1].nid||'1')===nursery && (isOwner || !supId || it[1].sid===supId); });
+  $('#sugEmpty').hidden=items.length>0;
+  $('#sugEmpty').textContent = isOwner ? 'No suggestions yet.' : 'You have not suggested anything yet.';
+  var list=$('#sugList'), seen=new Set(), pos=0;
+  items.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=sugEls.get(id); if(!el){ el=makeSug(id); sugEls.set(id,el); }
+    updateSug(el,id,it[1],ed);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  sugEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); sugEls.delete(id); } });
+}
+$('#fSug').addEventListener('submit', function(e){
+  e.preventDefault();
+  var t=cleanName($('#sugIn').value); if(!t||isOwner||!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var exists=sugItems().some(function(it){ return !it[1].st && normName(it[1].t)===normName(t); });
+  if(exists){ toast('That suggestion is already waiting for approval.'); return; }
+  var id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={sug:{}};
+  p.sug[id]={t:t, by:nameNow(), sid:supId, nid:nursery, at:Date.now(), d:nextKey(selDate), st:''};
+  $('#sugIn').value='';
+  save(p).then(function(ok){ if(ok) toast('Sent to the owner for approval'); });
+});
+
+/* ---------- tools and resources ---------- */
+function resList(){
+  return Object.keys(res).filter(function(id){ return res[id] && !res[id].x; })
+    .map(function(id){ return [id,res[id]]; })
+    .sort(function(a,b){ return (a[1].o||0)-(b[1].o||0) || a[0].localeCompare(b[0]); });
+}
+function resShown(n){
+  n=n||nursery;
+  var rs=(day&&day.rs)||{}, out=[];
+  if(!day) return out;
+  if(selDate===latest()){
+    resList().filter(function(it){ return (it[1].nid||'1')===n && (isOwner || !supId || !it[1].to || it[1].to===supId); }).forEach(function(it){
+      var r=rs[it[0]]||{};
+      out.push([it[0],{n:it[1].n, nid:n, to:it[1].to||'', q:it[1].q||0, v:(typeof r.v==='boolean')?r.v:null, qty:(typeof r.qty==='number')?r.qty:null, who:r.who||'', at:r.at||0}]);
+    });
+  } else {
+    Object.keys(rs).forEach(function(id){
+      var r=rs[id]; if(r && typeof r.v==='boolean' && (r.nid||'1')===n) out.push([id,{n:r.n||'Removed item', nid:n, to:'', q:r.q||0, v:r.v, qty:(typeof r.qty==='number')?r.qty:null, who:r.who||'', at:r.at||0}]);
+    });
+    out.sort(function(a,b){ return a[1].n.localeCompare(b[1].n); });
+  }
+  return out;
+}
+function resCounts(items){
+  var c={yes:0,no:0,none:0};
+  items.forEach(function(it){ var v=it[1].v; if(v===true) c.yes++; else if(v===false) c.no++; else c.none++; });
+  return c;
+}
+var RES_TXT=function(v){ return v===true?'Available':(v===false?'Not available':'Not checked'); };
+function makeRes(id){
+  var el=mk('div','card rrow'), top=mk('div','rtop'), chk=document.createElement('input'), nm=mk('div','rname'), meta=mk('div','tmeta');
+  chk.type='checkbox'; chk.className='rchk';
+  chk.addEventListener('change', function(){ setRes(id,chk.checked); });
+  var iss=mk('div','tmeta'), qrow=mk('label','rqty'), qin=document.createElement('input');
+  qin.type='number'; qin.min='0'; qin.max='99999'; qin.inputMode='numeric'; qin.setAttribute('aria-label','Quantity with you');
+  qin.addEventListener('change', function(){ var n=num(qin.value); setRes(id, n>0, n); });
+  qrow.append(mk('span',null,'Qty with me'),qin);
+  var nb=mk('button','btn small','Not available with me'); nb.type='button';
+  nb.addEventListener('click', function(){ setRes(id,false); });
+  top.append(chk,nm,iss); el.append(top,qrow,nb,meta);
+  var R={nb:nb,chk:chk,nm:nm,iss:iss,qrow:qrow,qin:qin,meta:meta,inp:null,sel:null,rm:null,qi:null};
+  if(isOwner){
+    var own=mk('div','rown'), inp=document.createElement('input'), qi=document.createElement('input'), sel=document.createElement('select'), rm=mk('button','btn small danger','Remove'), mvb=mk('button','btn small','Move');
+    mvb.type='button'; mvb.addEventListener('click', function(){ moveRes(id,mvb); });
+    qi.type='number'; qi.min='0'; qi.max='99999'; qi.inputMode='numeric'; qi.setAttribute('aria-label','Quantity issued');
+    qi.addEventListener('change', function(){ var p={res:{}}; p.res[id]={q:num(qi.value)}; saveSettings(p); });
+    inp.type='text'; inp.maxLength=60; inp.setAttribute('aria-label','Item name'); sel.setAttribute('aria-label','Handed to'); rm.type='button';
+    inp.addEventListener('change', function(){
+      var v=cleanName(inp.value), cur=res[id]&&res[id].n;
+      if(!v||v===cur){ inp.value=cur||''; return; }
+      var clash=resList().some(function(it){ return it[0]!==id && (it[1].nid||'1')===((res[id]&&res[id].nid)||'1') && normName(it[1].n)===normName(v); });
+      if(clash){ toast(v+' is already in the list.'); inp.value=cur||''; return; }
+      var p={res:{}}; p.res[id]={n:v}; saveSettings(p);
+    });
+    sel.addEventListener('change', function(){ var p={res:{}}; p.res[id]={to:sel.value}; saveSettings(p); });
+    rm.addEventListener('click', function(){
+      arm(rm,'rmres'+id,'Remove', async function(){
+        var p={res:{}}; p.res[id]={x:true};
+        if(await saveSettings(p)) toast('Removed');
+      });
+    });
+    own.append(inp,qi,sel,mvb,rm); el.append(own);
+    R.mv=mvb; R.inp=inp; R.sel=sel; R.rm=rm; R.qi=qi;
+  }
+  el._r=R;
+  return el;
+}
+function updateRes(el,id,r,ed){
+  var R=el._r;
+  R.nm.textContent=r.n;
+  R.chk.checked=(r.v===true); R.chk.disabled=!ed;
+  R.iss.textContent='Qty issued: '+fmtN(r.q||0);
+  R.qrow.hidden=!(ed || r.qty!==null);
+  if(document.activeElement!==R.qin) R.qin.value = r.qty===null ? (r.q||'') : r.qty;
+  R.qin.disabled=!ed;
+  R.nb.hidden=!(ed && r.v===null);
+  R.chk.setAttribute('aria-label','Available with supervisor: '+r.n);
+  var bits=[RES_TXT(r.v)+(r.v!==null && r.qty!==null ? ' ('+fmtN(r.qty)+' of '+fmtN(r.q||0)+')' : '')];
+  if(r.v!==null && (r.who||r.at)) bits.push([r.who,fmtTime(r.at)].filter(Boolean).join(' '));
+  if(!isOwner && r.to) bits.push('Handed to you');
+  R.meta.textContent=bits.join(' · ');
+  if(R.inp){
+    if(document.activeElement!==R.inp) R.inp.value=(res[id]&&res[id].n)||r.n;
+    if(document.activeElement!==R.qi) R.qi.value=r.q||0;
+    if(R.mv && !armed['mvs'+id]) R.mv.textContent=mvLabel(r.nid||'1');
+    R.sel.hidden=!teamList('sup').length && !r.to;
+    fillAssign(R.sel, r.to||'');
+  }
+}
+function renderRes(){
+  var items=resShown(), ed=editable(), list=$('#rlist'), seen=new Set(), pos=0, c=resCounts(items);
+  $('#resAdd').hidden=!isOwner;
+  $('#resTo').hidden=!teamList('sup').length; fillAssign($('#resTo'),$('#resTo').value);
+  $('#resBar').hidden=!items.length;
+  $('#rsum').textContent=c.yes+' available · '+c.no+' not available · '+c.none+' not checked';
+  $('#resAll').hidden=!(ed&&c.none>0);
+  var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); if(!armed.mvar) mr.textContent='Move all to '+NURS[otherN()];
+  $('#resReset').hidden=!(isOwner&&ed&&(c.yes+c.no)>0);
+  var s=$('#rstate'); s.hidden=items.length>0;
+  s.textContent = day===undefined ? 'Loading…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No tools or resources were checked on this date.' : (isOwner ? 'No tools or resources yet. Add them above.' : 'No tools or resources yet. The owner adds them.')));
+  items.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=resEls.get(id); if(!el){ el=makeRes(id); resEls.set(id,el); }
+    updateRes(el,id,it[1],ed);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  resEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); resEls.delete(id); } });
+}
+function setRes(id,v,qty){
+  if(!editable()){ renderAll(); return; }
+  if(needSup()){ toast('Choose your name at the top first.'); renderAll(); return; }
+  var rec=resShown().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
+  var q = qty!==undefined ? qty : (v ? (rec[1].qty>0 ? rec[1].qty : (rec[1].q||1)) : 0);
+  var p={rs:{}}; p.rs[id]={v:v, qty:q, q:rec[1].q||0, nid:rec[1].nid, n:rec[1].n, who:whoNow(), at:Date.now()};
+  save(p);
+}
+function resetMarks(btn,key,label,field,msg,idsFn){
+  arm(btn,key,label, async function(){
+    if(!isOwner||!editable()) return;
+    var cur=(day&&day[field])||{}, p={}, mine={};
+    idsFn().forEach(function(id){ mine[id]=1; });
+    p[field]={};
+    Object.keys(cur).forEach(function(id){ if(mine[id]) p[field][id]=null; });
+    if(!Object.keys(p[field]).length) return;
+    if(await save(p)) toast(msg);
+  });
+}
+$('#attReset').addEventListener('click', function(){ resetMarks(this,'rsatt','Reset Attendance','att','Attendance reset for '+NURS[nursery]+' today', function(){ return attList().filter(function(it){ return it[1].s; }).map(function(it){ return it[0]; }); }); });
+$('#resReset').addEventListener('click', function(){ resetMarks(this,'rsres','Reset Resources','rs','Resource checks reset for '+NURS[nursery]+' today', function(){ return resShown().filter(function(it){ return it[1].v!==null; }).map(function(it){ return it[0]; }); }); });
+$('#resAll').addEventListener('click', function(){
+  if(!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var p={rs:{}}, n=0;
+  resShown().forEach(function(it){ if(it[1].v===null){ n++; p.rs[it[0]]={v:true, qty:it[1].q||1, q:it[1].q||0, nid:it[1].nid, n:it[1].n, who:whoNow(), at:Date.now()}; } });
+  if(n) save(p);
+});
+$('#fRes').addEventListener('submit', async function(e){
+  e.preventDefault(); if(!isOwner) return;
+  var names=$('#resIn').value.split(/[,;\n]+/).map(cleanName).filter(Boolean), have={}, maxO=0, added=0, dups=[];
+  resList().forEach(function(it){ if((it[1].nid||'1')===nursery) have[normName(it[1].n)]=1; maxO=Math.max(maxO,it[1].o||0); });
+  var to=$('#resTo').hidden?'':$('#resTo').value, patch={res:{}}, q0=num($('#resQty').value);
+  names.forEach(function(n){
+    var k=normName(n); if(have[k]){ dups.push(n); return; }
+    have[k]=1; maxO++; added++;
+    patch.res['r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]={n:n, o:maxO, to:to, q:q0, nid:nursery};
+  });
+  if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter an item first.'); return; }
+  if(await saveSettings(patch)){ $('#resIn').value=''; $('#resQty').value='1'; toast(added+(added===1?' item added':' items added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):'')); }
+});
+
+/* ---------- customers and sales ---------- */
+var fmtMoney=function(n){ return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+function csItems(n){
+  n=n||nursery;
+  var o=(day&&day.cs)||{};
+  return Object.keys(o).filter(function(id){ return o[id] && (o[id].nid||'1')===n && (o[id].name||o[id].phone||o[id].bill); })
+    .map(function(id){ return [id,o[id]]; })
+    .sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+}
+function makeCs(id){
+  var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), rm=mk('button','btn small danger','Remove');
+  rm.type='button'; rm.style.alignSelf='flex-start';
+  rm.addEventListener('click', function(){
+    arm(rm,'cs'+id,'Remove', async function(){
+      if(!editable()) return;
+      var p={cs:{}}; p.cs[id]=null; save(p);
+    });
+  });
+  el.append(t,meta,rm); el._r={t:t,meta:meta,rm:rm};
+  return el;
+}
+function updateCs(el,x,ed){
+  var R=el._r;
+  R.t.textContent=[x.name,x.phone].filter(Boolean).join(' \u00b7 ');
+  R.meta.textContent=[x.bill?'Bill no. '+x.bill:'No bill no.', x.amt>0?'\u20b9'+fmtMoney(x.amt):'No amount', x.by?'By '+x.by:'', fmtTime(x.at)].filter(Boolean).join(' \u00b7 ');
+  R.rm.hidden=!ed;
+}
+function renderCs(){
+  var ed=editable(), items=csItems(), list=$('#csList'), seen=new Set(), pos=0, total=0;
+  $('#csBox').hidden=!day;
+  $('#fCs').hidden=!ed;
+  items.forEach(function(it){ total+=Number(it[1].amt)||0; });
+  $('#csBar').hidden=!items.length;
+  $('#csSum').textContent=items.length+(items.length===1?' sale':' sales')+' \u00b7 Total \u20b9'+fmtMoney(total);
+  $('#csEmpty').hidden=items.length>0;
+  items.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=csEls.get(id); if(!el){ el=makeCs(id); csEls.set(id,el); }
+    updateCs(el,it[1],ed);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  csEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); csEls.delete(id); } });
+}
+$('#csPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
+$('#fCs').addEventListener('submit', function(e){
+  e.preventDefault();
+  if(!editable()) return;
+  var err=$('#csErr'), name=cleanName($('#csName').value), phoneRaw=$('#csPhone').value.trim(), bill=cleanName($('#csBill').value), amt=parseFloat($('#csAmt').value);
+  var digits=phoneRaw.replace(/\D/g,'');
+  if(!name && !phoneRaw){ err.textContent='Enter the customer name or phone number.'; return; }
+  if(phoneRaw && digits.length!==10){ err.textContent='The phone number must be exactly 10 digits.'; return; }
+  if($('#csAmt').value.trim()!=='' && !(amt>=0)){ err.textContent='Enter a valid amount.'; return; }
+  if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
+  if(bill && csItems().some(function(it){ return it[1].bill && normName(it[1].bill)===normName(bill); })){ err.textContent='Bill no. '+bill+' is already entered today.'; return; }
+  err.textContent='';
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={cs:{}};
+  p.cs[id]={name:name, nid:nursery, phone:phoneRaw ? digits : '', bill:bill, amt:(amt>0?Math.round(amt*100)/100:0), by:nameNow()||(isOwner?'Owner':''), at:Date.now()};
+  save(p).then(function(ok){
+    if(ok){ $('#csName').value=''; $('#csPhone').value=''; $('#csBill').value=''; $('#csAmt').value=''; toast('Customer added'); }
+  });
+});
+
+/* ---------- weekly attendance report ---------- */
+function fmtShort(d){ return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
+function weekStartOf(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()); }
+function fillWeeks(){
+  var sel=$('#weekSel'); if(sel.options.length) return;
+  var base=weekStartOf(new Date()), i;
+  for(i=0;i<12;i++){
+    var a=new Date(base.getFullYear(),base.getMonth(),base.getDate()-7*i), e=new Date(a.getFullYear(),a.getMonth(),a.getDate()+6);
+    var o=mk('option',null,(i===0?'This week: ':'')+fmtShort(a)+' (Sun) to '+fmtShort(e)+' (Sat)'+(a.getFullYear()!==e.getFullYear()?'':'')); o.value=keyOf(a); sel.append(o);
+  }
+  var sat=new Date().getDay()===6;
+  $('#weekBtn').classList.toggle('primary', sat);
+  $('#weekHelp').textContent = sat ? 'Today is Saturday, so this week\u2019s report is ready. One PDF for all staff, Sunday to Saturday.' : 'One PDF for all staff, Sunday to Saturday. The report for each week is ready from Saturday.';
+}
+async function loadWeek(startKey){
+  var q=startKey.split('-').map(Number), dates=[], i;
+  for(i=0;i<7;i++) dates.push(new Date(q[0],q[1]-1,q[2]+i));
+  var keysW=dates.map(keyOf), today=todayKey(), docs={};
+  for(i=0;i<7;i++){
+    var k=keysW[i]; if(k>today) continue;
+    try{
+      var sn=db ? await db.doc('days/'+k).get() : null;
+      if(sn && sn.exists){ docs[k]=sn.data(); cache.days[k]=docs[k]; }
+      else if(cache.days[k]) docs[k]=cache.days[k];
+    }catch(e){ if(cache.days[k]) docs[k]=cache.days[k]; }
+  }
+  cacheSave();
+  var marked=keysW.filter(function(k){
+    var a=docs[k]&&docs[k].att; return a && Object.keys(a).some(function(id){ return a[id]&&a[id].s; });
+  });
+  return {dates:dates, keysW:keysW, today:today, docs:docs, marked:marked};
+}
+async function weekInfo(){
+  var el=$('#weekInfo'); if(!el) return;
+  var key=$('#weekSel').value; el.textContent='Checking saved data…';
+  var w=await loadWeek(key);
+  if($('#weekSel').value!==key) return;
+  el.textContent = w.marked.length ? 'Saved attendance found for '+w.marked.length+' of 7 days.' : 'No saved attendance data is available for this week.';
+  el.style.color = w.marked.length ? '' : 'var(--warn)';
+}
+async function weeklyPdf(startKey,W){
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
+  var w=W||await loadWeek(startKey), dates=w.dates, keysW=w.keysW, today=w.today, docs=w.docs;
+  var by={'1':{names:{},order:[]},'2':{names:{},order:[]}};
+  teamList('staff').forEach(function(it){ var g=by[it[1].nid==='2'?'2':'1']; g.names[it[0]]=it[1].n; g.order.push(it[0]); });
+  var known={}; ['1','2'].forEach(function(n){ by[n].order.forEach(function(id){ known[id]=1; }); });
+  keysW.forEach(function(k){
+    var a=(docs[k]&&docs[k].att)||{};
+    Object.keys(a).forEach(function(id){
+      if(a[id]&&a[id].s&&!known[id]){ var g=by[a[id].nid==='2'?'2':'1']; g.names[id]=a[id].n||'Former staff'; g.order.push(id); known[id]=1; }
+    });
+  });
+  var doc=new J({unit:'pt',format:'a4',orientation:'landscape'});
+  doc.setFontSize(16); doc.text('Nursery Daily Manager - Weekly Attendance Report', 40, 42);
+  doc.setFontSize(10);
+  doc.text('Week: '+fmtLong(keysW[0])+' (Sunday) to '+fmtLong(keysW[6])+' (Saturday)', 40, 60);
+  var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], CODE={P:'P',H:'H',A:'A'};
+  var head=[['Sl.No.','Staff'].concat(dates.map(function(d,i){ return DN[i]+' '+pad(d.getDate())+'/'+pad(d.getMonth()+1); }),['Present','Half day','Absent','Days worked'])];
+  var y=72;
+  ['1','2'].forEach(function(n){
+    var g=by[n];
+    if(y>440){ doc.addPage(); y=50; }
+    doc.setFontSize(12); doc.text(NURS[n], 40, y); doc.setFontSize(10);
+    var body=g.order.map(function(id,idx){
+      var P=0,H=0,A=0, cells=keysW.map(function(k){
+        var a=docs[k]&&docs[k].att&&docs[k].att[id];
+        if(a&&a.s){ if(a.s==='P') P++; else if(a.s==='H') H++; else if(a.s==='A') A++; return CODE[a.s]; }
+        return (k>today || !docs[k]) ? '' : '-';
+      });
+      return [idx+1,g.names[id]].concat(cells,[P,H,A,(P+H/2)]);
+    });
+    if(!body.length) body=[['','No staff or attendance records for this week']];
+    doc.autoTable({
+      startY:y+6, theme:'grid', styles:{fontSize:9,cellPadding:4,halign:'center'},
+      head:head, body:body, headStyles:{fillColor:[42,127,62]},
+      columnStyles:{0:{cellWidth:36},1:{halign:'left',cellWidth:120}}
+    });
+    y=doc.lastAutoTable.finalY+20;
+  });
+  doc.setFontSize(9);
+  doc.text('P = present, H = half day (counts 0.5), A = absent, - = not marked, blank = no record for that day.', 40, y);
+  var missing=keysW.filter(function(k){ return k<=today && !docs[k]; });
+  if(missing.length) doc.text('No register was saved for: '+missing.join(', '), 40, y+14);
+  return doc.output('arraybuffer');
+}
+$('#weekBtn').addEventListener('click', async function(){
+  var b=this, old=b.textContent;
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
+  b.disabled=true; b.textContent='Preparing…';
+  try{
+    var key=$('#weekSel').value, W=await loadWeek(key);
+    if(!W.marked.length){ toast('Data not available: no attendance was saved for this week.'); weekInfo(); return; }
+    var buf=await weeklyPdf(key,W);
+    if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+    var q=key.split('-').map(Number), e=keyOf(new Date(q[0],q[1]-1,q[2]+6));
+    await downloads.save({filename:'weekly-attendance-'+key+'-to-'+e+'.pdf', data:buf});
+  }catch(err){ if(!err||err.code!=='declined') toast('The weekly report could not be saved here.'); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+
+$('#weekSel').addEventListener('change', weekInfo);
+$('#tabAtt').addEventListener('click', function(){ setTimeout(function(){ if($('#weekSel').options.length) weekInfo(); },50); });
+
+/* ---------- attendance ---------- */
+var ATT_TXT={P:'Present',H:'Half day',A:'Absent','':'Not marked'};
+function attList(n){
+  n=n||nursery;
+  var out=[], seen={}, att=(day&&day.att)||{};
+  teamList('staff').forEach(function(it){
+    seen[it[0]]=1;
+    if((it[1].nid||'1')!==n) return;
+    var a=att[it[0]]||{};
+    out.push([it[0],{n:it[1].n, nid:n, s:a.s||'', who:a.who||'', at:a.at||0}]);
+  });
+  Object.keys(att).forEach(function(id){
+    var a=att[id]; if(!seen[id] && a && a.s && (a.nid||'1')===n) out.push([id,{n:a.n||'Former staff', nid:n, s:a.s, who:a.who||'', at:a.at||0}]);
+  });
+  return out;
+}
+function attShown(n){
+  var all=day?attList(n):[];
+  return selDate===latest() ? all : all.filter(function(it){ return it[1].s; });
+}
+function attCounts(items){
+  var c={P:0,H:0,A:0,N:0};
+  items.forEach(function(it){ var s=it[1].s; if(s) c[s]++; else c.N++; });
+  return c;
+}
+function attText(){
+  var items=attShown(), c=attCounts(items);
+  var L=['Nursery Daily Manager - Attendance','Date: '+fmtLong(selDate),
+    c.P+' present | '+c.H+' half day | '+c.A+' absent | '+c.N+' not marked',''];
+  items.forEach(function(it,i){
+    var a=it[1];
+    L.push((i+1)+'. '+a.n+': '+ATT_TXT[a.s||'']+(a.s&&a.who?' (marked by '+a.who+')':''));
+  });
+  return L.join('\n');
+}
+function makeAtt(id){
+  var el=mk('div','card arow'), top=mk('div','ttop'), num_=mk('span','sl'), nm=mk('div','ttitle');
+  top.append(num_,nm);
+  var seg=mk('div','aseg'), b={};
+  [['P','✔ Present',''],['H','½ Half day','h'],['A','✖ Absent','a']].forEach(function(d){
+    var x=mk('button','btn '+d[2],d[1]); x.type='button';
+    x.addEventListener('click', function(){ setAtt(id,d[0]); });
+    b[d[0]]=x; seg.append(x);
+  });
+  var meta=mk('div','tmeta');
+  el.append(top,seg,meta); el._r={num:num_,nm:nm,b:b,meta:meta};
+  return el;
+}
+function updateAtt(el,a,n,ed){
+  var R=el._r;
+  R.num.textContent=n; R.nm.textContent=a.n;
+  ['P','H','A'].forEach(function(k){ R.b[k].setAttribute('aria-pressed', a.s===k); R.b[k].disabled=!ed; });
+  R.meta.textContent = a.s ? ATT_TXT[a.s]+(a.who||a.at ? ' · '+[a.who,fmtTime(a.at)].filter(Boolean).join(' ') : '') : 'Not marked';
+}
+function renderAtt(){
+  fillWeeks();
+  var items=attShown(), ed=editable(), list=$('#alist'), seen=new Set(), pos=0, c=attCounts(items);
+  $('#attBar').hidden=!items.length;
+  $('#asum').textContent=c.P+' present · '+c.H+' half day · '+c.A+' absent · '+c.N+' not marked';
+  $('#attAll').hidden=!(ed&&c.N>0);
+  $('#attReset').hidden=!(isOwner&&ed&&(c.P+c.H+c.A)>0);
+  var s=$('#astate'); s.hidden=items.length>0;
+  s.textContent = day===undefined ? 'Loading attendance…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No attendance was marked on this date.' : (isOwner ? 'No staff yet. Add staff in the Team tab.' : 'No staff yet. The owner adds staff in the Team tab.')));
+  items.forEach(function(it,i){
+    var id=it[0]; seen.add(id);
+    var el=attEls.get(id); if(!el){ el=makeAtt(id); attEls.set(id,el); }
+    updateAtt(el,it[1],i+1,ed);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  attEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); attEls.delete(id); } });
+}
+function whoNow(){ return nameNow() || (isOwner ? 'Owner' : ''); }
+function setAtt(id,s){
+  if(!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var rec=attList().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
+  var next = rec[1].s===s ? '' : s;
+  var p={att:{}}; p.att[id]={s:next, n:rec[1].n, nid:rec[1].nid, who:next?whoNow():'', at:next?Date.now():null};
+  save(p);
+}
+$('#attAll').addEventListener('click', function(){
+  if(!editable()) return;
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  var p={att:{}}, n=0;
+  attList().forEach(function(it){ if(!it[1].s){ n++; p.att[it[0]]={s:'P', n:it[1].n, nid:it[1].nid, who:whoNow(), at:Date.now()}; } });
+  if(n) save(p);
+});
+
+/* ---------- day, report, tabs ---------- */
+$('#closeBtn').addEventListener('click', function(){
+  if(!day) return;
+  var b=this;
+  if(day.closed){ save({closed:false}).then(function(ok){ if(ok) setIndexClosed(selDate,false); }); return; }
+  var missing=sortedTasks().filter(function(it){ return it[1].status==='notdone' && !(it[1].reason||'').trim(); });
+  if(missing.length){ tab='tasks'; renderAll(); toast('Add a reason for every task marked Not done before closing the day.'); return; }
+  arm(b,'close','Close day', async function(){
+    if(await save({closed:true, closedAt:Date.now()})){ setIndexClosed(selDate,true); toast('Day closed. Tomorrow starts from these balances.'); }
+  });
+});
+$('#report').addEventListener('change', function(){
+  if(!editable()) return;
+  var text=this.value.trim();
+  if(text===((day.report||{}).text||'')) return;
+  save({report:{text:text, who:nameNow(), at:Date.now()}});
+});
+$('#daySel').addEventListener('change', function(){ goTo(this.value); });
+$('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
+$('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
+$('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
+$('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
+$('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
+$('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
+$('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
+function setMode(m){
+  isOwner = accountOwner && m==='owner';
+  try{ localStorage.setItem('nurseryMode', m); }catch(e){}
+  rowEls.forEach(function(el){ el.remove(); }); rowEls.clear();
+  taskEls.forEach(function(el){ el.remove(); }); taskEls.clear();
+  pendEls.forEach(function(el){ el.remove(); }); pendEls.clear();
+  teamEls.forEach(function(el){ el.remove(); }); teamEls.clear();
+  resEls.forEach(function(el){ el.remove(); }); resEls.clear();
+  sugEls.forEach(function(el){ el.remove(); }); sugEls.clear();
+  csEls.forEach(function(el){ el.remove(); }); csEls.clear();
+  toast(isOwner ? 'Owner mode' : 'Supervisor mode');
+  renderAll();
+}
+/* ---------- owner PIN ---------- */
+var hasPin=function(){ return !!(pinData && pinData.hash && pinData.salt); };
+var SHA_K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256Hex(msg){
+  var rr=function(n,x){ return (x>>>n)|(x<<(32-n)); };
+  var bytes=[], s=unescape(encodeURIComponent(msg)), i;
+  for(i=0;i<s.length;i++) bytes.push(s.charCodeAt(i));
+  var bits=bytes.length*8;
+  bytes.push(0x80);
+  while(bytes.length%64!==56) bytes.push(0);
+  var hi=Math.floor(bits/0x100000000), lo=bits>>>0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+  var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19], w=new Array(64), off, t;
+  for(off=0;off<bytes.length;off+=64){
+    for(t=0;t<16;t++) w[t]=(bytes[off+t*4]<<24)|(bytes[off+t*4+1]<<16)|(bytes[off+t*4+2]<<8)|bytes[off+t*4+3];
+    for(t=16;t<64;t++){
+      var s0=rr(7,w[t-15])^rr(18,w[t-15])^(w[t-15]>>>3), s1=rr(17,w[t-2])^rr(19,w[t-2])^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)|0;
+    }
+    var a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(t=0;t<64;t++){
+      var S1=rr(6,e)^rr(11,e)^rr(25,e), ch=(e&f)^(~e&g), t1=(h+S1+ch+SHA_K[t]+w[t])|0;
+      var S0=rr(2,a)^rr(13,a)^rr(22,a), mj=(a&b)^(a&c)^(b&c), t2=(S0+mj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+    }
+    H[0]=(H[0]+a)|0; H[1]=(H[1]+b)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0;
+    H[4]=(H[4]+e)|0; H[5]=(H[5]+f)|0; H[6]=(H[6]+g)|0; H[7]=(H[7]+h)|0;
+  }
+  return H.map(function(x){ return ('00000000'+(x>>>0).toString(16)).slice(-8); }).join('');
+}
+function slowHash(pin,salt){
+  var h=sha256Hex(salt+':'+pin), i;
+  for(i=0;i<3000;i++) h=sha256Hex(h+salt);
+  return h;
+}
+async function legacyHash(pin,salt){
+  var buf=new TextEncoder().encode(salt+':'+pin);
+  var h=await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(h)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+function randSalt(){
+  var a=new Array(12), i;
+  try{ var u=new Uint8Array(12); crypto.getRandomValues(u); for(i=0;i<12;i++) a[i]=u[i]; }
+  catch(e){ for(i=0;i<12;i++) a[i]=Math.floor(Math.random()*256); }
+  return a.map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+}
+async function pinMatches(pin){
+  if(!hasPin()) return false;
+  try{
+    if(pinData.v===2) return slowHash(pin,pinData.salt)===pinData.hash;
+    return (await legacyHash(pin,pinData.salt))===pinData.hash;
+  }catch(e){ return false; }
+}
+function openPin(){
+  $('#pinIn').value=''; $('#pinErr').textContent='';
+  var d=$('#dlgPin'); if(!d.open) d.showModal();
+  setTimeout(function(){ $('#pinIn').focus(); }, 50);
+}
+$('#modeOwner').addEventListener('click', function(){
+  if(!accountOwner) $('#dlgLogin').showModal();
+  else if(!isOwner){ if(hasPin()) openPin(); else setMode('owner'); }
+});
+$('#pinCancel').addEventListener('click', function(){ $('#dlgPin').close(); });
+$('#fPin').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var err=$('#pinErr');
+  if(Date.now()<pinLockUntil){ err.textContent='Too many wrong PINs. Wait '+Math.ceil((pinLockUntil-Date.now())/1000)+' seconds.'; return; }
+  if(await pinMatches($('#pinIn').value.trim())){ pinFails=0; $('#dlgPin').close(); setMode('owner'); return; }
+  $('#pinIn').value=''; pinFails++;
+  if(pinFails>=5){ pinFails=0; pinLockUntil=Date.now()+30000; err.textContent='Too many wrong PINs. Try again in 30 seconds.'; }
+  else err.textContent='Wrong PIN. Try again.';
+});
+$('#pinBtn').addEventListener('click', function(){
+  var has=hasPin();
+  $('#spHead').textContent = has ? 'Change owner PIN' : 'Set owner PIN';
+  $('#spCurWrap').hidden=!has; $('#spRemove').hidden=!has;
+  $('#spCur').value=''; $('#spNew').value=''; $('#spNew2').value=''; $('#spErr').textContent='';
+  var d=$('#dlgSetPin'); if(!d.open) d.showModal();
+});
+$('#spCancel').addEventListener('click', function(){ $('#dlgSetPin').close(); });
+$('#fSetPin').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(!isOwner||!db) return;
+  var err=$('#spErr'), n1=$('#spNew').value.trim(), n2=$('#spNew2').value.trim();
+  if(hasPin() && !(await pinMatches($('#spCur').value.trim()))){ err.textContent='The current PIN is wrong.'; return; }
+  if(!/^\d{4,6}$/.test(n1)){ err.textContent='Use 4 to 6 digits.'; return; }
+  if(n1!==n2){ err.textContent='The new PINs do not match.'; return; }
+  try{
+    var salt=randSalt(), hash=slowHash(n1,salt);
+    await db.doc('meta/security').set({v:2, salt:salt, hash:hash, at:Date.now()});
+    $('#dlgSetPin').close(); toast('Owner PIN saved');
+  }catch(x){ err.textContent='The PIN could not be saved ('+((x&&(x.code||x.message))||'unknown error')+'). Try again.'; }
+});
+$('#spRemove').addEventListener('click', function(){
+  var b=this;
+  arm(b,'rmpin','Remove PIN', async function(){
+    var err=$('#spErr');
+    if(!(await pinMatches($('#spCur').value.trim()))){ err.textContent='Enter the current PIN above to remove it.'; return; }
+    try{ await db.doc('meta/security').delete(); $('#dlgSetPin').close(); toast('Owner PIN removed'); }
+    catch(x){ err.textContent='The PIN could not be removed. Try again.'; }
+  });
+});
+$('#modeSup').addEventListener('click', function(){
+  if(accountOwner && isOwner) setMode('supervisor');
+});
+$('#loginOk').addEventListener('click', function(){ $('#dlgLogin').close(); });
+$('#sentOk').addEventListener('click', function(){ $('#dlgSent').close(); });
+$('#alertBtn').addEventListener('click', function(){
+  tab='stock'; renderAll();
+  var b=$('#pendBox'); if(b&&b.scrollIntoView) b.scrollIntoView({behavior:'smooth', block:'start'});
+});
+$('#waSetBtn').addEventListener('click', function(){ $('#waNum').value=ownerWa; var d=$('#dlgWa'); if(!d.open) d.showModal(); });
+$('#waCancel').addEventListener('click', function(){ $('#dlgWa').close(); });
+$('#fWa').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var digits=$('#waNum').value.replace(/\D/g,'');
+  if(digits && (digits.length<8||digits.length>15)){ toast('Enter 8 to 15 digits including the country code.'); return; }
+  $('#dlgWa').close();
+  if(!isOwner||!db) return;
+  if(await saveSettings({ownerWa:digits})) toast(digits?'WhatsApp number saved':'WhatsApp notification turned off');
+});
+$('#supName').addEventListener('input', function(){
+  supName=this.value;
+  try{ localStorage.setItem('nurserySupervisor', supName); }catch(e){}
+});
+
+/* ---------- report text and PDF ---------- */
+var STATUS_TXT={done:'Done',notdone:'Not done','':'Pending'};
+function stockText(){
+  var items=sortedRows(), s=sums(items);
+  var L=['Nursery Daily Manager - Stock Report','Date: '+fmtLong(selDate)+(day&&day.supervisor?' | Supervisor: '+day.supervisor:''),
+    'Total '+s.total+' | Purchases '+s.purchase+' | Sales '+s.sales+' | Damages '+s.damages+' | Balance '+s.bal, ''];
+  items.forEach(function(it,i){
+    var r=it[1];
+    L.push((i+1)+'. '+r.name+': total '+(r.total||0)+', purchases '+(r.purchase||0)+', sales '+(r.sales||0)+', damages '+(r.damages||0)+', balance '+bal(r));
+    var n=r.notes||{};
+    ['purchase','sales','damages'].forEach(function(f){
+      if(n[f]&&(n[f].text||n[f].reason)) L.push('   '+NOTE_LABELS[f]+': '+[n[f].reason,n[f].text].filter(Boolean).join(' - '));
+    });
+  });
+  if(day.report&&day.report.text){ L.push('', "Supervisor's report:", day.report.text); }
+  return L.join('\n');
+}
+function taskText(){
+  var items=visibleTasks(), c=taskCounts(items);
+  var L=['Nursery Daily Manager - Daily Tasks','Date: '+fmtLong(selDate)+(day&&day.supervisor?' | Supervisor: '+day.supervisor:''),
+    c.done+' done | '+c.notdone+' not done | '+c.pending+' pending',''];
+  items.forEach(function(it,i){
+    var t=it[1], line=(i+1)+'. '+t.title+(teamList('sup').length||t.to?' ['+assigneeName(t.to)+']':'')+': '+STATUS_TXT[t.status||''];
+    if(t.status==='notdone'&&t.reason) line+=' (reason: '+t.reason+')';
+    L.push(line);
+    if(t.note) L.push('   Report: '+t.note);
+  });
+  return L.join('\n');
+}
+function pdfBase(title){
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
+  var doc=new J({unit:'pt',format:'a4'});
+  doc.setFontSize(16); doc.text('Nursery Daily Manager - '+title, 40, 46);
+  doc.setFontSize(10);
+  doc.text('Date: '+fmtLong(selDate), 40, 66);
+  doc.text('Supervisor: '+((day&&day.supervisor)||'-'), 40, 80);
+  return doc;
+}
+function secStart(doc,title,first){
+  if(!first) doc.addPage();
+  doc.setFontSize(14); doc.text(title, 40, first?106:46); doc.setFontSize(10);
+  return first?116:58;
+}
+function pdfStock(d0,first){
+  var doc=d0||pdfBase('Stock Report'); if(!doc) return null;
+  var y=d0 ? secStart(doc,'1. Stock',first) : 94;
+  var R=function(){ return {halign:'right'}; };
+  ['1','2'].forEach(function(n){
+    var items=rowsOf(n), s=sums(items);
+    if(y>690){ doc.addPage(); y=50; }
+    doc.setFontSize(12); doc.text(NURS[n], 40, y); doc.setFontSize(10);
+    if(!items.length){ doc.text('No items in this nursery.', 40, y+16); y+=36; return; }
+    doc.autoTable({
+      startY:y+6, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Item Name','Total Qty','Purchases','Sales','Damages','Bal Qty']],
+      body:items.map(function(it,i){ var r=it[1]; return [i+1,r.name,r.total||0,r.purchase||0,r.sales||0,r.damages||0,bal(r)]; }),
+      foot:[['','Totals',s.total,s.purchase,s.sales,s.damages,s.bal]],
+      headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20},
+      columnStyles:{0:{cellWidth:40},2:R(),3:R(),4:R(),5:R(),6:R()}
+    });
+    var nrows=[];
+    items.forEach(function(it){
+      var nt=it[1].notes||{};
+      ['purchase','sales','damages'].forEach(function(f){
+        if(nt[f]&&(nt[f].text||nt[f].reason)) nrows.push([it[1].name, NOTE_LABELS[f]+' '+(it[1][f]||0), [nt[f].reason,nt[f].text].filter(Boolean).join(' - ')]);
+      });
+    });
+    y=doc.lastAutoTable.finalY+18;
+    if(nrows.length){
+      doc.setFontSize(11); doc.text('Reasons and reports ('+NURS[n]+')', 40, y);
+      doc.autoTable({startY:y+6, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Item','Entry','Reason / report']], body:nrows, headStyles:{fillColor:[42,127,62]}});
+      y=doc.lastAutoTable.finalY+18;
+    }
+  });
+  if(day.report&&day.report.text){
+    if(y>740){ doc.addPage(); y=50; }
+    doc.setFontSize(11); doc.text("Supervisor's report", 40, y);
+    doc.setFontSize(10); doc.text(doc.splitTextToSize(day.report.text, 515), 40, y+16);
+  }
+  return d0 ? null : doc.output('arraybuffer');
+}
+function nurHead(doc,y,n,line){
+  if(y>690){ doc.addPage(); y=50; }
+  doc.setFontSize(12); doc.text(NURS[n], 40, y); doc.setFontSize(10);
+  doc.text(line, 40, y+14);
+  return y+20;
+}
+function pdfTasks(d0,first){
+  var doc=d0||pdfBase('Daily Tasks'); if(!doc) return null;
+  var y=d0 ? secStart(doc,'2. Daily Tasks',first) : 94;
+  ['1','2'].forEach(function(n){
+    var items=visibleTasksOf(n), c=taskCounts(items);
+    y=nurHead(doc,y,n,c.done+' done, '+c.notdone+' not done, '+c.pending+' pending');
+    if(!items.length){ y+=14; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Task','Assigned to','Status','Reason if not done','Brief report']],
+      body:items.map(function(it,i){ var t=it[1]; return [i+1,t.title,assigneeName(t.to),STATUS_TXT[t.status||''],t.status==='notdone'?(t.reason||''):'',t.note||'']; }),
+      headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40},3:{cellWidth:60}}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
+  return d0 ? null : doc.output('arraybuffer');
+}
+function pdfAtt(d0,first){
+  var doc=d0||pdfBase('Attendance'); if(!doc) return null;
+  var y=d0 ? secStart(doc,'3. Attendance',first) : 94;
+  ['1','2'].forEach(function(n){
+    var items=attShown(n), c=attCounts(items);
+    y=nurHead(doc,y,n,c.P+' present, '+c.H+' half day, '+c.A+' absent, '+c.N+' not marked');
+    if(!items.length){ y+=14; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Staff','Attendance','Marked by','Time']],
+      body:items.map(function(it,i){ var a=it[1]; return [i+1,a.n,ATT_TXT[a.s||''],a.s?(a.who||''):'',a.s?fmtTime(a.at):'']; }),
+      headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40}}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
+  return d0 ? null : doc.output('arraybuffer');
+}
+function pdfRes(doc){
+  var y=secStart(doc,'4. Tools and Resources',false);
+  ['1','2'].forEach(function(n){
+    var items=resShown(n), c=resCounts(items);
+    y=nurHead(doc,y,n,c.yes+' available, '+c.no+' not available, '+c.none+' not checked');
+    if(!items.length){ y+=14; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Tool / resource','Qty issued','Qty with supervisor','Handed to','Availability','Checked by','Time']],
+      body:items.map(function(it,i){ var r=it[1]; return [i+1,r.n,r.q||0,r.qty===null?'':r.qty,assigneeName(r.to),RES_TXT(r.v),r.v!==null?r.who:'',r.v!==null?fmtTime(r.at):'']; }),
+      headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40}}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
+}
+function pdfCs(doc){
+  var y=secStart(doc,'5. Customers and Sales',false);
+  ['1','2'].forEach(function(n){
+    var items=csItems(n), total=0;
+    items.forEach(function(it){ total+=Number(it[1].amt)||0; });
+    y=nurHead(doc,y,n,items.length+' sales, total Rs. '+fmtMoney(total));
+    if(!items.length){ y+=14; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Customer name','Phone','Bill no.','Amount (Rs.)','Entered by','Time']],
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.name||'',x.phone||'',x.bill||'',{content:x.amt>0?fmtMoney(x.amt):'',styles:{halign:'right'}},x.by||'',fmtTime(x.at)]; }),
+      foot:[['','','','Total',{content:fmtMoney(total),styles:{halign:'right'}},'','']],
+      headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20}, columnStyles:{0:{cellWidth:40}}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
+}
+function pdfAll(){
+  var doc=pdfBase('Daily Report'); if(!doc) return null;
+  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc);
+  return doc.output('arraybuffer');
+}
+$('#pdfBtn').addEventListener('click', async function(){
+  if(!day) return;
+  if(!isOwner && selDate===latest()){
+    var left=resShown('1').concat(resShown('2')).filter(function(it){ return it[1].v===null; });
+    if(left.length){
+      tab='res'; renderAll();
+      toast('Mark every tool and resource (tick it, or tap Not available with me) before generating the full report. '+left.length+(left.length===1?' item is':' items are')+' still unchecked.', 6000);
+      return;
+    }
+  }
+  var buf=null;
+  try{ buf = pdfAll(); }catch(e){ buf=null; }
+  if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+  if(!downloads){ toast('Saving files is not available in this view. Use Share on WhatsApp instead.'); return; }
+  try{ await downloads.save({filename:'daily-report-'+selDate+'.pdf', data:buf}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+});
+
+$('#attPdfBtn').addEventListener('click', async function(){
+  if(!day){ toast('Data not available: no report was saved for this date.'); return; }
+  var any=attShown('1').concat(attShown('2')).some(function(it){ return it[1].s; });
+  if(!any && selDate!==latest()){ toast('Data not available: no attendance was saved for this date.'); return; }
+  var buf=null;
+  try{ buf=pdfAtt(); }catch(e){ buf=null; }
+  if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
+  try{ await downloads.save({filename:'attendance-'+selDate+'.pdf', data:buf}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+});
+
+/* ---------- backup of all days ---------- */
+$('#backupBtn').addEventListener('click', async function(){
+  var b=this, old=b.textContent;
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
+  b.disabled=true; b.textContent='Preparing backup…';
+  try{
+    var seen={}, ks=[];
+    Object.keys(index||{}).concat(Object.keys(cache.days)).forEach(function(k){ if(!seen[k]){ seen[k]=1; ks.push(k); } });
+    ks.sort();
+    var days={}, i, k;
+    for(i=0;i<ks.length;i++){
+      k=ks[i];
+      try{
+        var sn=db ? await db.doc('days/'+k).get() : null;
+        if(sn && sn.exists){ days[k]=sn.data(); cache.days[k]=days[k]; }
+        else if(cache.days[k]) days[k]=cache.days[k];
+      }catch(e){ if(cache.days[k]) days[k]=cache.days[k]; }
+    }
+    cacheSave();
+    if(!Object.keys(days).length){ toast('There are no saved days to back up yet.'); return; }
+    var out={app:'Nursery Daily Manager', kind:'backup', exportedAt:new Date().toISOString(), dayCount:Object.keys(days).length, team:team, resources:res, days:days};
+    await downloads.save({filename:'nursery-backup-'+todayKey()+'.json', data:JSON.stringify(out,null,1)});
+    toast('Backup saved: '+out.dayCount+(out.dayCount===1?' day':' days'));
+  }catch(e){ if(!e||e.code!=='declined') toast('The backup could not be saved here.'); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+
+/* ---------- import a backup file (owner only) ---------- */
+$('#importBtn').addEventListener('click', function(){ if(isOwner) $('#importFile').click(); });
+$('#importFile').addEventListener('change', async function(){
+  var f=this.files&&this.files[0]; this.value=''; if(!f||!isOwner) return;
+  var b=$('#importBtn'), old=b.textContent;
+  try{
+    var data=JSON.parse(await f.text());
+    if(!data||data.kind!=='backup'||!data.days||typeof data.days!=='object') throw new Error('bad');
+    var ks=Object.keys(data.days).sort();
+    if(!ks.length){ toast('The backup file has no days.'); return; }
+    if(!window.confirm('Import '+ks.length+' saved day'+(ks.length===1?'':'s')+' from this backup? Days with the same date will be replaced.')) return;
+    b.disabled=true;
+    var idx={}, i;
+    for(i=0;i<ks.length;i++){
+      b.textContent='Importing '+(i+1)+' of '+ks.length+'…';
+      await db.doc('days/'+ks[i]).set(data.days[ks[i]]);
+      idx[ks[i]]={c:Date.now(), closed:!!data.days[ks[i]].closed};
+    }
+    var d=db.doc('meta/index'), s=await d.get();
+    if(s.exists) await d.update({d:idx}); else await d.set({d:idx});
+    var st={}; if(data.team) st.team=data.team; if(data.resources) st.res=data.resources;
+    if(Object.keys(st).length) await saveSettings(st);
+    toast('Imported '+ks.length+' day'+(ks.length===1?'':'s')+'.');
+  }catch(e){ toast('That file is not a valid Nursery Daily Manager backup.'); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+
+/* ---------- start ---------- */
+async function boot(){
+  if(cache.idx) index=cache.idx;
+  try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
+  document.querySelectorAll('.nursel').forEach(function(sel){ sel.value=nursery; });
+  $('#supName').value=supName;
+  renderAll();
+  var c=window.claude;
+  if(c&&c.use){
+    try{ db=await c.use('db'); }catch(e){}
+    try{ user=await c.use('user'); }catch(e){}
+    try{ downloads=await c.use('downloads'); }catch(e){}
+  }
+  if(!db){
+    $('#state').textContent='Could not connect. Check your internet and reopen the app.';
+    return;
+  }
+  if(user){
+    try{
+      accountOwner=await user.canEdit();
+      var sm=''; try{ sm=localStorage.getItem('nurseryMode')||''; }catch(e){}
+      isOwner = accountOwner && sm!=='supervisor';
+      var w=await user.can('data.write');
+      canWrite=accountOwner || w!==false;
+      uid=await user.id();
+      if(!supName){ var me=await user.me(); if(me&&me.name){ supName=me.name; $('#supName').value=supName; } }
+    }catch(e){ canWrite=true; }
+  }else canWrite=true;
+  if(accountOwner){
+    try{ var sec=await db.doc('meta/security').get(); pinData=sec.exists ? sec.data() : null; }catch(e){}
+    if(hasPin()) isOwner=false;
+  }
+  db.doc('meta/index').onSnapshot(function(s){
+    index=s.exists ? (s.data().d||{}) : {}; indexLive=true;
+    cache.idx=index; cacheSave();
+    var ks=keys();
+    if(!canWrite && !index[selDate] && ks.length){ selDate=ks[ks.length-1]; subscribeDay(selDate); return; }
+    renderAll(); ensureToday();
+  }, function(){ if(!index) index=cache.idx||{}; renderAll(); });
+  subscribeDay(selDate);
+  if(accountOwner) db.doc('meta/security').onSnapshot(function(s){ pinData=s.exists ? s.data() : null; renderAll(); }, function(){});
+  db.doc('meta/settings').onSnapshot(function(s){
+    var d=s.exists ? s.data() : {};
+    ownerWa = String(d.ownerWa||'');
+    team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
+    res = d.res||{};
+    syncSup(); renderAll();
+  }, function(){});
+  setInterval(function(){
+    var t=todayKey();
+    if(t!==lastToday){ lastToday=t; if(followToday) subscribeDay(t); }
+    ensureToday();
+  }, 30000);
+}
+boot();
+})();
+</script>
+
+</body></html>

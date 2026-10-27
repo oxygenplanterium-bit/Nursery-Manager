@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'oxygenplanterium@gmail.com';
+    }
+    // Owner PIN data: owner only
+    match /meta/security { allow read, write: if isOwner(); }
+    // Team, resources, WhatsApp number: everyone signed in can read, only the owner can change
+    match /meta/settings { allow read: if signedIn(); allow write: if isOwner(); }
+    // Day records, index and rollover lock: all signed-in team members
+    match /meta/{doc} { allow read, write: if signedIn(); }
+    match /days/{day} { allow read, write: if signedIn(); }
+  }
+}
