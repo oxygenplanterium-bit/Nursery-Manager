@@ -639,6 +639,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label>Address (optional)<input type="text" id="invAddr" maxlength="120" autocomplete="off"></label>
     <div id="invLines" style="display:flex;flex-direction:column;gap:8px"></div>
     <button type="button" class="btn small" id="invAddLine">Add item</button>
+    <div class="two" id="invGd">
+      <label>Discount on all items<select id="invDt"><option value="">No discount</option><option value="p">Percentage (%)</option><option value="i">₹ per piece</option><option value="l">Lumpsum (₹)</option></select></label>
+      <label id="invDvL">Discount value<input type="number" id="invDv" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+    </div>
     <div class="two">
       <label>GST % (optional)<input type="number" id="invGst" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0"></label>
       <label>Shipping ₹ (optional)<input type="number" id="invShip" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
@@ -2427,7 +2431,7 @@ function invList(){
 }
 function invLineDisc(l,gdt,gdv){
   var q=Number(l.q)||0, amt=Math.round(q*(Number(l.r)||0)*100)/100, t, v;
-  if(l.dt!==undefined){ t=l.dt; v=Number(l.dv)||0; }
+  if(l.dt){ t=l.dt; v=Number(l.dv)||0; }
   else if(gdt==='i'){ t='i'; v=l.dd!=null?(Number(l.dd)||0):(Number(gdv)||0); }
   else return 0;
   var d=t==='p'?amt*Math.min(v,100)/100:t==='i'?v*q:t==='l'?v:0;
@@ -2482,8 +2486,14 @@ function renderInv(){
   invEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); invEls.delete(id); } });
 }
 $('#invFilter').addEventListener('change', renderInv);
+function invSyncGd(){
+  var any=invReadLines(true).some(function(L){ return L.dt; });
+  $('#invGd').hidden=any; if(any){ $('#invDt').value=''; $('#invDv').value=''; }
+  $('#invDvL').hidden=!$('#invDt').value;
+}
 function invTotals(){
-  var c=invCalc(invReadLines(true), $('#invGst').value, '', 0, $('#invShip').value);
+  invSyncGd();
+  var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
   $('#invTot').textContent='Subtotal ₹'+fmtMoney(c.sub)+(c.disc?' · Discount -₹'+fmtMoney(c.disc):'')+(c.gst?' · GST ₹'+fmtMoney(c.gst):'')+(c.ship?' · Shipping ₹'+fmtMoney(c.ship):'')+' · Total ₹'+fmtMoney(c.total);
 }
 function invReadLines(loose){
@@ -2519,7 +2529,7 @@ function invAddLine(){
   el.append(sel,q,r,x,dsel,dv); box.append(el);
 }
 $('#invAddLine').addEventListener('click', invAddLine);
-['#invGst','#invShip'].forEach(function(q){ $(q).addEventListener('input', invTotals); });
+['#invGst','#invShip','#invDv'].forEach(function(q){ $(q).addEventListener('input', invTotals); }); $('#invDt').addEventListener('change', function(){ if(!this.value) $('#invDv').value=''; invTotals(); });
 $('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 function openInv(ty){
@@ -2529,7 +2539,7 @@ function openInv(ty){
   $('#invHead').textContent=ty==='S'?'New Sales Invoice':'New Purchase Invoice';
   $('#invPartyL').textContent=ty==='S'?'Customer name':'Supplier name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
-  $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
+  $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
   $('#invLines').textContent=''; invAddLine(); invTotals();
   var d=$('#dlgInv'); if(!d.open) d.showModal();
 }
@@ -2543,7 +2553,9 @@ $('#fInv').addEventListener('submit', async function(e){
   if(!party){ err.textContent='Enter the '+(ty==='S'?'customer':'supplier')+' name.'; return; }
   if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
   if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
-  var sh=parseFloat($('#invShip').value)||0;
+  var sh=parseFloat($('#invShip').value)||0, gdt=$('#invGd').hidden?'':$('#invDt').value, gdv=parseFloat($('#invDv').value)||0;
+  if(gdt&&!(gdv>0)){ err.textContent='Enter the discount value, or choose No discount.'; return; }
+  if(gdt==='p'&&gdv>100){ err.textContent='Discount percentage cannot be more than 100.'; return; }
   if(sh<0){ err.textContent='Shipping cannot be negative.'; return; }
   var lines=invReadLines(false), need={}, i;
   if(!lines.length){ err.textContent='Add at least one item.'; return; }
@@ -2563,7 +2575,7 @@ $('#fInv').addEventListener('submit', async function(e){
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
@@ -2600,11 +2612,11 @@ async function invPdf(id){
   doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
   if(x.phone){ doc.text('Phone: '+x.phone, 36, y); y+=14; }
   if(x.addr){ doc.text(x.addr, 36, y, {maxWidth:W-72}); y+=14; }
-  var per=(x.l||[]).some(function(L){ return L.dt || (L.dt===undefined && x.dt==='i'); }), cs=per?5:4;
-  var dtxt=function(L){ var t=L.dt!==undefined?L.dt:(x.dt==='i'?'i':''), v=L.dt!==undefined?L.dv:(L.dd!=null?L.dd:x.dv); return t==='p'?fmtN(v)+'%':t==='i'?'Rs. '+fmtMoney(v)+'/pc':t==='l'?'Rs. '+fmtMoney(v):'-'; };
+  var per=(x.l||[]).some(function(L){ return L.dt; }) || x.dt==='i', cs=per?5:4;
+  var dtxt=function(L){ var t=L.dt||(x.dt==='i'?'i':''), v=L.dt?L.dv:(L.dd!=null?L.dd:x.dv); return t==='p'?fmtN(v)+'%':t==='i'?'Rs. '+fmtMoney(v)+'/pc':t==='l'?'Rs. '+fmtMoney(v):'-'; };
   var body=(x.l||[]).map(function(L,i){ var a=[String(i+1), L.n, fmtN(L.q), 'Rs. '+fmtMoney(L.r)]; if(per) a.push(dtxt(L)); a.push('Rs. '+fmtMoney(L.q*L.r)); return a; });
   var foot=[[{content:'Subtotal',colSpan:cs,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.sub)]];
-  if(c.disc){ foot.push([{content:'Total discount',colSpan:cs,styles:{halign:'right'}}, '- Rs. '+fmtMoney(c.disc)]); }
+  if(c.disc){ foot.push([{content:x.dt==='p'?'Discount ('+fmtN(x.dv)+'%)':x.dt==='l'?'Discount (lumpsum)':'Total discount',colSpan:cs,styles:{halign:'right'}}, '- Rs. '+fmtMoney(c.disc)]); }
   if(c.gst) foot.push([{content:'GST '+(Number(x.g)||0)+'%',colSpan:cs,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.gst)]);
   if(c.ship) foot.push([{content:'Shipping',colSpan:cs,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.ship)]);
   foot.push([{content:'Total',colSpan:cs,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.total)]);
