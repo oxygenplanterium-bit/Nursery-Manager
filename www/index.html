@@ -1035,10 +1035,9 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
-  if(tab==='sal' && !isOwner) tab='';
   var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv'};
   $('#tabTeam').hidden=!isOwner;
-  $('#salBtn').hidden=!isOwner;
+  $('#salBtn').hidden=false;
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
   $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv';
   $('.acts').hidden=tab!=='';
@@ -3012,7 +3011,7 @@ $('#report').addEventListener('change', function(){
   save({report:{text:text, who:nameNow(), at:Date.now()}});
 });
 $('#daySel').addEventListener('change', function(){ goTo(this.value); });
-$('#salBtn').addEventListener('click', function(){ if(isOwner){ salAttFor=''; tab='sal'; renderAll(); } });
+$('#salBtn').addEventListener('click', function(){ salAttFor=''; tab='sal'; renderAll(); });
 function closeWin(fromPop){ if(!tab) return; tab=''; if(!fromPop && winPushed){ winPushed=false; try{ history.back(); }catch(e){} } renderAll(); }
 $('#winClose').addEventListener('click', function(){ closeWin(false); });
 window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
@@ -3541,7 +3540,7 @@ function salEntries(kind){
 }
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
-  if(salSubbed||!db||!isOwner) return; salSubbed=true;
+  if(salSubbed||!db) return; salSubbed=true;
   db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; cache.meta.salary=salData; cacheSave(); if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function salPeople(kind){
@@ -3586,9 +3585,9 @@ function salMonthInfo(sid,kind){
   return o;
 }
 function renderSal(){
-  if(tab!=='sal'||!isOwner||!db) return;
+  if(tab!=='sal'||!db) return;
   salSubscribe(); loadSalAtt();
-  var bc=$('#salBonusCfg'); if(document.activeElement!==bc) bc.value=(salData.cfg&&salData.cfg.bonus)||'';
+  var bc=$('#salBonusCfg'); if(document.activeElement!==bc) bc.value=(salData.cfg&&salData.cfg.bonus)||''; bc.disabled=!isOwner;
   var ym0=salMonth.split('-'); $('#salMonthLbl').textContent=new Date(+ym0[0],+ym0[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var body=$('#salBody'); body.textContent='';
   [['sup','Supervisors'],['staff','Staff']].forEach(function(g){
@@ -3636,11 +3635,12 @@ function renderSalDlg(){
       if(m.carryOut>0) pbox.append(mk('span',null,'₹'+fmtN(m.carryOut)+' carried forward as an advance to be recovered from next month\'s salary.'));
       var un=mk('button','btn small','Undo payment'); un.type='button';
       un.addEventListener('click', function(){ var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]=null; salSave(p); });
-      pbox.append(un);
+      if(isOwner) pbox.append(un);
     }else{
       pbox.append(mk('span',null,'Until This Month\'s Salary Is Marked As Paid, All The Advances Are Deducted In Old Or Previous Month Salary.')); pbox.append(mk('span',null,'Any Excess Advance Amount Paid Shall Be Carried Forwarded To Next Month As Advance.'));
       var pb=mk('button','btn primary','Mark salary paid'); pb.type='button'; pb.style.minHeight='48px';
       var zero=Math.round(m.balance)===0; pb.disabled=!zero;
+      if(!isOwner) pb.hidden=true;
       pbox.append(pb, mk('span','pmeta',zero?'Balance to pay is ₹0 – ready to mark as paid.':'Available only when the Balance to pay is ₹0 (now '+(m.balance<0?'excess advance ₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))+').'));
       pb.addEventListener('click', function(){
         if(Math.round(m.balance)!==0){ toast('Balance to pay must be ₹0.'); return; }
@@ -3674,14 +3674,14 @@ function renderSalDlg(){
       try{ await downloads.save({filename:'salary-slip-'+rec.n.replace(/[^A-Za-z0-9]+/g,'-')+'-'+salMonth+'.pdf', data:buf}); }
       catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
     });
-    b.append(wa);
+    if(isOwner) b.append(wa);
   }else{
     var f=mk('div','sline'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
     amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount'; note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60; add.type='button';
     var dt=mk('input'); dt.type='date'; dt.setAttribute('aria-label','Date of entry'); dt.style.cssText='flex:0 1 150px;width:auto;min-width:0;padding:8px 8px;font-size:14px';
     var q0=salMonth.split('-'), mFirst=salMonth+'-01', mLast=salMonth+'-'+('0'+new Date(+q0[0],+q0[1],0).getDate()).slice(-2), t0=todayKey();
     dt.min=mFirst; dt.max=mLast; dt.value=(t0>=mFirst&&t0<=mLast)?t0:mLast;
-    f.append(dt,amt,note,add); b.append(f);
+    f.append(dt,amt,note,add); if(isOwner) b.append(f);
     add.addEventListener('click', function(){
       var a=Math.round(Number(amt.value)||0); if(!(a>0)){ toast('Enter an amount.'); return; }
       var id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={e:{}};
@@ -3711,7 +3711,7 @@ function renderSalDlg(){
         if(del.dataset.arm!=='1'){ del.dataset.arm='1'; del.textContent='Tap to confirm'; setTimeout(function(){ del.dataset.arm=''; del.textContent='Delete'; },3000); return; }
         var p={e:{}}; p.e[it[0]]=null; salSave(p);
       });
-      c.append(del); b.append(c);
+      if(isOwner) c.append(del); b.append(c);
     });
     elsewhere.forEach(function(it){ var x=it[1], c=mk('p',null,'₹'+fmtN(x.amt)+' given on '+x.d.slice(8)+'/'+x.d.slice(5,7)+' is deducted from '+new Date(+it[0].slice(0,4),+it[0].slice(5)-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'})+' (that salary is not cleared yet).'); b.append(c); });
   }
@@ -3733,7 +3733,7 @@ function applyCachedMeta(){
   var m=cache.meta||{};
   if(m.settings) applySettings(m.settings);
   if(m.invoices){ invData=m.invoices; invData.i=invData.i||{}; }
-  if(m.salary && isOwner){ salData=m.salary; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; }
+  if(m.salary){ salData=m.salary; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; }
 }
 async function boot(){
   if(cache.idx) index=cache.idx;

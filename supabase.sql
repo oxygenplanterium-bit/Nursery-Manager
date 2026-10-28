@@ -14,9 +14,9 @@ drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
--- Owner PIN data is readable by the owner only
+-- Owner PIN data is readable by the owner only. Salary data can be viewed by every signed-in user but changed only by the owner
 create policy docs_select on public.docs for select to authenticated
-  using (path not in ('meta/security','meta/salary') or public.is_owner());
+  using (path <> 'meta/security' or public.is_owner());
 -- Team, resources and the PIN can only be changed by the owner; day records by any signed-in team member
 create policy docs_insert on public.docs for insert to authenticated
   with check (path not in ('meta/security','meta/settings','meta/salary') or public.is_owner());
