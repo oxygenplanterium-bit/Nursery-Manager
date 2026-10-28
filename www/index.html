@@ -346,7 +346,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <button class="btn small" id="mvAllStock" hidden></button>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
-      <button class="btn small" id="coBtn" hidden>Company details (PDF letterhead)</button>
+      <button class="btn small" id="coBtn" hidden>Company Profile</button>
       <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
@@ -666,7 +666,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 
 <dialog id="dlgCo">
   <form id="fCo">
-    <h2>Company details</h2>
+    <h2>Company Profile</h2>
     <p>Shown on the right of the letterhead of every PDF, next to the logo. Everyone who opens the app can see these details.</p>
     <label>Company name<input type="text" id="coN" maxlength="80"></label>
     <label>Address<input type="text" id="coA" maxlength="120" autocomplete="street-address"></label>
@@ -674,6 +674,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label>Pin<input type="text" id="coP" maxlength="10" inputmode="numeric"></label>
     <label>State<input type="text" id="coS" maxlength="60"></label>
     <label>Phone number<input type="tel" id="coT" maxlength="30"></label>
+    <label>Email id<input type="email" id="coE" maxlength="80" autocomplete="email" autocapitalize="off"></label>
     <div class="actions"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
   </form>
 </dialog>
@@ -3026,7 +3027,7 @@ $('#fRst').addEventListener('submit', async function(e){
   go.disabled=false;
 });
 $('#coBtn').addEventListener('click', function(){
-  $('#coN').value=CO.n||''; $('#coA').value=CO.a||''; $('#coC').value=CO.c||''; $('#coP').value=CO.p||''; $('#coS').value=CO.s||''; $('#coT').value=CO.t||'';
+  $('#coN').value=CO.n||''; $('#coA').value=CO.a||''; $('#coC').value=CO.c||''; $('#coP').value=CO.p||''; $('#coS').value=CO.s||''; $('#coT').value=CO.t||''; $('#coE').value=CO.e||'';
   var d=$('#dlgCo'); if(!d.open) d.showModal();
 });
 $('#coCancel').addEventListener('click', function(){ $('#dlgCo').close(); });
@@ -3034,7 +3035,7 @@ $('#fCo').addEventListener('submit', async function(e){
   e.preventDefault(); $('#dlgCo').close();
   if(!isOwner||!db) return;
   var v=function(id){ return $(id).value.trim().replace(/\s+/g,' '); };
-  if(await saveSettings({co:{n:v('#coN')||'Oxygen Planterium',a:v('#coA'),c:v('#coC'),p:v('#coP'),s:v('#coS'),t:v('#coT')}})) toast('Company details saved');
+  if(await saveSettings({co:{n:v('#coN')||'Oxygen Planterium',a:v('#coA'),c:v('#coC'),p:v('#coP'),s:v('#coS'),t:v('#coT'),e:v('#coE')}})) toast('Company details saved');
 });
 $('#waCancel').addEventListener('click', function(){ $('#dlgWa').close(); });
 $('#fWa').addEventListener('submit', async function(e){
@@ -3081,13 +3082,13 @@ function taskText(){
   return L.join('\n');
 }
 /* company letterhead: logo on the left, company details on the right */
-var CO={n:'Oxygen Planterium',a:'',c:'',p:'',s:'',t:''};
+var CO={n:'Oxygen Planterium',a:'',c:'',p:'',s:'',t:'',e:''};
 function letterhead(doc){
   var W=doc.internal.pageSize.getWidth(), L=36, Rr=W-36, top=26;
   try{ var img=document.querySelector('img.logo'); if(img&&img.src) doc.addImage(img.src,'JPEG',L,top,52,52); }catch(e){}
   var lines=[], co=CO;
   var l2=[co.c,[co.s,co.p].filter(Boolean).join(' - ')].filter(Boolean).join(', ');
-  if(co.a) lines.push(co.a); if(l2) lines.push(l2); if(co.t) lines.push('Phone: '+co.t);
+  if(co.a) lines.push(co.a); if(l2) lines.push(l2); var l3=[co.t?'Phone: '+co.t:'', co.e?'Email: '+co.e:''].filter(Boolean).join('  |  '); if(l3) lines.push(l3);
   doc.setTextColor(42,127,62); doc.setFontSize(15); doc.setFont(undefined,'bold');
   doc.text(co.n||'Oxygen Planterium', Rr, top+14, {align:'right'});
   doc.setFont(undefined,'normal'); doc.setTextColor(70,70,70); doc.setFontSize(9);
@@ -3557,7 +3558,7 @@ $('#salNext').addEventListener('click', function(){ salShift(1); });
 /* ---------- start ---------- */
 function applySettings(d){
   ownerWa = String(d.ownerWa||'');
-  var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||''};
+  var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
 }
