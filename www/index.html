@@ -2430,9 +2430,9 @@ function invList(){
     .map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
 }
 function invCalc(lines,gst,dt,dv,sh){
-  var sub=0, qty=0; (lines||[]).forEach(function(l){ sub+=Math.round((Number(l.q)||0)*(Number(l.r)||0)*100)/100; qty+=Number(l.q)||0; });
+  var sub=0, qty=0, idisc=0; (lines||[]).forEach(function(l){ sub+=Math.round((Number(l.q)||0)*(Number(l.r)||0)*100)/100; qty+=Number(l.q)||0; idisc+=(l.dd!=null?(Number(l.dd)||0):(Number(dv)||0))*(Number(l.q)||0); });
   sub=Math.round(sub*100)/100; dv=Number(dv)||0;
-  var disc=dt==='p'?sub*Math.min(dv,100)/100:dt==='i'?dv*qty:dt==='l'?dv:0;
+  var disc=dt==='p'?sub*Math.min(dv,100)/100:dt==='i'?idisc:dt==='l'?dv:0;
   disc=Math.round(Math.min(Math.max(disc,0),sub)*100)/100;
   var taxable=Math.round((sub-disc)*100)/100, g=Math.round(taxable*(Number(gst)||0))/100; g=Math.round(g*100)/100;
   var ship=Math.round(Math.max(Number(sh)||0,0)*100)/100;
@@ -2478,6 +2478,11 @@ function renderInv(){
   invEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); invEls.delete(id); } });
 }
 $('#invFilter').addEventListener('change', renderInv);
+function invSyncDisc(){
+  var t=$('#invDt').value, per=t==='i';
+  document.querySelectorAll('#invLines .id_').forEach(function(i){ i.hidden=!per; });
+  $('#invDv').parentElement.hidden=per||!t;
+}
 function invTotals(){
   var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
   $('#invTot').textContent='Subtotal ₹'+fmtMoney(c.sub)+(c.disc?' · Discount -₹'+fmtMoney(c.disc):'')+(c.gst?' · GST ₹'+fmtMoney(c.gst):'')+(c.ship?' · Shipping ₹'+fmtMoney(c.ship):'')+' · Total ₹'+fmtMoney(c.total);
@@ -2487,7 +2492,8 @@ function invReadLines(loose){
   document.querySelectorAll('#invLines .invl').forEach(function(el){
     var id=el.querySelector('select').value, q=parseInt(el.querySelector('.iq').value,10), r=parseFloat(el.querySelector('.ir').value);
     if(!id && loose) return;
-    out.push({id:id, q:isFinite(q)?q:0, r:isFinite(r)?r:0});
+    var dd=parseFloat(el.querySelector('.id_').value);
+    out.push({id:id, q:isFinite(q)?q:0, r:isFinite(r)?r:0, dd:isFinite(dd)&&dd>0?dd:0});
   });
   return out;
 }
@@ -2502,14 +2508,15 @@ function invAddLine(){
   r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate');
   el.style.cssText='display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px';
   sel.style.cssText='grid-column:1/-1;width:100%;min-width:0;max-width:100%'; q.style.cssText='width:100%;min-width:0'; r.style.cssText='width:100%;min-width:0';
+  var dd=mk('input','id_'); dd.type='number'; dd.min='0'; dd.step='0.01'; dd.inputMode='decimal'; dd.placeholder='Discount ₹ per piece for this item'; dd.setAttribute('aria-label','Discount per piece'); dd.style.cssText='grid-column:1/-1;width:100%;min-width:0'; dd.hidden=$('#invDt').value!=='i'; dd.addEventListener('input', invTotals);
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
   sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType==='S'?(rr.sp||0):(rr.cost||0)); if(pv&&!r.value){ r.value=pv; } });
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
-  el.append(sel,q,r,x); box.append(el);
+  el.append(sel,q,r,x,dd); box.append(el);
 }
 $('#invAddLine').addEventListener('click', invAddLine);
-['#invGst','#invDv','#invShip'].forEach(function(q){ $(q).addEventListener('input', invTotals); }); $('#invDt').addEventListener('change', invTotals);
+['#invGst','#invDv','#invShip'].forEach(function(q){ $(q).addEventListener('input', invTotals); }); $('#invDt').addEventListener('change', function(){ invSyncDisc(); invTotals(); });
 $('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 function openInv(ty){
@@ -2520,7 +2527,7 @@ function openInv(ty){
   $('#invPartyL').textContent=ty==='S'?'Customer name':'Supplier name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invShip').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
-  $('#invLines').textContent=''; invAddLine(); invTotals();
+  $('#invLines').textContent=''; invAddLine(); invSyncDisc(); invTotals();
   var d=$('#dlgInv'); if(!d.open) d.showModal();
 }
 $('#invNewS').addEventListener('click', function(){ openInv('S'); });
@@ -2534,7 +2541,7 @@ $('#fInv').addEventListener('submit', async function(e){
   if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
   if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
   var dtyp=$('#invDt').value, dv=parseFloat($('#invDv').value)||0, sh=parseFloat($('#invShip').value)||0;
-  if(dtyp&&!(dv>0)){ err.textContent='Enter the discount value, or choose No discount.'; return; }
+  if(dtyp&&dtyp!=='i'&&!(dv>0)){ err.textContent='Enter the discount value, or choose No discount.'; return; }
   if(dtyp==='p'&&dv>100){ err.textContent='Discount percentage cannot be more than 100.'; return; }
   if(sh<0){ err.textContent='Shipping cannot be negative.'; return; }
   var lines=invReadLines(false), need={}, i;
@@ -2545,6 +2552,7 @@ $('#fInv').addEventListener('submit', async function(e){
     if(!(L.q>0)){ err.textContent='Enter a quantity of 1 or more on every line.'; return; }
     need[L.id]=(need[L.id]||0)+L.q;
   }
+  if(dtyp==='i' && !lines.some(function(L){ return L.dd>0; })){ err.textContent='Enter the per-piece discount for at least one item, or choose No discount.'; return; }
   var ids=Object.keys(need), patch={rows:{}}, no=invNext(ty), label=invLabel({ty:ty,nid:nursery,no:no});
   for(i=0;i<ids.length;i++){
     var r=day.rows&&day.rows[ids[i]];
@@ -2553,8 +2561,8 @@ $('#fInv').addEventListener('submit', async function(e){
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, dt:dtyp, dv:dtyp?dv:0, sh:sh, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
-    l:lines.map(function(L){ var r=day.rows[L.id]; return {id:L.id, n:r.name, q:L.q, r:L.r}; })};
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, dt:dtyp, dv:(dtyp&&dtyp!=='i')?dv:0, sh:sh, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
+    l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r}; if(dtyp==='i') o.dd=L.dd; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
   var ok=await invSave(p);
@@ -2590,15 +2598,16 @@ async function invPdf(id){
   doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
   if(x.phone){ doc.text('Phone: '+x.phone, 36, y); y+=14; }
   if(x.addr){ doc.text(x.addr, 36, y, {maxWidth:W-72}); y+=14; }
-  var body=(x.l||[]).map(function(L,i){ return [String(i+1), L.n, fmtN(L.q), 'Rs. '+fmtMoney(L.r), 'Rs. '+fmtMoney(L.q*L.r)]; });
-  var foot=[[{content:'Subtotal',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.sub)]];
-  if(c.disc){ var dl=x.dt==='p'?'Discount ('+(Number(x.dv)||0)+'%)':x.dt==='i'?'Discount (Rs. '+fmtMoney(x.dv)+' per item)':'Discount'; foot.push([{content:dl,colSpan:4,styles:{halign:'right'}}, '- Rs. '+fmtMoney(c.disc)]); }
-  if(c.gst) foot.push([{content:'GST '+(Number(x.g)||0)+'%',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.gst)]);
-  if(c.ship) foot.push([{content:'Shipping',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.ship)]);
-  foot.push([{content:'Total',colSpan:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.total)]);
-  doc.autoTable({startY:y+6, theme:'grid', styles:{fontSize:10,cellPadding:5}, head:[['#','Item','Qty','Rate','Amount']], body:body, foot:foot, showFoot:'lastPage',
+  var per=x.dt==='i';
+  var body=(x.l||[]).map(function(L,i){ var a=[String(i+1), L.n, fmtN(L.q), 'Rs. '+fmtMoney(L.r)]; if(per) a.push('Rs. '+fmtMoney(L.dd!=null?L.dd:x.dv)); a.push('Rs. '+fmtMoney(L.q*L.r)); return a; });
+  var foot=[[{content:'Subtotal',colSpan:per?5:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.sub)]];
+  if(c.disc){ var dl=x.dt==='p'?'Discount ('+(Number(x.dv)||0)+'%)':x.dt==='i'?'Discount (per item)':'Discount'; foot.push([{content:dl,colSpan:per?5:4,styles:{halign:'right'}}, '- Rs. '+fmtMoney(c.disc)]); }
+  if(c.gst) foot.push([{content:'GST '+(Number(x.g)||0)+'%',colSpan:per?5:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.gst)]);
+  if(c.ship) foot.push([{content:'Shipping',colSpan:per?5:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.ship)]);
+  foot.push([{content:'Total',colSpan:per?5:4,styles:{halign:'right'}}, 'Rs. '+fmtMoney(c.total)]);
+  doc.autoTable({startY:y+6, theme:'grid', styles:{fontSize:10,cellPadding:5}, head:[per?['#','Item','Qty','Rate','Disc/pc','Amount']:['#','Item','Qty','Rate','Amount']], body:body, foot:foot, showFoot:'lastPage',
     headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:28},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}});
+    columnStyles:{0:{cellWidth:28},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}});
   var buf=doc.output('arraybuffer');
   try{ await downloads.save({filename:'invoice-'+invLabel(x)+'.pdf', data:buf}); }
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
