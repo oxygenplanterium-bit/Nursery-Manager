@@ -649,6 +649,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label>Address (optional)<textarea id="invAddr" rows="3" maxlength="300" autocomplete="off" placeholder="Press Enter for a new line"></textarea></label>
     <div id="invLines" style="display:flex;flex-direction:column;gap:8px"></div>
     <button type="button" class="btn small" id="invAddLine">Add item</button>
+    <label id="invSvcL">Services<textarea id="invSvc" rows="4" maxlength="800" placeholder="Add services for this estimate. Press Enter for a new line."></textarea></label>
     <div class="two" id="invGd">
       <label>Discount on all items<select id="invDt"><option value="">No discount</option><option value="p">Percentage (%)</option><option value="i">₹ per piece</option><option value="l">Lumpsum (₹)</option></select></label>
       <label id="invDvL">Discount value<input type="number" id="invDv" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
@@ -2610,6 +2611,7 @@ function openInv(ty){
   $('#invHead').textContent=ty==='S'?'New Sales Invoice':ty==='E'?'New Estimate - Gold':'New Purchase Invoice';
   $('#invPartyL').textContent=ty==='P'?'Supplier name':'Customer name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
+  $('#invSvcL').hidden=ty!=='E'; $('#invSvc').value='';
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
   $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; renderTc();
   document.body.style.overflow='hidden'; var d=$('#dlgInv'); if(!d.open) d.showModal(); d.scrollTop=0;
@@ -2648,7 +2650,7 @@ $('#fInv').addEventListener('submit', async function(e){
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined,
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined, sv:ty==='E'?$('#invSvc').value.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800):'',
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
@@ -2733,6 +2735,16 @@ async function invPdf(id){
     headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'},
     columnStyles:{0:{cellWidth:28},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}});
   var ty2=doc.lastAutoTable.finalY+22;
+  if(x.ty==='E' && x.sv){
+    if(ty2>740){ doc.addPage(); ty2=50; }
+    doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.text('Services', 36, ty2); doc.setFont(undefined,'normal'); doc.setFontSize(9); ty2+=14;
+    x.sv.split('\n').forEach(function(t,i){
+      var ls=doc.splitTextToSize((i+1)+'. '+t, W-72);
+      if(ty2+ls.length*11>800){ doc.addPage(); ty2=50; }
+      doc.text(ls, 36, ty2); ty2+=ls.length*11+3;
+    });
+    ty2+=10;
+  }
   if(x.tc&&x.tc.length){
     if(ty2>740){ doc.addPage(); ty2=50; }
     doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.text('Terms and Conditions', 36, ty2); doc.setFont(undefined,'normal'); doc.setFontSize(9); ty2+=14;
