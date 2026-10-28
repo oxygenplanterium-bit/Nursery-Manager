@@ -676,8 +676,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <h2 id="estHead">Estimate saved</h2>
     <p id="estSub"></p>
     <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estR" style="width:22px;height:22px;flex:0 0 auto"><span id="estRL">Create Estimate - Rhodium (+5)</span></label>
+    <button type="button" class="btn small" id="estRB">Add services to Rhodium</button>
     <label id="estRSL" hidden>Services for Rhodium<textarea id="estRS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
     <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estI" style="width:22px;height:22px;flex:0 0 auto"><span id="estIL">Create Estimate - Iridium (+10)</span></label>
+    <button type="button" class="btn small" id="estIB">Add services to Iridium</button>
     <label id="estISL" hidden>Services for Iridium<textarea id="estIS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
     <label>Add the increase as<select id="estMode"><option value="p">Percent of the price (%)</option><option value="r">Rupees per piece (₹)</option></select></label>
     <p>Rhodium and Iridium estimates have the same items. Only the price is higher.</p>
@@ -2702,7 +2704,8 @@ function openEst(grp){
   if(!miss.length){ toast('Rhodium and Iridium estimates already exist.'); return; }
   var d=$('#dlgEst'); if(!d.open) d.showModal();
 }
-function estSvcVis(){ $('#estRSL').hidden=!$('#estR').checked; $('#estISL').hidden=!$('#estI').checked; }
+function estSvcVis(){ $('#estRB').hidden=$('#estR').disabled; $('#estIB').hidden=$('#estI').disabled; $('#estRSL').hidden=!$('#estR').checked; $('#estISL').hidden=!$('#estI').checked; }
+[['#estRB','#estR','#estRS'],['#estIB','#estI','#estIS']].forEach(function(a){ $(a[0]).addEventListener('click', function(){ var cb=$(a[1]); if(!cb.disabled){ cb.checked=true; estSvcVis(); $(a[2]).focus(); } }); });
 $('#estR').addEventListener('change', estSvcVis); $('#estI').addEventListener('change', estSvcVis);
 function svcClean(v){ return String(v||'').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800); }
 $('#estSkip').addEventListener('click', function(){ $('#dlgEst').close(); });
