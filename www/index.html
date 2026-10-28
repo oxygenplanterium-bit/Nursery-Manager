@@ -1104,7 +1104,7 @@ function makeRow(id){
   [['cost','CP','Cost price per piece'],['sp','SP','Sales price per piece']].forEach(function(d){
     if(d[0]==='cost' && !isOwner){ R.cost=null; R.costV=null; return; }
     var c=cell(d[1],d[0]);
-    if(canWrite){
+    if(canWrite && isOwner){
       var ci=document.createElement('input');
       ci.type='number'; ci.min='0'; ci.step='0.01'; ci.inputMode='decimal'; ci.placeholder='0.00';
       ci.addEventListener('change', function(){ commitCost(id,ci,d[0]); });
@@ -1522,7 +1522,7 @@ async function commit(id,f,inp){
   if(ok && f!=='total' && v>0) openNote(id,f);
 }
 async function commitCost(id,inp,fld){
-  if(fld==='cost' && !isOwner) return;
+  if(!isOwner) return;
   var r=day&&day.rows&&day.rows[id], stored=r?(Number(r[fld])||0):0;
   var reset=function(){ inp.value=stored?stored:''; };
   if(!r||!editable()){ reset(); return; }
