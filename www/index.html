@@ -675,14 +675,15 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   <form id="fEst">
     <h2 id="estHead">Estimate saved</h2>
     <p id="estSub"></p>
-    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estR" style="width:22px;height:22px;flex:0 0 auto"><span id="estRL">Create Estimate - Rhodium (+5)</span></label>
-    <button type="button" class="btn small" id="estRB">Add services to Rhodium</button>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estR" style="width:22px;height:22px;flex:0 0 auto"><span id="estRL">Create Estimate - Rhodium</span></label>
+    <div class="sline"><button type="button" class="btn small" id="estRB">Add services to Rhodium</button><button type="button" class="btn small" id="estRPB">Add value to Rhodium</button></div>
+    <div class="two" id="estRP" hidden><label>Rhodium increase type<select id="estRM"><option value="p">Percentage (%)</option><option value="r">Per item (₹)</option></select></label><label>Value<input type="number" id="estRV" min="0" step="0.01" inputmode="decimal"></label></div>
     <label id="estRSL" hidden>Services for Rhodium<textarea id="estRS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
-    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estI" style="width:22px;height:22px;flex:0 0 auto"><span id="estIL">Create Estimate - Iridium (+10)</span></label>
-    <button type="button" class="btn small" id="estIB">Add services to Iridium</button>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estI" style="width:22px;height:22px;flex:0 0 auto"><span id="estIL">Create Estimate - Iridium</span></label>
+    <div class="sline"><button type="button" class="btn small" id="estIB">Add services to Iridium</button><button type="button" class="btn small" id="estIPB">Add value to Iridium</button></div>
+    <div class="two" id="estIP" hidden><label>Iridium increase type<select id="estIM"><option value="p">Percentage (%)</option><option value="r">Per item (₹)</option></select></label><label>Value<input type="number" id="estIV" min="0" step="0.01" inputmode="decimal"></label></div>
     <label id="estISL" hidden>Services for Iridium<textarea id="estIS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
-    <label>Add the increase as<select id="estMode"><option value="p">Percent of the price (%)</option><option value="r">Rupees per piece (₹)</option></select></label>
-    <p>Rhodium and Iridium estimates have the same items. Only the price is higher.</p>
+    <p>Rhodium and Iridium estimates have the same items. Only the price changes, by the value you set for each.</p>
     <p id="estErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="estSkip">Not now</button><button type="submit" class="btn primary" id="estGo">Create selected</button></div>
   </form>
@@ -2699,26 +2700,30 @@ function openEst(grp){
   var g=(invData.i||{})[grp]; if(!g) return;
   estGrp=grp; var miss=estMissing(grp).map(function(t){ return t[0]; });
   $('#estSub').textContent=invLabel(g)+' · Estimate - Gold saved for '+g.party+'.';
-  estTiers().forEach(function(t){ var on=miss.indexOf(t[0])>=0, cb=$(t[2]); cb.checked=false; cb.disabled=!on; $(t[3]).textContent='Create Estimate - '+t[0]+' (+'+t[1]+')'+(on?'':' (already created)'); });
+  estTiers().forEach(function(t){ var on=miss.indexOf(t[0])>=0, cb=$(t[2]); cb.checked=false; cb.disabled=!on; $(t[3]).textContent='Create Estimate - '+t[0]+(on?'':' (already created)'); $(t[2]==='#estR'?'#estRM':'#estIM').value='p'; $(t[2]==='#estR'?'#estRV':'#estIV').value=t[1]; });
   $('#estErr').textContent=''; $('#estRS').value=''; $('#estIS').value=''; estSvcVis();
   if(!miss.length){ toast('Rhodium and Iridium estimates already exist.'); return; }
   var d=$('#dlgEst'); if(!d.open) d.showModal();
 }
-function estSvcVis(){ $('#estRB').hidden=$('#estR').disabled; $('#estIB').hidden=$('#estI').disabled; $('#estRSL').hidden=!$('#estR').checked; $('#estISL').hidden=!$('#estI').checked; }
+function estSvcVis(){ $('#estRPB').hidden=$('#estR').disabled; $('#estIPB').hidden=$('#estI').disabled; $('#estRP').hidden=!$('#estR').checked; $('#estIP').hidden=!$('#estI').checked; $('#estRB').hidden=$('#estR').disabled; $('#estIB').hidden=$('#estI').disabled; $('#estRSL').hidden=!$('#estR').checked; $('#estISL').hidden=!$('#estI').checked; }
 [['#estRB','#estR','#estRS'],['#estIB','#estI','#estIS']].forEach(function(a){ $(a[0]).addEventListener('click', function(){ var cb=$(a[1]); if(!cb.disabled){ cb.checked=true; estSvcVis(); $(a[2]).focus(); } }); });
+[['#estRPB','#estR','#estRV'],['#estIPB','#estI','#estIV']].forEach(function(a){ $(a[0]).addEventListener('click', function(){ var cb=$(a[1]); if(!cb.disabled){ cb.checked=true; estSvcVis(); $(a[2]).focus(); } }); });
 $('#estR').addEventListener('change', estSvcVis); $('#estI').addEventListener('change', estSvcVis);
 function svcClean(v){ return String(v||'').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800); }
 $('#estSkip').addEventListener('click', function(){ $('#dlgEst').close(); });
 $('#fEst').addEventListener('submit', async function(e){
   e.preventDefault();
   var g=(invData.i||{})[estGrp]; if(!g){ $('#dlgEst').close(); return; }
-  var mode=$('#estMode').value, add=estMissing(estGrp).filter(function(t){ return $(t[2]).checked; });
+  var add=estMissing(estGrp).filter(function(t){ return $(t[2]).checked; });
   if(!add.length){ $('#estErr').textContent='Tick Rhodium, Iridium or both.'; return; }
-  var p={i:{}}, now=Date.now();
+  var p={i:{}}, now=Date.now(), bad='';
+  add.forEach(function(t){ var k=parseFloat($(t[0]==='Rhodium'?'#estRV':'#estIV').value); if(!(k>=0)) bad='Enter the value for '+t[0]+'.'; else if($(t[0]==='Rhodium'?'#estRM':'#estIM').value==='p' && k>1000) bad='Percentage for '+t[0]+' is too large.'; });
+  if(bad){ $('#estErr').textContent=bad; return; }
   add.forEach(function(t,n){
+    var mode=$(t[0]==='Rhodium'?'#estRM':'#estIM').value, kv=parseFloat($(t[0]==='Rhodium'?'#estRV':'#estIV').value);
     var id='v'+(now+n+1).toString(36)+Math.random().toString(36).slice(2,6), c=JSON.parse(JSON.stringify(g));
-    c.tier=t[0]; c.grp=estGrp; c.sv=svcClean($(t[0]==='Rhodium'?'#estRS':'#estIS').value); c.at=now+n+1; c.inc={k:t[1],m:mode}; delete c.void;
-    c.l=(c.l||[]).map(function(L){ L.r=Math.round((mode==='p'?(Number(L.r)||0)*(1+t[1]/100):(Number(L.r)||0)+t[1])*100)/100; return L; });
+    c.tier=t[0]; c.grp=estGrp; c.sv=svcClean($(t[0]==='Rhodium'?'#estRS':'#estIS').value); c.at=now+n+1; c.inc={k:kv,m:mode}; delete c.void;
+    c.l=(c.l||[]).map(function(L){ L.r=Math.round((mode==='p'?(Number(L.r)||0)*(1+kv/100):(Number(L.r)||0)+kv)*100)/100; return L; });
     p.i[id]=c;
   });
   $('#estGo').disabled=true;
