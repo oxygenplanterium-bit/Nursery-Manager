@@ -1030,7 +1030,7 @@ function makeRow(id){
     el.append(c);
   });
   var bc=cell('Bal Qty','bal'), bv=mk('span','val'); bc.append(bv); R.bal=bv; el.append(bc);
-  var cr=mk('div','costrow'), ac=cell('Amt (CP \u00d7 Bal)','amt'), av=mk('span','val');
+  var cr=mk('div','costrow'), ac=cell('Amt (SP \u00d7 Bal)','amt'), av=mk('span','val');
   [['cost','CP','Cost price per piece'],['sp','SP','Sales price per piece']].forEach(function(d){
     var c=cell(d[1],d[0]);
     if(canWrite){
@@ -1085,7 +1085,8 @@ function updateRow(el,id,r,n){
     if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v:''; R[d[0]].disabled=!ed; R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
     else R[d[0]+'V'].textContent=v?'\u20b9'+fmtMoney(v):'\u2013';
   });
-  R.amt.textContent=cost?'\u20b9'+fmtMoney(Math.round(cost*Math.max(b,0)*100)/100):'\u2013';
+  var spv=Number(r.sp)||0;
+  R.amt.textContent=spv?'\u20b9'+fmtMoney(Math.round(spv*Math.max(b,0)*100)/100):'\u2013';
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
   xferEntries(r).forEach(function(e){
@@ -1364,9 +1365,9 @@ function renderFull(){
   $('#fdDate').textContent = day ? fmtLong(selDate)+' · '+(sel==='all'?'Both nurseries':NURS[sel]) : (day===undefined?'Loading…':'No report was saved for this date.');
   if(!day){ $('#fdTk').textContent=''; $('#fdAtt').textContent=''; $('#fdAttNote').textContent=''; $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
   var rows=sortedOf('rows').filter(function(it){ return sel==='all' || (it[1].nid||'1')===sel; });
-  var fresh=[], mod=[], qty=0;
+  var fresh=[], mod=[], qty=0, tCost=0, tAmt=0;
   rows.forEach(function(it){
-    var r=it[1], x=xferOf(r); qty+=Math.max(bal(r),0);
+    var r=it[1], x=xferOf(r); qty+=Math.max(bal(r),0); tCost+=(Number(r.cost)||0)*Math.max(bal(r),0); tAmt+=(Number(r.sp)||0)*Math.max(bal(r),0);
     if(r.addedAt||r.approvedAt){ fresh.push(it); return; }
     var bits=[];
     if(r.purchase) bits.push('Purchases +'+fmtN(r.purchase));
@@ -1412,7 +1413,9 @@ function renderFull(){
     ['Total no. of items', rows.length],
     ['Total qty of plants', qty]
   ];
+  var money=[['Total cost of all stocks (CP)',tCost],['Total amt of all stocks (SP)',tAmt]];
   cards.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,fmtN(c[1]))); g.append(d); });
+  money.forEach(function(c){ var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,'\u20b9'+fmtMoney(Math.round(c[1]*100)/100))); g.append(d); });
   $('#fdNewN').textContent=String(fresh.length); $('#fdModN').textContent=String(mod.length);
   var line=function(box,name,txt){ var r=mk('div','fdrow'); r.append(mk('span','nm',name), mk('span','dt',txt)); box.append(r); };
   if(!fresh.length) nl.append(mk('p','fdempty','No new items were added on this day.'));
