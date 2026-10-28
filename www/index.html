@@ -676,11 +676,22 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <h2 id="estHead">Estimate saved</h2>
     <p id="estSub"></p>
     <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estR" style="width:22px;height:22px;flex:0 0 auto"><span id="estRL">Create Estimate - Rhodium (+5)</span></label>
+    <label id="estRSL" hidden>Services for Rhodium<textarea id="estRS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
     <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estI" style="width:22px;height:22px;flex:0 0 auto"><span id="estIL">Create Estimate - Iridium (+10)</span></label>
+    <label id="estISL" hidden>Services for Iridium<textarea id="estIS" rows="3" maxlength="800" placeholder="One service per line. Press Enter for a new line."></textarea></label>
     <label>Add the increase as<select id="estMode"><option value="p">Percent of the price (%)</option><option value="r">Rupees per piece (₹)</option></select></label>
     <p>Rhodium and Iridium estimates have the same items. Only the price is higher.</p>
     <p id="estErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="estSkip">Not now</button><button type="submit" class="btn primary" id="estGo">Create selected</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgSvc">
+  <form id="fSvc">
+    <h2 id="svcHead">Services</h2>
+    <p id="svcSub"></p>
+    <textarea id="svcText" rows="8" maxlength="800" placeholder="One service per line. Press Enter for a new line. Clear everything to delete all services."></textarea>
+    <div class="actions"><button type="button" class="btn" id="svcCancel">Cancel</button><button type="submit" class="btn primary">Save services</button></div>
   </form>
 </dialog>
 
@@ -2494,19 +2505,20 @@ function invNext(ty){
 function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
 function makeInv(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), row=mk('div','sline');
-  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice'), more=mk('button','btn small','Rhodium / Iridium');
-  pdf.type='button'; vd.type='button'; more.type='button'; more.hidden=true; row.append(pdf,more,vd);
+  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice'), more=mk('button','btn small','Rhodium / Iridium'), svc=mk('button','btn small','Services');
+  pdf.type='button'; vd.type='button'; more.type='button'; more.hidden=true; svc.type='button'; svc.hidden=true; row.append(pdf,svc,more,vd);
+  svc.addEventListener('click', function(){ openSvc(id); });
   more.addEventListener('click', function(){ var x=(invData.i||{})[id]; if(x) openEst(x.grp||id); });
   pdf.addEventListener('click', function(){ invPdf(id); });
   vd.addEventListener('click', function(){ var lb=((invData.i||{})[id]||{}).ty==='E'?'Cancel estimate':'Cancel invoice'; arm(vd,'inv'+id,lb, function(){ invVoid(id); }); });
-  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd,more:more}; el._id=id;
+  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd,more:more,svc:svc}; el._id=id;
   return el;
 }
 function updateInv(el,x){
   var R=el._r, c=invCalc(x.l,x.g,x.dt,x.dv,x.sh);
   R.t.textContent=invLabel(x)+' · '+invTitle(x)+' · '+x.party+(x.void?' (cancelled)':'');
   var miss=x.ty==='E'&&!x.void&&(x.tier||'Gold')==='Gold'&&estMissing(x.grp||el._id).length>0;
-  R.more.hidden=!miss;
+  R.more.hidden=!miss; R.svc.hidden=!(x.ty==='E'&&!x.void);
   R.meta.textContent=[fmtIso(x.d), x.inc?'Price +'+(x.inc.m==='p'?x.inc.k+'%':'\u20b9'+x.inc.k):'', (x.l||[]).length+((x.l||[]).length===1?' item':' items'), 'Total ₹'+fmtMoney(c.total), x.by?'By '+x.by:''].filter(Boolean).join(' · ');
   R.vd.hidden=!!x.void; if(x.ty==='E') if(!armed['inv'+el._id]) R.vd.textContent='Cancel estimate';
   el.style.opacity=x.void?'.6':'';
@@ -2662,6 +2674,18 @@ $('#fInv').addEventListener('submit', async function(e){
   if(ok){ $('#dlgInv').close(); toast(ty==='E'?label+' - Gold saved':label+' saved'); if(ty==='E') openEst(id); }
   else err.textContent='Could not post to stock. Check that the invoice list does not show a duplicate, then try again.';
 });
+var svcId='';
+function openSvc(id){
+  var x=(invData.i||{})[id]; if(!x||x.ty!=='E') return;
+  svcId=id; $('#svcHead').textContent='Services - '+(x.tier||'Gold'); $('#svcSub').textContent=invLabel(x)+' · Estimate - '+(x.tier||'Gold')+' · '+x.party;
+  $('#svcText').value=x.sv||''; var d=$('#dlgSvc'); if(!d.open) d.showModal();
+}
+$('#svcCancel').addEventListener('click', function(){ $('#dlgSvc').close(); });
+$('#fSvc').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var p={i:{}}; p.i[svcId]={sv:svcClean($('#svcText').value)};
+  if(await invSave(p)){ $('#dlgSvc').close(); toast('Services saved'); }
+});
 var estGrp='';
 function estTiers(){ return [['Rhodium',5,'#estR','#estRL'],['Iridium',10,'#estI','#estIL']]; }
 function estMissing(grp){
@@ -2674,10 +2698,13 @@ function openEst(grp){
   estGrp=grp; var miss=estMissing(grp).map(function(t){ return t[0]; });
   $('#estSub').textContent=invLabel(g)+' · Estimate - Gold saved for '+g.party+'.';
   estTiers().forEach(function(t){ var on=miss.indexOf(t[0])>=0, cb=$(t[2]); cb.checked=false; cb.disabled=!on; $(t[3]).textContent='Create Estimate - '+t[0]+' (+'+t[1]+')'+(on?'':' (already created)'); });
-  $('#estErr').textContent='';
+  $('#estErr').textContent=''; $('#estRS').value=''; $('#estIS').value=''; estSvcVis();
   if(!miss.length){ toast('Rhodium and Iridium estimates already exist.'); return; }
   var d=$('#dlgEst'); if(!d.open) d.showModal();
 }
+function estSvcVis(){ $('#estRSL').hidden=!$('#estR').checked; $('#estISL').hidden=!$('#estI').checked; }
+$('#estR').addEventListener('change', estSvcVis); $('#estI').addEventListener('change', estSvcVis);
+function svcClean(v){ return String(v||'').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800); }
 $('#estSkip').addEventListener('click', function(){ $('#dlgEst').close(); });
 $('#fEst').addEventListener('submit', async function(e){
   e.preventDefault();
@@ -2687,7 +2714,7 @@ $('#fEst').addEventListener('submit', async function(e){
   var p={i:{}}, now=Date.now();
   add.forEach(function(t,n){
     var id='v'+(now+n+1).toString(36)+Math.random().toString(36).slice(2,6), c=JSON.parse(JSON.stringify(g));
-    c.tier=t[0]; c.grp=estGrp; c.at=now+n+1; c.inc={k:t[1],m:mode}; delete c.void;
+    c.tier=t[0]; c.grp=estGrp; c.sv=svcClean($(t[0]==='Rhodium'?'#estRS':'#estIS').value); c.at=now+n+1; c.inc={k:t[1],m:mode}; delete c.void;
     c.l=(c.l||[]).map(function(L){ L.r=Math.round((mode==='p'?(Number(L.r)||0)*(1+t[1]/100):(Number(L.r)||0)+t[1])*100)/100; return L; });
     p.i[id]=c;
   });
