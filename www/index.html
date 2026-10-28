@@ -264,6 +264,20 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   .val,.bal .val{padding:0 4px; justify-content:center}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+/* numbers: smaller and lighter throughout */
+.fdc b,.dcard b,.salmon b,.salbox b,.winrow b,.fdsal b{font-weight:500}
+.fdc b{font-size:1.6rem}
+.fdsal b{font-size:clamp(.95rem,4.4vw,1.2rem)!important}
+.dcard b{font-size:1.1rem}
+.salmon b,.salbox b{font-size:.95rem}
+.winrow b{font-size:1rem}
+@media (min-width:700px){ .fdc b{font-size:1.9rem} }
+.totals{font-weight:500}
+.totals .val,.totals .bal .val{font-weight:400}
+.val,.bal .val{font-size:15px; font-weight:400}
+.c input{font-weight:400}
+.abal{font-size:.9rem; font-weight:500}
+.tsum,.tsum b{font-weight:400}
 </style>
 
 <div class="wrap">
