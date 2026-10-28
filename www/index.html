@@ -180,7 +180,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .notes{display:flex; flex-direction:column; gap:4px; margin-top:6px; grid-column:2/-1}
 .notes:empty{display:none}
 .costrow{grid-column:2/-1; display:flex; gap:8px; justify-content:flex-end; margin-top:2px}
-.costrow .c{width:140px}
+.costrow .c{width:110px}
 .costrow .lab{display:block; text-align:center}
 .costrow input{width:100%}
 .note{display:block; text-align:left; border:0; background:var(--field); border-radius:8px; padding:6px 10px; font-size:.85rem; color:var(--ink); cursor:pointer; overflow-wrap:anywhere}
@@ -257,7 +257,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   .id{display:flex; gap:10px; grid-column:1/-1; align-items:flex-start}
   .nm{flex:1}
   .notes{grid-column:1/-1}
-  .costrow{grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr}
+  .costrow{grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr 1fr}
   .costrow .c{width:auto}
   .lab{display:block; text-align:center}
   .c input{padding:8px 4px; text-align:center}
@@ -879,7 +879,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cost>0) rows[id].cost=r.cost;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -1030,15 +1030,19 @@ function makeRow(id){
     el.append(c);
   });
   var bc=cell('Bal Qty','bal'), bv=mk('span','val'); bc.append(bv); R.bal=bv; el.append(bc);
-  var cr=mk('div','costrow'), cc=cell('Cost (\u20b9 per piece)','cost'), ac=cell('Amt (Cost \u00d7 Bal)','amt'), av=mk('span','val');
-  if(canWrite){
-    var ci=document.createElement('input');
-    ci.type='number'; ci.min='0'; ci.step='0.01'; ci.inputMode='decimal'; ci.placeholder='0.00';
-    ci.addEventListener('change', function(){ commitCost(id,ci); });
-    ci.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); ci.blur(); } });
-    cc.append(ci); R.cost=ci;
-  }else{ var cv=mk('span','val'); cc.append(cv); R.costV=cv; R.cost=null; }
-  ac.classList.add('bal'); ac.append(av); R.amt=av; cr.append(cc,ac); el.append(cr);
+  var cr=mk('div','costrow'), ac=cell('Amt (CP \u00d7 Bal)','amt'), av=mk('span','val');
+  [['cost','CP','Cost price per piece'],['sp','SP','Sales price per piece']].forEach(function(d){
+    var c=cell(d[1],d[0]);
+    if(canWrite){
+      var ci=document.createElement('input');
+      ci.type='number'; ci.min='0'; ci.step='0.01'; ci.inputMode='decimal'; ci.placeholder='0.00';
+      ci.addEventListener('change', function(){ commitCost(id,ci,d[0]); });
+      ci.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); ci.blur(); } });
+      c.append(ci); R[d[0]]=ci;
+    }else{ var cv=mk('span','val'); c.append(cv); R[d[0]+'V']=cv; R[d[0]]=null; }
+    cr.append(c);
+  });
+  ac.classList.add('bal'); ac.append(av); R.amt=av; cr.append(ac); el.append(cr);
   el.append(R.notes);
   el._r=R; return el;
 }
@@ -1076,8 +1080,11 @@ function updateRow(el,id,r,n){
   });
   var b=bal(r); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
   var cost=Number(r.cost)||0;
-  if(R.cost){ if(document.activeElement!==R.cost) R.cost.value=cost?cost:''; R.cost.disabled=!ed; R.cost.setAttribute('aria-label','Cost per piece for '+r.name); }
-  else R.costV.textContent=cost?'\u20b9'+fmtMoney(cost):'\u2013';
+  [['cost','Cost price'],['sp','Sales price']].forEach(function(d){
+    var v=Number(r[d[0]])||0;
+    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v:''; R[d[0]].disabled=!ed; R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
+    else R[d[0]+'V'].textContent=v?'\u20b9'+fmtMoney(v):'\u2013';
+  });
   R.amt.textContent=cost?'\u20b9'+fmtMoney(Math.round(cost*Math.max(b,0)*100)/100):'\u2013';
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
@@ -1437,13 +1444,13 @@ async function commit(id,f,inp){
   var ok=await save(patch);
   if(ok && f!=='total' && v>0) openNote(id,f);
 }
-async function commitCost(id,inp){
-  var r=day&&day.rows&&day.rows[id], stored=r?(Number(r.cost)||0):0;
+async function commitCost(id,inp,fld){
+  var r=day&&day.rows&&day.rows[id], stored=r?(Number(r[fld])||0):0;
   var reset=function(){ inp.value=stored?stored:''; };
   if(!r||!editable()){ reset(); return; }
   var v=parseFloat(inp.value); if(!(v>0)) v=0; v=Math.round(v*100)/100;
   if(v===stored){ reset(); return; }
-  var patch={rows:{}}; patch.rows[id]={cost:v};
+  var patch={rows:{}}; patch.rows[id]={}; patch.rows[id][fld]=v;
   await save(patch);
 }
 function openNote(id,f){
@@ -2467,7 +2474,7 @@ function invAddLine(){
   sel.style.cssText='grid-column:1/-1;width:100%;min-width:0;max-width:100%'; q.style.cssText='width:100%;min-width:0'; r.style.cssText='width:100%;min-width:0';
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
-  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; if(rr&&rr.cost&&!r.value){ r.value=rr.cost; } });
+  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType==='S'?(rr.sp||0):(rr.cost||0)); if(pv&&!r.value){ r.value=pv; } });
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
   el.append(sel,q,r,x); box.append(el);
 }
