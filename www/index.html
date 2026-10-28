@@ -417,6 +417,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <div class="card state" id="astate">No staff yet.</div>
     <div class="tl" id="alist"></div>
+    <p class="pmeta" id="attOther" hidden></p>
   </section>
 
   <section class="pane" id="paneCs" role="tabpanel" aria-labelledby="tabCs" hidden>
@@ -2782,7 +2783,7 @@ function makeAtt(id){
 }
 function updateAtt(el,a,n,ed){
   var R=el._r;
-  R.num.textContent=n; R.nm.textContent=a.n;
+  R.num.textContent=n; R.nm.textContent=a.n+(String(el._id).charAt(0)==='s'?' (Supervisor)':'');
   if(isOwner && db){
     salSubscribe(); loadSalAtt();
     var vm=todayKey().slice(0,7), info=null;
@@ -2799,6 +2800,8 @@ function renderAtt(){
   $('#asum').textContent=c.P+' present · '+c.H+' half day · '+c.A+' absent · '+c.N+' not marked';
   $('#attAll').hidden=!(ed&&c.N>0);
   $('#attReset').hidden=!(isOwner&&ed&&(c.P+c.H+c.A)>0);
+  var other=nursery==='1'?'2':'1', oSup=teamList('sup').filter(function(it){ return (it[1].nid||'1')===other; }).length, oSt=teamList('staff').filter(function(it){ return (it[1].nid||'1')===other; }).length, ao=$('#attOther');
+  ao.hidden=!(oSup||oSt); ao.textContent=(oSup||oSt)?'Also in '+NURS[other]+': '+oSt+(oSt===1?' staff':' staff')+' and '+oSup+(oSup===1?' supervisor':' supervisors')+'. Switch the nursery above to mark them.':'';
   var s=$('#astate'); s.hidden=items.length>0;
   s.textContent = day===undefined ? 'Loading attendance…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No attendance was marked on this date.' : (isOwner ? 'No staff yet. Add staff in the Team tab.' : 'No staff yet. The owner adds staff in the Team tab.')));
   items.forEach(function(it,i){
