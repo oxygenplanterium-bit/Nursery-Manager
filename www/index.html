@@ -281,7 +281,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 .tsum,.tsum b{font-weight:400}
 #invLines select{background-color:transparent; color:var(--ink); border:1px solid var(--line)}
 #invLines select option{background:var(--card); color:var(--ink)}
-#dlgInv{width:100%; max-width:none; height:100%; max-height:none; margin:0; border:0; border-radius:0; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--bg)}
+#dlgInv{position:fixed; inset:0; width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:none; margin:0; border:0; border-radius:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--bg)}
 #dlgInv form{max-width:728px; margin:0 auto; padding:0 16px 40px}
 .invbar{position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--bg); border-bottom:1px solid var(--line); padding:max(36px, calc(env(safe-area-inset-top,0px) + 10px)) 0 10px; margin:0 0 4px}
 #dlgInv .invbar .btn{min-height:44px}
@@ -2580,6 +2580,7 @@ $('#invAddLine').addEventListener('click', invAddLine);
 $('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 $('#invClose').addEventListener('click', function(){ $('#dlgInv').close(); });
+$('#dlgInv').addEventListener('close', function(){ document.body.style.overflow=(tab||fdOpen)?'hidden':''; });
 function openInv(ty){
   if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
@@ -2589,7 +2590,7 @@ function openInv(ty){
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
   $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; renderTc();
-  var d=$('#dlgInv'); if(!d.open) d.showModal();
+  document.body.style.overflow='hidden'; var d=$('#dlgInv'); if(!d.open) d.showModal(); d.scrollTop=0;
 }
 $('#invNewS').addEventListener('click', function(){ openInv('S'); });
 $('#invNewP').addEventListener('click', function(){ openInv('P'); });
