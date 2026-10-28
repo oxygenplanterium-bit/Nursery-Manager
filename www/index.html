@@ -281,6 +281,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 .tsum,.tsum b{font-weight:400}
 #invLines select{background-color:transparent; color:var(--ink); border:1px solid var(--line)}
 #invLines select option{background:var(--card); color:var(--ink)}
+#dlgInv{width:100%; max-width:none; height:100%; max-height:none; margin:0; border:0; border-radius:0; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--bg)}
+#dlgInv form{max-width:728px; margin:0 auto; padding:0 16px 40px}
+.invbar{position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--bg); border-bottom:1px solid var(--line); padding:max(36px, calc(env(safe-area-inset-top,0px) + 10px)) 0 10px; margin:0 0 4px}
+#dlgInv .invbar .btn{min-height:44px}
 </style>
 
 <div class="wrap">
@@ -631,7 +635,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 
 <dialog id="dlgInv">
   <form id="fInv" novalidate>
-    <h2 id="invHead">New invoice</h2>
+    <div class="invbar"><h2 id="invHead">New invoice</h2><button type="button" class="btn" id="invClose">Close</button></div>
     <p id="invNo"></p>
     <label><span id="invPartyL">Customer name</span><input type="text" id="invParty" maxlength="80" autocomplete="off"></label>
     <div class="two">
@@ -2575,6 +2579,7 @@ $('#invAddLine').addEventListener('click', invAddLine);
 ['#invGst','#invShip','#invDv'].forEach(function(q){ $(q).addEventListener('input', invTotals); }); $('#invDt').addEventListener('change', function(){ if(!this.value) $('#invDv').value=''; invTotals(); });
 $('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
+$('#invClose').addEventListener('click', function(){ $('#dlgInv').close(); });
 function openInv(ty){
   if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
