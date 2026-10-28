@@ -631,7 +631,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <p id="invNo"></p>
     <label><span id="invPartyL">Customer name</span><input type="text" id="invParty" maxlength="80" autocomplete="off"></label>
     <div class="two">
-      <label>Phone (optional)<input type="tel" id="invPhone" maxlength="16" inputmode="numeric" autocomplete="off"></label>
+      <label>Phone (10 digits)<input type="tel" id="invPhone" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="10 digits"></label>
       <label>Invoice date<input type="date" id="invDate"></label>
     </div>
     <label>Address (optional)<input type="text" id="invAddr" maxlength="120" autocomplete="off"></label>
@@ -795,8 +795,8 @@ var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false,
 var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
 var winPushed=false, winPane=null;
 var tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
-var CK='nurseryCache1', cache={idx:null,days:{}}, cacheT=null, indexLive=false, dayLive=false;
-try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; } }catch(e){}
+var CK='nurseryCache1', cache={idx:null,days:{},meta:{}}, cacheT=null, indexLive=false, dayLive=false;
+try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; cache.meta=cc.meta||{}; } }catch(e){}
 function cacheSave(){
   clearTimeout(cacheT);
   cacheT=setTimeout(function(){
@@ -2406,7 +2406,7 @@ $('#fCs').addEventListener('submit', function(e){
 var invData={i:{}}, invSubbed=false, invType='S', invEls=new Map();
 function invSubscribe(){
   if(invSubbed||!db) return; invSubbed=true;
-  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; if(tab==='inv') renderInv(); }, function(){});
+  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); }, function(){});
 }
 function invSave(patch){
   var d=db.doc('meta/invoices');
@@ -2497,6 +2497,7 @@ function invAddLine(){
 }
 $('#invAddLine').addEventListener('click', invAddLine);
 $('#invGst').addEventListener('input', invTotals);
+$('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 function openInv(ty){
   if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
@@ -2517,7 +2518,7 @@ $('#fInv').addEventListener('submit', async function(e){
   if(!editable()){ err.textContent='Invoices can be created only on the open (latest) day.'; return; }
   var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=cleanName($('#invAddr').value), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
   if(!party){ err.textContent='Enter the '+(ty==='S'?'customer':'supplier')+' name.'; return; }
-  if(digits && digits.length!==10){ err.textContent='The phone number must be exactly 10 digits.'; return; }
+  if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
   if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
   var lines=invReadLines(false), need={}, i;
   if(!lines.length){ err.textContent='Add at least one item.'; return; }
@@ -2962,7 +2963,7 @@ $('#fRst').addEventListener('submit', async function(e){
       var delDoc=function(path){ return db.doc(path).delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; }); };
       await delDoc('meta/index'); await delDoc('meta/salary'); await delDoc('meta/invoices');
       await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});
-      salData={e:{},b:{},cfg:{}}; salAtt={}; invData={i:{}}; cache.idx=null; cache.days={};
+      salData={e:{},b:{},cfg:{}}; salAtt={}; invData={i:{}}; cache.idx=null; cache.days={}; cache.meta={};
       try{ localStorage.removeItem(CK); localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
     }else{
       for(var j=0;j<days.length;j++){
@@ -2972,7 +2973,7 @@ $('#fRst').addEventListener('submit', async function(e){
       }
       await db.doc('meta/salary').update({e:null, p:null}).catch(function(e){ if(!e||e.code!=='not_found') throw e; });
       await db.doc('meta/invoices').delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; });
-      salData.e={}; salData.p={}; salAtt={}; invData={i:{}}; cache.days={};
+      salData.e={}; salData.p={}; salAtt={}; invData={i:{}}; cache.days={}; delete cache.meta.salary; delete cache.meta.invoices;
       try{ localStorage.removeItem(CK); }catch(x){}
     }
     $('#dlgRst').close();
@@ -3164,6 +3165,29 @@ function pdfRes(doc){
     y=doc.lastAutoTable.finalY+16;
   });
 }
+function invForDay(n){
+  return invList_(n).filter(function(it){ return (it[1].day||it[1].d)===selDate; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+}
+function invList_(n){
+  var o=invData.i||{};
+  return Object.keys(o).filter(function(id){ return o[id] && (o[id].nid||'1')===n; }).map(function(id){ return [id,o[id]]; });
+}
+function pdfInv(doc){
+  var y=secStart(doc,'6. Sales and Purchase Invoices',false);
+  ['1','2'].forEach(function(n){
+    var items=invForDay(n), st=0, pt=0;
+    items.forEach(function(it){ var x=it[1]; if(x.void) return; var c=invCalc(x.l,x.g); if(x.ty==='S') st+=c.total; else pt+=c.total; });
+    y=nurHead(doc,y,n,items.length+(items.length===1?' invoice':' invoices')+' · Sales Rs. '+fmtMoney(st)+' · Purchases Rs. '+fmtMoney(pt));
+    if(!items.length){ doc.text('No invoices on this day.', 40, y+14); y+=36; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Invoice no.','Type','Party','Phone','Items','Amount (Rs.)']],
+      body:items.map(function(it){ var x=it[1], c=invCalc(x.l,x.g); return [invLabel(x)+(x.void?' (cancelled)':''), x.ty==='S'?'Sales':'Purchase', x.party||'', x.phone||'', (x.l||[]).map(function(L){ return L.n+' x '+fmtN(L.q)+' @ '+fmtMoney(L.r); }).join('\n'), {content:fmtMoney(c.total),styles:{halign:'right'}}]; }),
+      headStyles:{fillColor:[42,127,62]}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
+}
 function pdfCs(doc){
   var y=secStart(doc,'5. Customers and Sales',false);
   ['1','2'].forEach(function(n){
@@ -3184,7 +3208,7 @@ function pdfCs(doc){
 }
 function pdfAll(){
   var doc=pdfBase('Daily Report'); if(!doc) return null;
-  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc);
+  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc);
   return doc.output('arraybuffer');
 }
 $('#pdfBtn').addEventListener('click', async function(){
@@ -3307,7 +3331,7 @@ function salEntries(kind){
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
   if(salSubbed||!db||!isOwner) return; salSubbed=true;
-  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; cache.meta.salary=salData; cacheSave(); if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function salPeople(kind){
   var l=teamList(kind); return l.filter(function(it){ return (it[1].nid||'1')===nursery; });
@@ -3488,8 +3512,21 @@ $('#salPrev').addEventListener('click', function(){ salShift(-1); });
 $('#salNext').addEventListener('click', function(){ salShift(1); });
 
 /* ---------- start ---------- */
+function applySettings(d){
+  ownerWa = String(d.ownerWa||'');
+  var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||''};
+  team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
+  res = d.res||{};
+}
+function applyCachedMeta(){
+  var m=cache.meta||{};
+  if(m.settings) applySettings(m.settings);
+  if(m.invoices){ invData=m.invoices; invData.i=invData.i||{}; }
+  if(m.salary && isOwner){ salData=m.salary; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; }
+}
 async function boot(){
   if(cache.idx) index=cache.idx;
+  applyCachedMeta();
   try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
   document.querySelectorAll('.nursel').forEach(function(sel){ sel.value=nursery; });
   $('#supName').value=supName;
@@ -3531,11 +3568,8 @@ async function boot(){
   invSubscribe();
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
-    ownerWa = String(d.ownerWa||'');
-    var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||''};
-    team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
-    res = d.res||{};
-    syncSup(); renderAll();
+    cache.meta.settings=d; cacheSave();
+    applySettings(d); syncSup(); renderAll();
   }, function(){});
   setInterval(function(){
     var t=todayKey();
