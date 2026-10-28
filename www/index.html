@@ -460,14 +460,15 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </label>
     <section class="card team" id="invBox">
       <h2>Invoices</h2>
-      <p class="pmeta">Items come from this nursery's Stock. A sales invoice adds to the Sales column and a purchase invoice adds to the Purchases column of today's stock.</p>
+      <p class="pmeta">Items come from this nursery's Stock. A sales invoice adds to the Sales column and a purchase invoice adds to the Purchases column of today's stock. Estimates do not change stock.</p>
       <div class="two">
         <button class="btn primary" id="invNewS" type="button">New Sales Invoice</button>
         <button class="btn primary" id="invNewP" type="button">New Purchase Invoice</button>
       </div>
+      <button class="btn primary" id="invNewE" type="button">New Estimate</button>
       <p class="pmeta" id="invHint" style="color:var(--warn)" hidden>Invoices can be created only on the open (latest) day.</p>
       <label class="f"><span>Show</span>
-        <select id="invFilter" aria-label="Filter invoices"><option value="">All invoices</option><option value="S">Sales invoices</option><option value="P">Purchase invoices</option></select>
+        <select id="invFilter" aria-label="Filter invoices"><option value="">All invoices</option><option value="S">Sales invoices</option><option value="P">Purchase invoices</option><option value="E">Estimates</option></select>
       </label>
       <div class="bar" id="invBar" hidden><span class="tsum" id="invSum"></span></div>
       <p class="pmeta" id="invEmpty">No invoices yet.</p>
@@ -666,6 +667,19 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     </div>
     <p id="invErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="invCancel">Cancel</button><button type="submit" class="btn primary" id="invSave">Save invoice</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgEst">
+  <form id="fEst">
+    <h2 id="estHead">Estimate saved</h2>
+    <p id="estSub"></p>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estR" style="width:22px;height:22px;flex:0 0 auto"><span id="estRL">Create Estimate - Rhodium (+5)</span></label>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="estI" style="width:22px;height:22px;flex:0 0 auto"><span id="estIL">Create Estimate - Iridium (+10)</span></label>
+    <label>Add the increase as<select id="estMode"><option value="p">Percent of the price (%)</option><option value="r">Rupees per piece (₹)</option></select></label>
+    <p>Rhodium and Iridium estimates have the same items. Only the price is higher.</p>
+    <p id="estErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="estSkip">Not now</button><button type="submit" class="btn primary" id="estGo">Create selected</button></div>
   </form>
 </dialog>
 
@@ -2470,7 +2484,8 @@ function invCalc(lines,gst,dt,dv,sh){
   var ship=Math.round(Math.max(Number(sh)||0,0)*100)/100;
   return {sub:sub, disc:disc, gst:g, ship:ship, total:Math.round((taxable+g+ship)*100)/100};
 }
-function invLabel(x){ return (x.ty==='S'?'SI':'PI')+'-'+(x.nid==='2'?'R':'C')+'-'+('000'+(x.no||0)).slice(-4); }
+function invTitle(x){ return x.ty==='E' ? 'Estimate - '+(x.tier||'Gold') : (x.ty==='S'?'Sales':'Purchase'); }
+function invLabel(x){ return (x.ty==='S'?'SI':x.ty==='E'?'EST':'PI')+'-'+(x.nid==='2'?'R':'C')+'-'+('000'+(x.no||0)).slice(-4); }
 function invNext(ty){
   var m=0, o=invData.i||{}; Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.ty===ty&&(x.nid||'1')===nursery&&(x.no||0)>m) m=x.no; });
   return m+1;
@@ -2478,24 +2493,27 @@ function invNext(ty){
 function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
 function makeInv(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), row=mk('div','sline');
-  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice');
-  pdf.type='button'; vd.type='button'; row.append(pdf,vd);
+  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice'), more=mk('button','btn small','Rhodium / Iridium');
+  pdf.type='button'; vd.type='button'; more.type='button'; more.hidden=true; row.append(pdf,more,vd);
+  more.addEventListener('click', function(){ var x=(invData.i||{})[id]; if(x) openEst(x.grp||id); });
   pdf.addEventListener('click', function(){ invPdf(id); });
-  vd.addEventListener('click', function(){ arm(vd,'inv'+id,'Cancel invoice', function(){ invVoid(id); }); });
-  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd};
+  vd.addEventListener('click', function(){ var lb=((invData.i||{})[id]||{}).ty==='E'?'Cancel estimate':'Cancel invoice'; arm(vd,'inv'+id,lb, function(){ invVoid(id); }); });
+  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd,more:more}; el._id=id;
   return el;
 }
 function updateInv(el,x){
   var R=el._r, c=invCalc(x.l,x.g,x.dt,x.dv,x.sh);
-  R.t.textContent=invLabel(x)+' · '+(x.ty==='S'?'Sales':'Purchase')+' · '+x.party+(x.void?' (cancelled)':'');
-  R.meta.textContent=[fmtIso(x.d), (x.l||[]).length+((x.l||[]).length===1?' item':' items'), 'Total ₹'+fmtMoney(c.total), x.by?'By '+x.by:''].filter(Boolean).join(' · ');
-  R.vd.hidden=!!x.void;
+  R.t.textContent=invLabel(x)+' · '+invTitle(x)+' · '+x.party+(x.void?' (cancelled)':'');
+  var miss=x.ty==='E'&&!x.void&&(x.tier||'Gold')==='Gold'&&estMissing(x.grp||el._id).length>0;
+  R.more.hidden=!miss;
+  R.meta.textContent=[fmtIso(x.d), x.inc?'Price +'+(x.inc.m==='p'?x.inc.k+'%':'\u20b9'+x.inc.k):'', (x.l||[]).length+((x.l||[]).length===1?' item':' items'), 'Total ₹'+fmtMoney(c.total), x.by?'By '+x.by:''].filter(Boolean).join(' · ');
+  R.vd.hidden=!!x.void; if(x.ty==='E') if(!armed['inv'+el._id]) R.vd.textContent='Cancel estimate';
   el.style.opacity=x.void?'.6':'';
 }
 function renderInv(){
   var items=invList(), f=$('#invFilter').value, list=$('#invList'), seen=new Set(), pos=0, st=0, pt=0, ed=editable();
-  $('#invNewS').disabled=!ed; $('#invNewP').disabled=!ed; $('#invHint').hidden=ed||!day;
-  items.forEach(function(it){ var x=it[1]; if(x.void) return; var c=invCalc(x.l,x.g,x.dt,x.dv,x.sh); if(x.ty==='S') st+=c.total; else pt+=c.total; });
+  $('#invNewS').disabled=!ed; $('#invNewP').disabled=!ed; $('#invNewE').disabled=!(day&&canWrite); $('#invHint').hidden=ed||!day;
+  items.forEach(function(it){ var x=it[1]; if(x.void) return; var c=invCalc(x.l,x.g,x.dt,x.dv,x.sh); if(x.ty==='S') st+=c.total; else if(x.ty==='P') pt+=c.total; });
   var shown=items.filter(function(it){ return !f||it[1].ty===f; });
   $('#invBar').hidden=!items.length;
   $('#invSum').textContent='Sales ₹'+fmtMoney(st)+' · Purchases ₹'+fmtMoney(pt);
@@ -2574,7 +2592,7 @@ function invAddLine(){
   dsel.addEventListener('change', function(){ dv.hidden=!dsel.value; if(!dsel.value) dv.value=''; invTotals(); }); dv.hidden=true; dv.addEventListener('input', invTotals);
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
-  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType==='S'?(rr.sp||0):(isOwner?(rr.cost||0):0)); if(pv&&!r.value){ r.value=pv; } });
+  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType!=='P'?(rr.sp||0):(isOwner?(rr.cost||0):0)); if(pv&&!r.value){ r.value=pv; } });
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
   el.append(sel,q,r,x,dsel,dv); box.append(el);
 }
@@ -2585,11 +2603,12 @@ $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 $('#invClose').addEventListener('click', function(){ $('#dlgInv').close(); });
 $('#dlgInv').addEventListener('close', function(){ document.body.style.overflow=(tab||fdOpen)?'hidden':''; });
 function openInv(ty){
-  if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
+  if(ty==='E'){ if(!(day&&canWrite)){ toast('Estimates cannot be created right now.'); return; } }
+  else if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   invType=ty;
-  $('#invHead').textContent=ty==='S'?'New Sales Invoice':'New Purchase Invoice';
-  $('#invPartyL').textContent=ty==='S'?'Customer name':'Supplier name';
+  $('#invHead').textContent=ty==='S'?'New Sales Invoice':ty==='E'?'New Estimate - Gold':'New Purchase Invoice';
+  $('#invPartyL').textContent=ty==='P'?'Supplier name':'Customer name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
   $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; renderTc();
@@ -2597,12 +2616,13 @@ function openInv(ty){
 }
 $('#invNewS').addEventListener('click', function(){ openInv('S'); });
 $('#invNewP').addEventListener('click', function(){ openInv('P'); });
+$('#invNewE').addEventListener('click', function(){ openInv('E'); });
 $('#fInv').addEventListener('submit', async function(e){
   e.preventDefault();
   var err=$('#invErr'), ty=invType, f=ty==='S'?'sales':'purchase';
-  if(!editable()){ err.textContent='Invoices can be created only on the open (latest) day.'; return; }
+  if(ty==='E' ? !(day&&canWrite) : !editable()){ err.textContent=ty==='E'?'Estimates cannot be created right now.':'Invoices can be created only on the open (latest) day.'; return; }
   var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=$('#invAddr').value.split(/\r?\n/).map(function(l){ return l.trim().replace(/\s+/g,' '); }).filter(Boolean).join('\n').slice(0,300), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
-  if(!party){ err.textContent='Enter the '+(ty==='S'?'customer':'supplier')+' name.'; return; }
+  if(!party){ err.textContent='Enter the '+(ty==='P'?'supplier':'customer')+' name.'; return; }
   if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
   if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
   var sh=parseFloat($('#invShip').value)||0, gdt=$('#invGd').hidden?'':$('#invDt').value, gdv=parseFloat($('#invDv').value)||0;
@@ -2623,22 +2643,59 @@ $('#fInv').addEventListener('submit', async function(e){
   for(i=0;i<ids.length;i++){
     var r=day.rows&&day.rows[ids[i]];
     if(!r){ err.textContent='An item is no longer in stock.'; return; }
+    if(ty==='E') continue;
     if(ty==='S' && bal(r)<need[ids[i]]){ err.textContent='Only '+fmtN(bal(r))+' available for '+r.name+'.'; return; }
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined,
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
+  if(ty==='E') p.i[id].grp=id;
+  if(p.i[id].tier===undefined) delete p.i[id].tier;
   var ok=await invSave(p);
-  if(ok) ok=await save(patch);
+  if(ok && ty!=='E') ok=await save(patch);
   btn.disabled=false;
-  if(ok){ $('#dlgInv').close(); toast(label+' saved'); }
+  if(ok){ $('#dlgInv').close(); toast(ty==='E'?label+' - Gold saved':label+' saved'); if(ty==='E') openEst(id); }
   else err.textContent='Could not post to stock. Check that the invoice list does not show a duplicate, then try again.';
+});
+var estGrp='';
+function estTiers(){ return [['Rhodium',5,'#estR','#estRL'],['Iridium',10,'#estI','#estIL']]; }
+function estMissing(grp){
+  var have={}, o=invData.i||{};
+  Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.ty==='E'&&!x.void&&x.grp===grp) have[x.tier||'Gold']=1; });
+  return estTiers().filter(function(t){ return !have[t[0]]; });
+}
+function openEst(grp){
+  var g=(invData.i||{})[grp]; if(!g) return;
+  estGrp=grp; var miss=estMissing(grp).map(function(t){ return t[0]; });
+  $('#estSub').textContent=invLabel(g)+' · Estimate - Gold saved for '+g.party+'.';
+  estTiers().forEach(function(t){ var on=miss.indexOf(t[0])>=0, cb=$(t[2]); cb.checked=false; cb.disabled=!on; $(t[3]).textContent='Create Estimate - '+t[0]+' (+'+t[1]+')'+(on?'':' (already created)'); });
+  $('#estErr').textContent='';
+  if(!miss.length){ toast('Rhodium and Iridium estimates already exist.'); return; }
+  var d=$('#dlgEst'); if(!d.open) d.showModal();
+}
+$('#estSkip').addEventListener('click', function(){ $('#dlgEst').close(); });
+$('#fEst').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var g=(invData.i||{})[estGrp]; if(!g){ $('#dlgEst').close(); return; }
+  var mode=$('#estMode').value, add=estMissing(estGrp).filter(function(t){ return $(t[2]).checked; });
+  if(!add.length){ $('#estErr').textContent='Tick Rhodium, Iridium or both.'; return; }
+  var p={i:{}}, now=Date.now();
+  add.forEach(function(t,n){
+    var id='v'+(now+n+1).toString(36)+Math.random().toString(36).slice(2,6), c=JSON.parse(JSON.stringify(g));
+    c.tier=t[0]; c.grp=estGrp; c.at=now+n+1; c.inc={k:t[1],m:mode}; delete c.void;
+    c.l=(c.l||[]).map(function(L){ L.r=Math.round((mode==='p'?(Number(L.r)||0)*(1+t[1]/100):(Number(L.r)||0)+t[1])*100)/100; return L; });
+    p.i[id]=c;
+  });
+  $('#estGo').disabled=true;
+  var ok=await invSave(p); $('#estGo').disabled=false;
+  if(ok){ $('#dlgEst').close(); toast(add.map(function(t){ return t[0]; }).join(' and ')+' estimate'+(add.length>1?'s':'')+' created'); }
 });
 async function invVoid(id){
   var x=(invData.i||{})[id]; if(!x||x.void) return;
+  if(x.ty==='E'){ var pe={i:{}}; pe.i[id]={void:{at:Date.now(), by:nameNow()||(isOwner?'Owner':'')}}; if(await invSave(pe)) toast('Estimate cancelled'); return; }
   if(!editable()){ toast('Invoices can be cancelled only on the open (latest) day.'); return; }
   var f=x.ty==='S'?'sales':'purchase', patch={rows:{}}, need={};
   (x.l||[]).forEach(function(L){ need[L.id]=(need[L.id]||0)+L.q; });
@@ -2657,11 +2714,11 @@ async function invPdf(id){
   var x=(invData.i||{})[id]; if(!x) return;
   var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
   var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26, c=invCalc(x.l,x.g,x.dt,x.dv,x.sh);
-  doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'SALES INVOICE':'PURCHASE INVOICE')+(x.void?' (CANCELLED)':''), 36, y);
+  doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'SALES INVOICE':x.ty==='E'?'ESTIMATE - '+String(x.tier||'Gold').toUpperCase():'PURCHASE INVOICE')+(x.void?' (CANCELLED)':''), 36, y);
   doc.setFont(undefined,'normal'); doc.setFontSize(10);
-  doc.text('Invoice no: '+invLabel(x), W-36, y-10, {align:'right'}); doc.text('Date: '+fmtIso(x.d), W-36, y+4, {align:'right'});
+  doc.text((x.ty==='E'?'Estimate no: ':'Invoice no: ')+invLabel(x), W-36, y-10, {align:'right'}); doc.text('Date: '+fmtIso(x.d), W-36, y+4, {align:'right'});
   y+=24; doc.text(NURS[x.nid||'1'], 36, y); y+=15;
-  doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
+  doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':x.ty==='E'?'Estimate for: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
   if(x.phone){ doc.text('Phone: '+x.phone, 36, y); y+=14; }
   if(x.addr){ var al=doc.splitTextToSize(x.addr, W-72); doc.text(al, 36, y); y+=14*al.length; }
   var per=(x.l||[]).some(function(L){ return L.dt; }) || x.dt==='i', cs=per?5:4;
@@ -2686,7 +2743,7 @@ async function invPdf(id){
     });
   }
   var buf=doc.output('arraybuffer');
-  try{ await downloads.save({filename:'invoice-'+invLabel(x)+'.pdf', data:buf}); }
+  try{ await downloads.save({filename:(x.ty==='E'?'estimate-':'invoice-')+invLabel(x)+(x.ty==='E'?'-'+(x.tier||'Gold'):'')+'.pdf', data:buf}); }
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 }
 
@@ -3273,7 +3330,7 @@ function pdfRes(doc){
   });
 }
 function invForDay(n){
-  return invList_(n).filter(function(it){ return (it[1].day||it[1].d)===selDate; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+  return invList_(n).filter(function(it){ return it[1].ty!=='E' && (it[1].day||it[1].d)===selDate; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
 }
 function invList_(n){
   var o=invData.i||{};
