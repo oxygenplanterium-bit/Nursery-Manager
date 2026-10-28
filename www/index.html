@@ -29,7 +29,7 @@
 *{box-sizing:border-box}
 body{
   background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4;
-  padding-block:22px 40px;
+  padding-block:max(44px, calc(env(safe-area-inset-top, 0px) + 22px)) 40px;
   padding-left:max(16px, env(safe-area-inset-left, 0px));
   padding-right:max(16px, env(safe-area-inset-right, 0px));
 }
@@ -118,8 +118,8 @@ h2.dwide{margin:6px 2px 0; font-size:1rem}
 #rowMoveBar{position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:30; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px; background:var(--card); border:2px solid var(--accent); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #rowMoveBar span{flex:1 1 100%; font-weight:700; overflow-wrap:anywhere}
 #rowMoveBar .btn{flex:1 1 80px; min-height:44px}
-.pane[role="tabpanel"]:not([hidden]){position:fixed; inset:0; z-index:35; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 70px) max(16px, calc((100vw - 728px)/2)) 40px}
-#winBar{position:fixed; top:0; left:0; right:0; z-index:36; background:var(--bg); border-bottom:1px solid var(--line); padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px, calc((100vw - 728px)/2)) 10px}
+.pane[role="tabpanel"]:not([hidden]){position:fixed; inset:0; z-index:35; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(max(36px, calc(env(safe-area-inset-top,0px) + 10px)) + 60px) max(16px, calc((100vw - 728px)/2)) 40px}
+#winBar{position:fixed; top:0; left:0; right:0; z-index:36; background:var(--bg); border-bottom:1px solid var(--line); padding:max(36px, calc(env(safe-area-inset-top,0px) + 10px)) max(16px, calc((100vw - 728px)/2)) 10px}
 .winrow{display:flex; align-items:center; justify-content:space-between; gap:12px}
 .winrow b{font-size:1.2rem}
 .winrow .btn{min-height:44px; padding:0 18px}
