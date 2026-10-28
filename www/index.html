@@ -2947,7 +2947,7 @@ function makeAtt(id){
 function updateAtt(el,a,n,ed){
   var R=el._r;
   R.num.textContent=n; R.nm.textContent=a.n+(String(el._id).charAt(0)==='s'?' (Supervisor)':'');
-  if(isOwner && db){
+  if(db){
     salSubscribe(); loadSalAtt();
     var vm=todayKey().slice(0,7), info=null;
     try{ info=salCalc(el._id,String(el._id).charAt(0)==='s'?'sup':'staff',vm)[vm]; }catch(e){}
