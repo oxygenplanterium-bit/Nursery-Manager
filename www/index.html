@@ -638,7 +638,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <label>Phone (10 digits)<input type="tel" id="invPhone" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="10 digits"></label>
       <label>Invoice date<input type="date" id="invDate"></label>
     </div>
-    <label>Address (optional)<input type="text" id="invAddr" maxlength="120" autocomplete="off"></label>
+    <label>Address (optional)<textarea id="invAddr" rows="3" maxlength="300" autocomplete="off" placeholder="Press Enter for a new line"></textarea></label>
     <div id="invLines" style="display:flex;flex-direction:column;gap:8px"></div>
     <button type="button" class="btn small" id="invAddLine">Add item</button>
     <div class="two" id="invGd">
@@ -2559,7 +2559,7 @@ $('#fInv').addEventListener('submit', async function(e){
   e.preventDefault();
   var err=$('#invErr'), ty=invType, f=ty==='S'?'sales':'purchase';
   if(!editable()){ err.textContent='Invoices can be created only on the open (latest) day.'; return; }
-  var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=cleanName($('#invAddr').value), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
+  var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=$('#invAddr').value.split(/\r?\n/).map(function(l){ return l.trim().replace(/\s+/g,' '); }).filter(Boolean).join('\n').slice(0,300), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
   if(!party){ err.textContent='Enter the '+(ty==='S'?'customer':'supplier')+' name.'; return; }
   if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
   if(!(gst>=0&&gst<=100)){ err.textContent='GST must be between 0 and 100.'; return; }
@@ -2621,7 +2621,7 @@ async function invPdf(id){
   y+=24; doc.text(NURS[x.nid||'1'], 36, y); y+=15;
   doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'Bill to: ':'Supplier: ')+x.party, 36, y); doc.setFont(undefined,'normal'); y+=14;
   if(x.phone){ doc.text('Phone: '+x.phone, 36, y); y+=14; }
-  if(x.addr){ doc.text(x.addr, 36, y, {maxWidth:W-72}); y+=14; }
+  if(x.addr){ var al=doc.splitTextToSize(x.addr, W-72); doc.text(al, 36, y); y+=14*al.length; }
   var per=(x.l||[]).some(function(L){ return L.dt; }) || x.dt==='i', cs=per?5:4;
   var dtxt=function(L){ var t=L.dt||(x.dt==='i'?'i':''), v=L.dt?L.dv:(L.dd!=null?L.dd:x.dv); return t==='p'?fmtN(v)+'%':t==='i'?'Rs. '+fmtMoney(v)+'/pc':t==='l'?'Rs. '+fmtMoney(v):'-'; };
   var body=(x.l||[]).map(function(L,i){ var a=[String(i+1), L.n, fmtN(L.q), 'Rs. '+fmtMoney(L.r)]; if(per) a.push(dtxt(L)); a.push('Rs. '+fmtMoney(L.q*L.r)); return a; });
