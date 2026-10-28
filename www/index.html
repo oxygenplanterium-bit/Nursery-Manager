@@ -258,6 +258,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   .nm{flex:1}
   .notes{grid-column:1/-1}
   .costrow{grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr 1fr}
+  .costrow.nocp{grid-template-columns:1fr 1fr}
   .costrow .c{width:auto}
   .lab{display:block; text-align:center}
   .c input{padding:8px 4px; text-align:center}
@@ -949,6 +950,7 @@ function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.classNam
 function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',label)); return c; }
 
 function renderTop(){
+  $('#backupBtn').hidden=!isOwner;
   $('#importBtn').hidden=!(isOwner&&canWrite);
   var mo=$('#modeOwner'), ms=$('#modeSup');
   mo.setAttribute('aria-pressed', isOwner); ms.setAttribute('aria-pressed', !isOwner);
@@ -1056,7 +1058,9 @@ function makeRow(id){
   });
   var bc=cell('Bal Qty','bal'), bv=mk('span','val'); bc.append(bv); R.bal=bv; el.append(bc);
   var cr=mk('div','costrow'), ac=cell('Amt (SP \u00d7 Bal)','amt'), av=mk('span','val');
+  if(!isOwner) cr.classList.add('nocp');
   [['cost','CP','Cost price per piece'],['sp','SP','Sales price per piece']].forEach(function(d){
+    if(d[0]==='cost' && !isOwner){ R.cost=null; R.costV=null; return; }
     var c=cell(d[1],d[0]);
     if(canWrite){
       var ci=document.createElement('input');
@@ -1106,6 +1110,7 @@ function updateRow(el,id,r,n){
   var b=bal(r); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
   var cost=Number(r.cost)||0;
   [['cost','Cost price'],['sp','Sales price']].forEach(function(d){
+    if(d[0]==='cost' && !isOwner) return;
     var v=Number(r[d[0]])||0;
     if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v:''; R[d[0]].disabled=!ed; R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
     else R[d[0]+'V'].textContent=v?'\u20b9'+fmtMoney(v):'\u2013';
@@ -1382,6 +1387,8 @@ function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock();
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
 function renderFull(){
+  if(!isOwner) fdOpen=false;
+  $('#fdBtn').hidden=!isOwner;
   var ov=$('#fdash'); ov.hidden=!fdOpen;
   document.body.style.overflow=(fdOpen||tab)?'hidden':'';
   if(!fdOpen) return;
@@ -1448,7 +1455,7 @@ function renderFull(){
   if(!mod.length) ml.append(mk('p','fdempty','No existing items were changed on this day.'));
   mod.forEach(function(m){ line(ml, m[1].name, m[2].join(' · ')+(sel==='all'?' · '+NURS[m[1].nid||'1']:'')); });
 }
-$('#fdBtn').addEventListener('click', function(){ fdOpen=true; $('#fdNurs').value=nursery; renderFull(); $('#fdash').scrollTop=0; $('#fdClose').focus(); });
+$('#fdBtn').addEventListener('click', function(){ if(!isOwner) return; fdOpen=true; $('#fdNurs').value=nursery; renderFull(); $('#fdash').scrollTop=0; $('#fdClose').focus(); });
 $('#fdClose').addEventListener('click', function(){ fdOpen=false; renderFull(); $('#fdBtn').focus(); });
 $('#fdNurs').addEventListener('change', renderFull);
 document.addEventListener('keydown', function(e){ if(e.key==='Escape' && fdOpen){ fdOpen=false; renderFull(); } });
@@ -1473,6 +1480,7 @@ async function commit(id,f,inp){
   if(ok && f!=='total' && v>0) openNote(id,f);
 }
 async function commitCost(id,inp,fld){
+  if(fld==='cost' && !isOwner) return;
   var r=day&&day.rows&&day.rows[id], stored=r?(Number(r[fld])||0):0;
   var reset=function(){ inp.value=stored?stored:''; };
   if(!r||!editable()){ reset(); return; }
@@ -2526,7 +2534,7 @@ function invAddLine(){
   dsel.addEventListener('change', function(){ dv.hidden=!dsel.value; if(!dsel.value) dv.value=''; invTotals(); }); dv.hidden=true; dv.addEventListener('input', invTotals);
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
-  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType==='S'?(rr.sp||0):(rr.cost||0)); if(pv&&!r.value){ r.value=pv; } });
+  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType==='S'?(rr.sp||0):(isOwner?(rr.cost||0):0)); if(pv&&!r.value){ r.value=pv; } });
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
   el.append(sel,q,r,x,dsel,dv); box.append(el);
 }
