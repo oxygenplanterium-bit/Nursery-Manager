@@ -650,6 +650,13 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <label>Shipping ₹ (optional)<input type="number" id="invShip" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
     </div>
     <p id="invTot" style="font-weight:700;color:var(--ink)"></p>
+    <div id="invTcBox" style="display:flex;flex-direction:column;gap:8px">
+      <b>Terms and conditions</b>
+      <p class="pmeta">Saved terms stay for every new invoice and print at the end of each invoice. Edit or delete any of them here.</p>
+      <div id="invTc" style="display:flex;flex-direction:column;gap:8px"></div>
+      <textarea id="invTcNew" rows="2" maxlength="400" placeholder="Type a new term, then tap Add term" aria-label="New term"></textarea>
+      <button type="button" class="btn small" id="invTcAdd">Add term</button>
+    </div>
     <p id="invErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="invCancel">Cancel</button><button type="submit" class="btn primary" id="invSave">Save invoice</button></div>
   </form>
@@ -2425,7 +2432,7 @@ $('#fCs').addEventListener('submit', function(e){
 var invData={i:{}}, invSubbed=false, invType='S', invEls=new Map();
 function invSubscribe(){
   if(invSubbed||!db) return; invSubbed=true;
-  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); }, function(){});
+  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); if($('#dlgInv').open) renderTc(); }, function(){});
 }
 function invSave(patch){
   var d=db.doc('meta/invoices');
@@ -2500,7 +2507,33 @@ function invSyncGd(){
   var any=invReadLines(true).some(function(L){ return L.dt; });
   $('#invGd').hidden=any; if(any){ $('#invDt').value=''; $('#invDv').value=''; }
   $('#invDvL').hidden=!$('#invDt').value;
+  $('#invGd').style.gridTemplateColumns=$('#invDt').value?'':'1fr';
 }
+function tcList(){
+  var o=(invData&&invData.tc)||{};
+  return Object.keys(o).filter(function(id){ return o[id]&&o[id].t; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (a[1].o||0)-(b[1].o||0); });
+}
+function renderTc(){
+  var box=$('#invTc'); if(document.activeElement&&document.activeElement.tagName==='TEXTAREA'&&box.contains(document.activeElement)) return;
+  box.textContent='';
+  tcList().forEach(function(it,i){
+    var id=it[0], row=mk('div','sline'), n=mk('span',null,(i+1)+'.'), ta=document.createElement('textarea'), del=mk('button','btn small danger','Delete');
+    ta.rows=2; ta.maxLength=400; ta.value=it[1].t; ta.className='grow'; ta.style.cssText='flex:1 1 160px;min-width:0'; ta.setAttribute('aria-label','Term '+(i+1)); del.type='button';
+    ta.addEventListener('change', function(){
+      var v=ta.value.trim(), p={tc:{}};
+      if(!v){ p.tc[id]=null; } else { p.tc[id]={t:v}; }
+      invSave(p);
+    });
+    del.addEventListener('click', function(){ arm(del,'tc'+id,'Delete', function(){ var p={tc:{}}; p.tc[id]=null; invSave(p); }); });
+    row.append(n,ta,del); box.append(row);
+  });
+  if(!box.children.length) box.append(mk('p','pmeta','No terms added yet.'));
+}
+$('#invTcAdd').addEventListener('click', async function(){
+  var v=$('#invTcNew').value.trim(); if(!v) return;
+  var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={tc:{}}; p.tc[id]={t:v,o:Date.now()};
+  if(await invSave(p)){ $('#invTcNew').value=''; }
+});
 function invTotals(){
   invSyncGd();
   var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
@@ -2550,7 +2583,7 @@ function openInv(ty){
   $('#invPartyL').textContent=ty==='S'?'Customer name':'Supplier name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
-  $('#invLines').textContent=''; invAddLine(); invTotals();
+  $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; renderTc();
   var d=$('#dlgInv'); if(!d.open) d.showModal();
 }
 $('#invNewS').addEventListener('click', function(){ openInv('S'); });
@@ -2585,7 +2618,7 @@ $('#fInv').addEventListener('submit', async function(e){
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate,
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
@@ -2633,6 +2666,16 @@ async function invPdf(id){
   doc.autoTable({startY:y+6, theme:'grid', styles:{fontSize:10,cellPadding:5}, head:[per?['#','Item','Qty','Rate','Discount','Amount']:['#','Item','Qty','Rate','Amount']], body:body, foot:foot, showFoot:'lastPage',
     headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'},
     columnStyles:{0:{cellWidth:28},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}});
+  var ty2=doc.lastAutoTable.finalY+22;
+  if(x.tc&&x.tc.length){
+    if(ty2>740){ doc.addPage(); ty2=50; }
+    doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.text('Terms and Conditions', 36, ty2); doc.setFont(undefined,'normal'); doc.setFontSize(9); ty2+=14;
+    x.tc.forEach(function(t,i){
+      var ls=doc.splitTextToSize((i+1)+'. '+t, W-72);
+      if(ty2+ls.length*11>800){ doc.addPage(); ty2=50; }
+      doc.text(ls, 36, ty2); ty2+=ls.length*11+3;
+    });
+  }
   var buf=doc.output('arraybuffer');
   try{ await downloads.save({filename:'invoice-'+invLabel(x)+'.pdf', data:buf}); }
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
