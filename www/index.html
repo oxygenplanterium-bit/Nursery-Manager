@@ -1551,12 +1551,14 @@ function makeTd(id){
     if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
   });
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
-  var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; asB.append(asV,asE,asP);
+  var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.append(asV,asE,asC,asP);
+  asC.addEventListener('click', function(){ asPend=null; asP.hidden=true; asC.hidden=true; asE.disabled=false; asE.textContent='Change assigned to'; });
   var asPend=null;
   asE.addEventListener('click', function(){
     var x=el._x; if(!x||x.en||!editable()) return;
     if(!asP.hidden){
-      asP.hidden=true; asE.textContent='Change assigned to';
+      if(asE.disabled) return;
+      asP.hidden=true; asC.hidden=true; asE.textContent='Change assigned to';
       if(asPend){
         var v=asPend; asPend=null;
         var now=Date.now(), p={td:{}}, same=!v.length||(x.as||[]).slice().sort().join('|')===v.slice().sort().join('|');
@@ -1569,10 +1571,10 @@ function makeTd(id){
       return;
     }
     asPend=null;
-    buildAsg(asP, labourNames(x.nid||'1'), [], function(v){ asPend=v; });
-    asP.hidden=false; asE.textContent='Save assigned to';
+    buildAsg(asP, labourNames(x.nid||'1'), [], function(v){ asPend=v; asE.disabled=!v.length; });
+    asP.hidden=false; asC.hidden=false; asE.disabled=true; asE.textContent='Save assigned to';
   });
-  el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP}; return el;
+  el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -1583,7 +1585,7 @@ function updateTd(el,x,ed){
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
-  if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; }
+  if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; R.asE.disabled=false; if(R.asC) R.asC.hidden=true; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
   R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!R.ta.value.trim();
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
