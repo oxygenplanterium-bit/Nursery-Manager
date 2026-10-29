@@ -748,6 +748,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
   <form id="fAcc" novalidate>
     <h2 id="accHead">New entry</h2>
     <p id="accNo"></p>
+    <label>Nursery<select id="accNurs"><option value="1">Chalmatti</option><option value="2">Raynal</option></select></label>
     <div class="two">
       <label>Date<input type="date" id="accDate"></label>
       <label>Amount (₹)<input type="number" id="accAmt" min="0" step="0.01" inputmode="decimal"></label>
@@ -3077,8 +3078,8 @@ function accDue(invId,except){
 }
 var accEditId='';
 function accLabel(x){ return ({rc:'RC',py:'PY'})[x.k]?({rc:'RC',py:'PY'})[x.k]+'-'+(x.nid==='2'?'R':'C')+'-'+('000'+(x.no||0)).slice(-4):''; }
-function accNext(k){
-  var m=0, o=accData.e||{}; Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.k===k&&(x.nid||'1')===nursery&&(x.no||0)>m) m=x.no; });
+function accNext(k,nid){
+  nid=nid||nursery; var m=0, o=accData.e||{}; Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.k===k&&(x.nid||'1')===nid&&(x.no||0)>m) m=x.no; });
   return m+1;
 }
 function accMonthItems(){
@@ -3152,7 +3153,7 @@ function openAcc(k,eid){
   $('#accNo').textContent=NURS[nursery]+(vch?' · '+accLabel(ex?ex:{k:k,nid:nursery,no:accNext(k)}):'');
   $('#accInvL').hidden=!vch; $('#accPartyL').hidden=!vch; $('#accCatL').hidden=vch;
   $('#accPartyT').textContent=k==='rc'?'Received from':'Paid to';
-  $('#accDate').value=todayKey(); $('#accAmt').value=''; $('#accParty').value=''; $('#accNoteIn').value=''; $('#accErr').textContent=''; $('#accMode').value='cash';
+  $('#accNurs').value=ex?(ex.nid||'1'):nursery; $('#accDate').value=todayKey(); $('#accAmt').value=''; $('#accParty').value=''; $('#accNoteIn').value=''; $('#accErr').textContent=''; $('#accMode').value='cash';
   if(vch) accFillInv();
   else{ var c=$('#accCat'); c.textContent=''; catList(k).forEach(function(it){ var o=mk('option',null,it[1]); o.value=it[1]; c.append(o); }); }
   if(ex){
@@ -3167,6 +3168,12 @@ $('#accNewPy').addEventListener('click', function(){ openAcc('py'); });
 $('#accNewIn').addEventListener('click', function(){ openAcc('in'); });
 $('#accNewEx').addEventListener('click', function(){ openAcc('ex'); });
 $('#accCancel').addEventListener('click', function(){ $('#dlgAcc').close(); });
+$('#accNurs').addEventListener('change', function(){
+  var vch=accKind==='rc'||accKind==='py', ex=accEditId?(accData.e||{})[accEditId]:null, n=this.value;
+  if(vch) $('#accNo').textContent=NURS[n]+' · '+accLabel(ex&&(ex.nid||'1')===n?ex:{k:accKind,nid:n,no:accNext(accKind,n)});
+  else $('#accNo').textContent=NURS[n];
+  if(vch && n!==nursery){ $('#accInv').value=''; }
+});
 $('#accInv').addEventListener('change', function(){
   var id=this.value, x=id?(invData.i||{})[id]:null; if(!x) return;
   $('#accParty').value=x.party||''; $('#accAmt').value=accDue(id);
@@ -3179,13 +3186,14 @@ $('#fAcc').addEventListener('submit', async function(e){
   if(!(amt>0)){ err.textContent='Enter an amount above 0.'; return; }
   if(vch && !party){ err.textContent='Enter the '+(k==='rc'?'name of who paid you.':'name of who you paid.'); return; }
   if(inv && amt>accDue(inv,accEditId)+0.004){ err.textContent='The amount is more than the due ₹'+fmtMoney(accDue(inv,accEditId))+' on that invoice.'; return; }
-  var x={k:k, nid:nursery, d:d, amt:amt, mode:vch||k==='in'||k==='ex'?$('#accMode').value:'', note:$('#accNoteIn').value.trim(), by:nameNow()||'Owner', at:Date.now()};
-  if(vch){ x.party=party; x.inv=inv||''; x.no=accNext(k); } else x.cat=$('#accCat').value;
+  var nn=$('#accNurs').value, x={k:k, nid:nn, d:d, amt:amt, mode:vch||k==='in'||k==='ex'?$('#accMode').value:'', note:$('#accNoteIn').value.trim(), by:nameNow()||'Owner', at:Date.now()};
+  if(vch){ x.party=party; x.inv=inv||''; x.no=accNext(k,nn); } else x.cat=$('#accCat').value;
   var id='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={e:{}};
   if(accEditId){
     var old=(accData.e||{})[accEditId]; if(!old){ $('#dlgAcc').close(); return; }
-    id=accEditId; x={d:d, amt:amt, mode:x.mode, note:x.note, edited:{at:Date.now(), by:nameNow()||'Owner'}};
-    if(vch){ x.party=party; x.inv=inv||''; } else x.cat=$('#accCat').value;
+    id=accEditId; var on=old.nid||'1'; x={d:d, amt:amt, mode:x.mode, note:x.note, edited:{at:Date.now(), by:nameNow()||'Owner'}};
+    if(vch){ x.party=party; x.inv=(nn===on)?(inv||''):''; } else x.cat=$('#accCat').value;
+    if(nn!==on){ x.nid=nn; if(vch) x.no=accNext(k,nn); }
   }
   p.e[id]=x;
   var b=$('#accSave'); b.disabled=true;
