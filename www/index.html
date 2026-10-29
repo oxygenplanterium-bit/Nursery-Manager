@@ -291,6 +291,10 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 body,button,input,select,option,textarea,label,th,td{text-transform:capitalize}
 input[type=email],input[type=url],input[type=password],input[type=date],input[type=number],input[type=tel]{text-transform:none}
 .nocap{text-transform:none}
+#fInv .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:end}
+#fInv .two>label{min-width:0}
+#fInv .two input,#fInv .two select{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+#fInv input[type=date]{height:48px;font-size:13px;padding-left:8px;padding-right:2px;-webkit-appearance:none;appearance:none;max-width:100%;min-width:0}
 </style>
 
 <div class="wrap">
