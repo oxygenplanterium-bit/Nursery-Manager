@@ -419,6 +419,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
         <form class="team" id="fTd" hidden novalidate>
           <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
+          <div class="f"><span>Task assigned to (labour, choose one or more)</span><div id="tdAsg" style="display:flex;flex-direction:column;gap:6px"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit">Start task</button>
         </form>
@@ -1501,6 +1502,22 @@ function tdItems(n){
   n=n||nursery; var o=(day&&day.td)||{};
   return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
 }
+function labourNames(nid){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nid; }).map(function(it){ return it[1].n; }).filter(Boolean); }
+function buildAsg(box,names,sel,onChange){
+  box.textContent='';
+  if(!names.length){ box.append(mk('span','pmeta','No labour added for this nursery yet. Owner can add them in the Team tab.')); return; }
+  var all=mk('label'), ac=document.createElement('input'); ac.type='checkbox'; all.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; ac.style.cssText='width:20px;height:20px;flex:none'; all.append(ac,mk('span',null,'Select all'));
+  var boxes=[];
+  var up=function(){ ac.checked=boxes.length>0&&boxes.every(function(b){ return b.checked; }); };
+  var chg=function(){ up(); onChange(boxes.filter(function(b){ return b.checked; }).map(function(b){ return b.value; })); };
+  ac.addEventListener('change', function(){ boxes.forEach(function(b){ b.checked=ac.checked; }); chg(); });
+  box.append(all);
+  names.concat((sel||[]).filter(function(n){ return names.indexOf(n)<0; })).forEach(function(n){
+    var l=mk('label'), c=document.createElement('input'); c.type='checkbox'; c.value=n; c.checked=(sel||[]).indexOf(n)>=0; c.style.cssText='width:20px;height:20px;flex:none';
+    l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; l.append(c,mk('span',null,n)); c.addEventListener('change', chg); boxes.push(c); box.append(l);
+  });
+  up();
+}
 function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
@@ -1526,7 +1543,14 @@ function makeTd(id){
     if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
   });
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
-  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del}; return el;
+  var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; asB.append(asV,asE,asP);
+  asE.addEventListener('click', function(){
+    var x=el._x; if(!x||!editable()) return;
+    if(!asP.hidden){ asP.hidden=true; asE.textContent='Change assigned to'; return; }
+    buildAsg(asP, labourNames(x.nid||'1'), x.as||[], function(v){ var p={td:{}}; p.td[id]={as:v}; save(p); });
+    asP.hidden=false; asE.textContent='Done choosing';
+  });
+  el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -1536,10 +1560,13 @@ function updateTd(el,x,ed){
   var R=el._r; el._x=x;
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.meta.textContent=tdMeta(x);
+  R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned'); R.asE.hidden=!ed;
+  if(!ed){ R.asP.hidden=true; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
   R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!R.ta.value.trim();
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
+var tdAsgSel=[];
 function renderTd(){
   var sub=taskSub;
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
@@ -1551,6 +1578,7 @@ function renderTd(){
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
   pk.value=cur;
+  var asb=$('#tdAsg'), asKey=nursery+'|'+labourNames(nursery).join(','); if(asb._k!==asKey){ asb._k=asKey; tdAsgSel=[]; buildAsg(asb,labourNames(nursery),[],function(v){ tdAsgSel=v; }); }
   items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } else run++; });
   $('#tdBar').hidden=!items.length;
   $('#tdSum').textContent=run+' running · '+done+' done · Total time '+fmtDur(tot);
@@ -1576,8 +1604,8 @@ $('#fTd').addEventListener('submit', async function(e){
   if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
-  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:''};
-  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; toast('Task started'); }
+  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice()};
+  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); toast('Task started'); }
 });
 function pdfTd(doc){
   var y=secStart(doc,'7. Tasks done and time taken',false);
@@ -1588,8 +1616,8 @@ function pdfTd(doc){
     if(!items.length){ doc.text('No tasks were recorded on this day.', 40, y+14); y+=36; return; }
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
-      head:[['Sl.No.','Task','By','Started','Ended','Time taken','Report']],
-      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
+      head:[['Sl.No.','Task','Assigned to','By','Started','Ended','Time taken','Report']],
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',(x.as||[]).join(', '),x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
       headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:36}}
     });
     y=doc.lastAutoTable.finalY+16;
