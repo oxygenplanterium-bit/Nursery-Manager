@@ -1447,7 +1447,7 @@ function renderTasks(){
 }
 
 /* ---------- tasks done: start, finish, time taken and report ---------- */
-var taskSub='allot', tdEls=new Map();
+var taskSub='allot', tdEls=new Map(), tdEditing={};
 function fmtDur(ms){
   var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
   return h ? h+' h '+('0'+m).slice(-2)+' min' : (m ? m+' min '+('0'+sec).slice(-2)+' s' : sec+' s');
@@ -1459,17 +1459,29 @@ function tdItems(n){
 function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
-  var fin=mk('button','btn small primary','Mark done'), del=mk('button','btn small danger','Delete'); fin.type='button'; del.type='button'; row.append(fin,del);
-  ta.addEventListener('change', function(){ if(!editable()) return; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p); });
+  var fin=mk('button','btn small primary','Mark done'), ed=mk('button','btn small','Edit report'), del=mk('button','btn small danger','Delete'); fin.type='button'; ed.type='button'; del.type='button'; row.append(fin,ed,del);
+  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!ta.value.trim(); });
+  ta.addEventListener('change', function(){
+    var x=el._x; if(!editable()||!x) return;
+    if(x.en && !ta.value.trim()){ toast('The report cannot be empty.'); ta.value=x.note||''; return; }
+    var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p);
+  });
+  ed.addEventListener('click', function(){
+    var x=el._x; if(!x||!x.en||!editable()) return;
+    if(tdEditing[id]){ if(!ta.value.trim()){ toast('The report cannot be empty.'); return; } delete tdEditing[id]; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p); }
+    else{ tdEditing[id]=1; }
+    updateTd(el,x,editable()); if(tdEditing[id]) ta.focus();
+  });
   fin.addEventListener('click', async function(){
     var x=el._x; if(!x||x.en||!editable()) return;
+    if(!ta.value.trim()){ toast('Fill the report in the notes box before marking the task done.'); return; }
     if(needSup()){ toast('Choose your name at the top first.'); return; }
     var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600)};
     if(x.tid && day.tasks && day.tasks[x.tid]){ p.tasks={}; p.tasks[x.tid]={status:'done', who:whoNow(), at:Date.now()}; }
     if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
   });
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
-  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,del:del}; return el;
+  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -1480,7 +1492,8 @@ function updateTd(el,x,ed){
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.meta.textContent=tdMeta(x);
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
-  R.ta.disabled=!ed; R.fin.hidden=!(ed&&!x.en); R.del.hidden=!(isOwner&&ed);
+  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!R.ta.value.trim();
+  R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
 function renderTd(){
   var sub=taskSub;
@@ -1499,7 +1512,7 @@ function renderTd(){
   $('#tdEmpty').hidden=items.length>0;
   items.forEach(function(it){
     var id=it[0]; seen.add(id);
-    var el=tdEls.get(id); if(!el){ el=makeTd(id); tdEls.set(id,el); }
+    var el=tdEls.get(id); if(!el){ el=makeTd(id); el._id=id; tdEls.set(id,el); }
     updateTd(el,it[1],ed);
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
