@@ -1,4 +1,4 @@
-name: Deploy iPhone web app
+name: Deploy web app (Android and iPhone)
 on:
   push:
     branches: [main]

@@ -910,6 +910,13 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
+<div id="instBar" hidden style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;background:#16221b;color:#e8f0ea;border:1px solid #2c4636;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px"><span style="flex:1">Install Nursery Manager on this phone as an app.</span><button class="btn" id="instGo" type="button">Install</button><button class="btn" id="instNo" type="button">Not now</button></div>
+<script>(function(){var ev=null,bar=document.getElementById('instBar');bar.style.display='none';
+function ok(){try{return !localStorage.getItem('instNo')&&!matchMedia('(display-mode: standalone)').matches;}catch(e){return true;}}
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=e;if(ok()){bar.hidden=false;bar.style.display='flex';}});
+document.getElementById('instGo').onclick=function(){if(!ev)return;ev.prompt();ev.userChoice.then(function(){ev=null;bar.style.display='none';});};
+document.getElementById('instNo').onclick=function(){bar.style.display='none';try{localStorage.setItem('instNo','1');}catch(e){}};
+window.addEventListener('appinstalled',function(){bar.style.display='none';});})();</script>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
 <script src="platform.js"></script>
 <script>
