@@ -515,8 +515,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
       <button class="btn" type="button" id="accCats">Manage categories</button>
       <label class="f"><span>Period</span>
-        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="all">All transactions (all months)</option></select>
+        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day">This day only (today)</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
       </label>
+      <label class="f" id="accDayL" hidden><span>Date</span><input type="date" id="accDay" aria-label="Choose date"></label>
       <label class="f"><span>Show</span>
         <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option></select>
       </label>
@@ -3086,8 +3087,8 @@ function accNext(k,nid){
   return m+1;
 }
 function accMonthItems(mo){
-  var o=accData.e||{}, all=!mo&&$('#accPeriod').value==='all';
-  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===nursery&&(all||String(x.d||'').slice(0,7)===accMonth); })
+  var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
+  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===nursery&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); })
     .map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].d||'').localeCompare(a[1].d||'') || (b[1].at||0)-(a[1].at||0); });
 }
 function accSums(items){
@@ -3119,17 +3120,20 @@ function renderAcc(){
   if(tab!=='acc'||!isOwner) return;
   accSubscribe();
   var ym=accMonth.split('-'); $('#accMonthLbl').textContent=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-  var allP=$('#accPeriod').value==='all'; if(allP) $('#accMonthLbl').textContent='All months'; $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
+  var pv=$('#accPeriod').value, allP=pv!=='m', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
+  $('#accDayL').hidden=pv!=='date';
+  if(allP){ $('#accMonthLbl').textContent=pv==='all'?'All months':(dk?new Date(dk+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'Choose a date'); }
+  $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
   var items=accMonthItems(), S=accSums(items), op=accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
   var net=S.rc+S.in-S.py-S.ex;
-  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Net (receipts + income − payments − expenses)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(allP?'':' this month'),S.cash],['UPI balance'+(allP?'':' this month'),S.upi],['Bank balance'+(allP?'':' this month'),S.bank]].forEach(function(c){
+  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Net (receipts + income − payments − expenses)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(pv==='m'?' this month':''),S.cash],['UPI balance'+(pv==='m'?' this month':''),S.upi],['Bank balance'+(pv==='m'?' this month':''),S.bank]].forEach(function(c){
     var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,(c[1]<0?'− ':'')+'₹'+fmtMoney(Math.abs(c[1])))); g.append(d);
   });
   var sal=0, se=(salData&&salData.e)||{}; Object.keys(se).forEach(function(id){ var x=se[id]; if(x&&x.k==='adv'&&(x.nid||'1')===nursery&&String(x.d||'').slice(0,7)===accMonth) sal+=Number(x.amt)||0; });
   $('#accNote').textContent=sal>0?'Salary advances given this month (from the Salary tab): ₹'+fmtMoney(sal)+'. This is not included in the figures above.':'';
   var shown=items.filter(function(it){ return !f||it[1].k===f; });
-  $('#accEmpty').hidden=shown.length>0; $('#accEmpty').textContent=allP?'No entries yet.':'No entries this month.';
+  $('#accEmpty').hidden=shown.length>0; $('#accEmpty').textContent=pv==='all'?'No entries yet.':pv==='m'?'No entries this month.':'No entries on this day.';
   shown.forEach(function(it){
     var id=it[0]; seen.add(id);
     var el=accEls.get(id); if(!el){ el=makeAcc(id); accEls.set(id,el); }
@@ -3140,7 +3144,8 @@ function renderAcc(){
   accEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); accEls.delete(id); } });
 }
 $('#accFilter').addEventListener('change', renderAcc);
-$('#accPeriod').addEventListener('change', renderAcc);
+$('#accPeriod').addEventListener('change', function(){ if(this.value==='date'&&!$('#accDay').value) $('#accDay').value=todayKey(); renderAcc(); });
+$('#accDay').addEventListener('change', renderAcc);
 $('#accPrev').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 $('#accNext').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1],1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 function accFillInv(){
