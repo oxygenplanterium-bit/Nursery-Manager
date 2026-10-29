@@ -753,9 +753,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <h2 id="accHead">New entry</h2>
     <p id="accNo"></p>
     <label>Nursery<select id="accNurs"><option value="1">Chalmatti</option><option value="2">Raynal</option></select></label>
-    <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
-      <label style="min-width:0">Date<input type="date" id="accDate" style="width:100%;min-width:0;box-sizing:border-box;height:48px"></label>
-      <label style="min-width:0">Amount (₹)<input type="number" id="accAmt" style="width:100%;min-width:0;box-sizing:border-box;height:48px" min="0" step="0.01" inputmode="decimal"></label>
+    <div class="two" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:end">
+      <label style="min-width:0">Date<input type="date" id="accDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;padding-left:8px;padding-right:2px;font-size:13px;-webkit-appearance:none;appearance:none"></label>
+      <label style="min-width:0">Amount (₹)<input type="number" id="accAmt" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;padding-left:10px;padding-right:10px;font-size:15px" min="0" step="0.01" inputmode="decimal"></label>
     </div>
     <label id="accInvL">Against invoice (optional)<select id="accInv"></select></label>
     <label id="accPartyL"><span id="accPartyT">Party name</span><input type="text" id="accParty" maxlength="80" autocomplete="off"></label>
