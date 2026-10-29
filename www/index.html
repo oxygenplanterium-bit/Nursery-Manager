@@ -467,6 +467,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
         <button class="btn primary" id="invNewP" type="button">New Purchase Invoice</button>
       </div>
       <button class="btn primary" id="invNewE" type="button">New Estimate</button>
+      <button class="btn" id="invTcBtn" type="button">Terms and conditions</button>
       <p class="pmeta" id="invHint" style="color:var(--warn)" hidden>Invoices can be created only on the open (latest) day.</p>
       <label class="f"><span>Show</span>
         <select id="invFilter" aria-label="Filter invoices"><option value="">All invoices</option><option value="S">Sales invoices</option><option value="P">Purchase invoices</option><option value="E">Estimates</option></select>
@@ -688,7 +689,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <p id="invTot" style="font-weight:700;color:var(--ink)"></p>
     <div id="invTcBox" style="display:flex;flex-direction:column;gap:8px">
       <b>Terms and conditions</b>
-      <p class="pmeta">Saved terms stay for every new invoice and print at the end of each invoice. Edit or delete any of them here.</p>
+      <p class="pmeta">Saved terms stay for every new invoice. Tick the terms you want printed on this invoice, and edit or delete any of them here.</p>
       <div id="invTc" style="display:flex;flex-direction:column;gap:8px"></div>
       <textarea id="invTcNew" rows="2" maxlength="400" placeholder="Type a new term, then tap Add term" aria-label="New term"></textarea>
       <button type="button" class="btn small" id="invTcAdd">Add term</button>
@@ -752,6 +753,17 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <div class="sline"><input type="text" id="catNew" class="grow" maxlength="40" placeholder="New category name" aria-label="New category"><button type="button" class="btn primary" id="catAdd">Add</button></div>
     <p id="catErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn primary" id="catClose">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgTc">
+  <form id="fTc" novalidate>
+    <h2>Terms and conditions</h2>
+    <p>Add, edit or delete the terms. When you create an invoice or estimate, tick the terms that should be printed on it.</p>
+    <div id="tcList2" style="display:flex;flex-direction:column;gap:8px"></div>
+    <textarea id="tcNew2" rows="2" maxlength="400" placeholder="Type a new term, then tap Add term" aria-label="New term"></textarea>
+    <button type="button" class="btn small" id="tcAdd2">Add term</button>
+    <div class="actions"><button type="button" class="btn primary" id="tcDone2">Done</button></div>
   </form>
 </dialog>
 
@@ -2525,7 +2537,7 @@ $('#fCs').addEventListener('submit', function(e){
 var invData={i:{}}, invSubbed=false, invType='S', invEls=new Map();
 function invSubscribe(){
   if(invSubbed||!db) return; invSubbed=true;
-  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); if($('#dlgInv').open) renderTc(); }, function(){});
+  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); if($('#dlgInv').open||$('#dlgTc').open) renderTc(); }, function(){});
 }
 function invSave(patch){
   var d=db.doc('meta/invoices');
@@ -2613,12 +2625,18 @@ function tcList(){
   var o=(invData&&invData.tc)||{};
   return Object.keys(o).filter(function(id){ return o[id]&&o[id].t; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (a[1].o||0)-(b[1].o||0); });
 }
-function renderTc(){
-  var box=$('#invTc'); if(document.activeElement&&document.activeElement.tagName==='TEXTAREA'&&box.contains(document.activeElement)) return;
+var tcOff={};
+function renderTcBox(box,withCheck){
+  if(document.activeElement&&document.activeElement.tagName==='TEXTAREA'&&box.contains(document.activeElement)) return;
   box.textContent='';
   tcList().forEach(function(it,i){
     var id=it[0], row=mk('div','sline'), n=mk('span',null,(i+1)+'.'), ta=document.createElement('textarea'), del=mk('button','btn small danger','Delete');
     ta.rows=2; ta.maxLength=400; ta.value=it[1].t; ta.className='grow'; ta.style.cssText='flex:1 1 160px;min-width:0'; ta.setAttribute('aria-label','Term '+(i+1)); del.type='button';
+    if(withCheck){
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!tcOff[id]; cb.style.cssText='width:22px;height:22px;flex:0 0 auto'; cb.setAttribute('aria-label','Show term '+(i+1)+' on this invoice');
+      cb.addEventListener('change', function(){ if(cb.checked) delete tcOff[id]; else tcOff[id]=1; });
+      row.append(cb);
+    }
     ta.addEventListener('change', function(){
       var v=ta.value.trim(), p={tc:{}};
       if(!v){ p.tc[id]=null; } else { p.tc[id]={t:v}; }
@@ -2629,11 +2647,16 @@ function renderTc(){
   });
   if(!box.children.length) box.append(mk('p','pmeta','No terms added yet.'));
 }
-$('#invTcAdd').addEventListener('click', async function(){
-  var v=$('#invTcNew').value.trim(); if(!v) return;
+function renderTc(){ renderTcBox($('#invTc'),true); if($('#dlgTc').open) renderTcBox($('#tcList2'),false); }
+async function addTerm(inp){
+  var v=inp.value.trim(); if(!v) return;
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={tc:{}}; p.tc[id]={t:v,o:Date.now()};
-  if(await invSave(p)){ $('#invTcNew').value=''; }
-});
+  if(await invSave(p)){ inp.value=''; }
+}
+$('#invTcAdd').addEventListener('click', function(){ addTerm($('#invTcNew')); });
+$('#tcAdd2').addEventListener('click', function(){ addTerm($('#tcNew2')); });
+$('#invTcBtn').addEventListener('click', function(){ var d=$('#dlgTc'); if(!d.open) d.showModal(); renderTcBox($('#tcList2'),false); });
+$('#tcDone2').addEventListener('click', function(){ $('#dlgTc').close(); });
 function invTotals(){
   invSyncGd();
   var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
@@ -2687,7 +2710,7 @@ function openInv(ty){
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
   $('#invSvcL').hidden=ty!=='E'; $('#invSvc').value='';
   $('#invParty').value=''; $('#invPhone').value=''; $('#invAddr').value=''; $('#invGst').value=''; $('#invShip').value=''; $('#invDt').value=''; $('#invDv').value=''; $('#invDate').value=todayKey(); $('#invErr').textContent='';
-  $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; renderTc();
+  $('#invLines').textContent=''; invAddLine(); invTotals(); $('#invTcNew').value=''; tcOff={}; renderTc();
   document.body.style.overflow='hidden'; var d=$('#dlgInv'); if(!d.open) d.showModal(); d.scrollTop=0;
 }
 $('#invNewS').addEventListener('click', function(){ openInv('S'); });
@@ -2724,7 +2747,7 @@ $('#fInv').addEventListener('submit', async function(e){
     patch.rows[ids[i]]={}; patch.rows[ids[i]][f]=(r[f]||0)+need[ids[i]];
     if(!(r.notes&&r.notes[f])){ patch.rows[ids[i]].notes={}; patch.rows[ids[i]].notes[f]={text:label+' - '+party, who:nameNow()||(isOwner?'Owner':''), at:Date.now()}; }
   }
-  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined, sv:ty==='E'?$('#invSvc').value.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800):'',
+  var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().filter(function(it){ return !tcOff[it[0]]; }).map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined, sv:ty==='E'?$('#invSvc').value.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800):'',
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
