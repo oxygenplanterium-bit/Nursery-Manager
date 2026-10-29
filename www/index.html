@@ -494,6 +494,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
         <button class="btn primary" type="button" id="accNewEx">New Expense</button>
       </div>
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
+      <button class="btn" type="button" id="accCats">Manage categories</button>
       <label class="f"><span>Show</span>
         <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option></select>
       </label>
@@ -739,6 +740,18 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label>Note (optional)<input type="text" id="accNoteIn" maxlength="120" autocomplete="off"></label>
     <p id="accErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="accCancel">Cancel</button><button type="submit" class="btn primary" id="accSave">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgCat">
+  <form id="fCat" novalidate>
+    <h2>Categories</h2>
+    <p>Add, rename or delete the categories used for income and expenses. Renaming also updates the entries already saved with that category. Deleting keeps old entries as they are.</p>
+    <label>Category list<select id="catKind"><option value="ex">Expense categories</option><option value="in">Income categories</option></select></label>
+    <div id="catList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="sline"><input type="text" id="catNew" class="grow" maxlength="40" placeholder="New category name" aria-label="New category"><button type="button" class="btn primary" id="catAdd">Add</button></div>
+    <p id="catErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn primary" id="catClose">Done</button></div>
   </form>
 </dialog>
 
@@ -2845,9 +2858,53 @@ var accData={e:{}}, accSubbed=false, accEls=new Map(), accKind='rc';
 var accMonth=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); })();
 var ACC_T={rc:'Receipt',py:'Payment',in:'Income',ex:'Expense'};
 var ACC_CATS={ex:['Fertiliser','Soil and manure','Pots and planters','Seeds and saplings','Pesticides','Transport','Fuel','Electricity and water','Rent','Repairs and maintenance','Labour (other than salary)','Packing','Miscellaneous'],in:['Other sales','Service charges','Rent received','Miscellaneous']};
+function catList(k){
+  var c=accData.cats||{};
+  if(c.init&&c.init[k]){ var o=c[k]||{}; return Object.keys(o).filter(function(id){ return o[id]&&o[id].n; }).map(function(id){ return [id,o[id].n,o[id].o||0]; }).sort(function(a,b){ return a[2]-b[2]; }); }
+  return ACC_CATS[k].map(function(n,i){ return ['d'+i,n,i]; });
+}
+function catSeed(k,p){
+  var c=accData.cats||{}; if(c.init&&c.init[k]) return;
+  p.cats=p.cats||{}; p.cats.init=p.cats.init||{}; p.cats.init[k]=true; p.cats[k]=p.cats[k]||{};
+  ACC_CATS[k].forEach(function(n,i){ p.cats[k]['d'+i]={n:n,o:i}; });
+}
+function renderCats(){
+  var box=$('#catList'), k=$('#catKind').value;
+  if(document.activeElement&&box.contains(document.activeElement)&&document.activeElement.tagName==='INPUT') return;
+  box.textContent='';
+  catList(k).forEach(function(it){
+    var id=it[0], row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','btn small danger','Delete');
+    inp.type='text'; inp.maxLength=40; inp.value=it[1]; inp.className='grow'; inp.setAttribute('aria-label','Category name'); del.type='button';
+    inp.addEventListener('change', function(){
+      var v=cleanName(inp.value), old=it[1]; if(!v){ inp.value=old; return; }
+      if(v===old) return;
+      if(catList(k).some(function(x){ return x[0]!==id && x[1].toLowerCase()===v.toLowerCase(); })){ $('#catErr').textContent='That category already exists.'; inp.value=old; return; }
+      $('#catErr').textContent='';
+      var p={}; catSeed(k,p); p.cats=p.cats||{}; p.cats[k]=p.cats[k]||{}; p.cats[k][id]=Object.assign({},p.cats[k][id]||{}, {n:v});
+      var o=accData.e||{}; p.e={}; Object.keys(o).forEach(function(eid){ var x=o[eid]; if(x&&x.k===k&&x.cat===old) p.e[eid]={cat:v}; });
+      if(!Object.keys(p.e).length) delete p.e;
+      accSave(p);
+    });
+    del.addEventListener('click', function(){ arm(del,'cat'+id,'Delete', function(){ var p={}; catSeed(k,p); p.cats=p.cats||{}; p.cats[k]=p.cats[k]||{}; p.cats[k][id]=null; accSave(p); }); });
+    row.append(inp,del); box.append(row);
+  });
+  if(!box.children.length) box.append(mk('p','pmeta','No categories. Add one below.'));
+}
+$('#accCats').addEventListener('click', function(){ $('#catErr').textContent=''; $('#catNew').value=''; var d=$('#dlgCat'); if(!d.open) d.showModal(); renderCats(); });
+$('#catKind').addEventListener('change', renderCats);
+$('#catClose').addEventListener('click', function(){ $('#dlgCat').close(); });
+$('#catAdd').addEventListener('click', async function(){
+  var k=$('#catKind').value, v=cleanName($('#catNew').value); if(!v) return;
+  if(catList(k).some(function(x){ return x[1].toLowerCase()===v.toLowerCase(); })){ $('#catErr').textContent='That category already exists.'; return; }
+  $('#catErr').textContent='';
+  var p={}; catSeed(k,p); p.cats=p.cats||{}; p.cats[k]=p.cats[k]||{};
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4); p.cats[k][id]={n:v,o:Date.now()};
+  if(await accSave(p)) $('#catNew').value='';
+});
+$('#catNew').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#catAdd').click(); } });
 function accSubscribe(){
   if(accSubbed||!db||!isOwner) return; accSubbed=true;
-  db.doc('meta/accounts').onSnapshot(function(s){ accData=s.exists?(s.data()||{}):{}; accData.e=accData.e||{}; cache.meta.accounts=accData; cacheSave(); if(tab==='acc') renderAcc(); if(tab==='inv') renderInv(); }, function(){});
+  db.doc('meta/accounts').onSnapshot(function(s){ accData=s.exists?(s.data()||{}):{}; accData.e=accData.e||{}; cache.meta.accounts=accData; cacheSave(); if(tab==='acc') renderAcc(); if($('#dlgCat').open) renderCats(); if(tab==='inv') renderInv(); }, function(){});
 }
 function accSave(patch){
   var d=db.doc('meta/accounts');
@@ -2941,7 +2998,7 @@ function openAcc(k){
   $('#accPartyT').textContent=k==='rc'?'Received from':'Paid to';
   $('#accDate').value=todayKey(); $('#accAmt').value=''; $('#accParty').value=''; $('#accNoteIn').value=''; $('#accErr').textContent=''; $('#accMode').value='cash';
   if(vch) accFillInv();
-  else{ var c=$('#accCat'); c.textContent=''; ACC_CATS[k].forEach(function(n){ var o=mk('option',null,n); o.value=n; c.append(o); }); }
+  else{ var c=$('#accCat'); c.textContent=''; catList(k).forEach(function(it){ var o=mk('option',null,it[1]); o.value=it[1]; c.append(o); }); }
   var d=$('#dlgAcc'); if(!d.open) d.showModal();
 }
 $('#accNewRc').addEventListener('click', function(){ openAcc('rc'); });
