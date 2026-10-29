@@ -378,6 +378,8 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
+    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Allotted</button><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Done</button></div>
+    <div id="taskAllot" style="display:flex;flex-direction:column;gap:14px">
     <form class="card addtask" id="fTask" hidden>
       <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
       <input type="text" id="taskTitle" maxlength="120" placeholder="New task, for example Water the shade house" required>
@@ -397,6 +399,22 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <div id="padDone"></div>
       <div id="padNext"></div>
     </section>
+    </div>
+    <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
+      <section class="card team" id="tdBox">
+        <h2>Tasks done</h2>
+        <p class="pmeta">Start a task when the work begins and mark it done when it ends. The time taken is recorded automatically. Write the report of the task in the notes.</p>
+        <form class="team" id="fTd" hidden novalidate>
+          <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
+          <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
+          <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
+          <button class="btn primary" type="submit">Start task</button>
+        </form>
+        <div class="bar" id="tdBar" hidden><span class="tsum" id="tdSum"></span></div>
+        <p class="pmeta" id="tdEmpty">No tasks recorded on this day.</p>
+        <div class="tl" id="tdList"></div>
+      </section>
+    </div>
     <section class="card team" id="sugBox" hidden>
       <h2 id="sugHead">Suggest tasks for tomorrow</h2>
       <p class="pmeta" id="sugHelp">Add one task at a time. The owner reviews each one, and approved tasks are listed under Tasks for tomorrow.</p>
@@ -1406,6 +1424,7 @@ function taskCounts(items){
   return c;
 }
 function renderTasks(){
+  renderTd();
   var items=day ? visibleTasks() : [];
   var ed=editable(), list=$('#tlist'), seen=new Set(), pos=0;
   $('#fTask').hidden=!(isOwner&&ed);
@@ -1425,6 +1444,98 @@ function renderTasks(){
     pos++;
   });
   taskEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); taskEls.delete(id); } });
+}
+
+/* ---------- tasks done: start, finish, time taken and report ---------- */
+var taskSub='allot', tdEls=new Map();
+function fmtDur(ms){
+  var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
+  return h ? h+' h '+('0'+m).slice(-2)+' min' : (m ? m+' min '+('0'+sec).slice(-2)+' s' : sec+' s');
+}
+function tdItems(n){
+  n=n||nursery; var o=(day&&day.td)||{};
+  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
+}
+function makeTd(id){
+  var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
+  ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
+  var fin=mk('button','btn small primary','Mark done'), del=mk('button','btn small danger','Delete'); fin.type='button'; del.type='button'; row.append(fin,del);
+  ta.addEventListener('change', function(){ if(!editable()) return; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p); });
+  fin.addEventListener('click', async function(){
+    var x=el._x; if(!x||x.en||!editable()) return;
+    if(needSup()){ toast('Choose your name at the top first.'); return; }
+    var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600)};
+    if(x.tid && day.tasks && day.tasks[x.tid]){ p.tasks={}; p.tasks[x.tid]={status:'done', who:whoNow(), at:Date.now()}; }
+    if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
+  });
+  del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
+  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,del:del}; return el;
+}
+function tdMeta(x){
+  var run=!x.en;
+  return [x.by?'Started by '+x.by:'', 'Started '+fmtTime(x.st), run?'Running · '+fmtDur(Date.now()-(x.st||Date.now())):'Ended '+fmtTime(x.en)+' · Time taken '+fmtDur(x.en-(x.st||x.en)), (!run&&x.doneBy&&x.doneBy!==x.by)?'Done by '+x.doneBy:''].filter(Boolean).join(' · ');
+}
+function updateTd(el,x,ed){
+  var R=el._r; el._x=x;
+  R.t.textContent=x.title+(x.en?'':' (in progress)');
+  R.meta.textContent=tdMeta(x);
+  if(document.activeElement!==R.ta) R.ta.value=x.note||'';
+  R.ta.disabled=!ed; R.fin.hidden=!(ed&&!x.en); R.del.hidden=!(isOwner&&ed);
+}
+function renderTd(){
+  var sub=taskSub;
+  $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
+  $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
+  if(sub!=='done') return;
+  var ed=editable(), items=tdItems(), list=$('#tdList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
+  $('#fTd').hidden=!ed;
+  var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
+  var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
+  (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
+  pk.value=cur;
+  items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } else run++; });
+  $('#tdBar').hidden=!items.length;
+  $('#tdSum').textContent=run+' running · '+done+' done · Total time '+fmtDur(tot);
+  $('#tdEmpty').hidden=items.length>0;
+  items.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=tdEls.get(id); if(!el){ el=makeTd(id); tdEls.set(id,el); }
+    updateTd(el,it[1],ed);
+    if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
+    pos++;
+  });
+  tdEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); tdEls.delete(id); } });
+}
+setInterval(function(){ if(tab==='tasks'&&taskSub==='done'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
+$('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
+$('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
+$('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; });
+$('#fTd').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(!editable()) return;
+  var err=$('#tdErr'), pick=$('#tdPick').value, name=cleanName($('#tdName').value);
+  if(!name){ err.textContent='Enter the task name or choose an allotted task.'; return; }
+  if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
+  err.textContent='';
+  var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
+  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:''};
+  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; toast('Task started'); }
+});
+function pdfTd(doc){
+  var y=secStart(doc,'7. Tasks done and time taken',false);
+  ['1','2'].forEach(function(n){
+    var items=tdItems(n).slice().reverse(), tot=0, done=0;
+    items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } });
+    y=nurHead(doc,y,n,items.length+(items.length===1?' task':' tasks')+' recorded · '+done+' done · Total time '+fmtDur(tot).replace('·','-'));
+    if(!items.length){ doc.text('No tasks were recorded on this day.', 40, y+14); y+=36; return; }
+    doc.autoTable({
+      startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
+      head:[['Sl.No.','Task','By','Started','Ended','Time taken','Report']],
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
+      headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:36}}
+    });
+    y=doc.lastAutoTable.finalY+16;
+  });
 }
 
 /* ---------- items waiting for approval ---------- */
@@ -3495,7 +3606,7 @@ $('#fRst').addEventListener('submit', async function(e){
       try{ localStorage.removeItem(CK); localStorage.removeItem('nurserySupId'); localStorage.removeItem('nurserySupervisor'); }catch(x){}
     }else{
       for(var j=0;j<days.length;j++){
-        var d=days[j].data||{}, p={cs:null, att:null, rs:null}, tk=d.tasks||{};
+        var d=days[j].data||{}, p={cs:null, att:null, rs:null, td:null}, tk=d.tasks||{};
         Object.keys(tk).forEach(function(id){ if(tk[id]&&!tk[id].removed){ p.tasks=p.tasks||{}; p.tasks[id]={status:'', reason:'', note:'', who:'', at:null}; } });
         await db.doc(days[j].path).update(p); n++;
       }
@@ -3738,7 +3849,7 @@ function pdfCs(doc){
 }
 function pdfAll(){
   var doc=pdfBase('Daily Report'); if(!doc) return null;
-  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc);
+  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc); pdfTd(doc);
   return doc.output('arraybuffer');
 }
 $('#pdfBtn').addEventListener('click', async function(){
