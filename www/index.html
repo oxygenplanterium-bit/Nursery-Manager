@@ -177,6 +177,8 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .val{text-align:center; padding:0 8px; font-variant-numeric:tabular-nums; min-height:42px; display:flex; align-items:center; justify-content:center}
 .bal .val{font-weight:400; font-size:16px; height:42px; padding:0 8px; color:var(--bal-ink); background:var(--bal-bg); border:1px solid var(--bal-line); border-radius:10px}
 .bal .val.zero{color:var(--bal-zero)}
+.c.lockc .val{background:#dfe6e1;border:1px solid #b9c6bd;border-radius:10px;height:42px;min-height:42px;color:var(--ink)}
+@media (prefers-color-scheme:dark){.c.lockc .val{background:#26332b;border-color:#3b4d41}}
 .notes{display:flex; flex-direction:column; gap:4px; margin-top:6px; grid-column:2/-1}
 .notes:empty{display:none}
 .costrow{grid-column:2/-1; display:flex; gap:8px; justify-content:flex-end; margin-top:2px}
@@ -1224,6 +1226,7 @@ function makeRow(id){
     }else{
       var v=mk('span','val'); c.append(v); R[f+'V']=v; R[f]=null;
     }
+    if(f==='total'&&!isOwner) c.classList.add('lockc');
     el.append(c);
   });
   var bc=cell('Bal Qty','bal'), bv=mk('span','val'); bc.append(bv); R.bal=bv; el.append(bc);
@@ -1239,6 +1242,7 @@ function makeRow(id){
       ci.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); ci.blur(); } });
       c.append(ci); R[d[0]]=ci;
     }else{ var cv=mk('span','val'); c.append(cv); R[d[0]+'V']=cv; R[d[0]]=null; }
+    if(d[0]==='sp'&&!isOwner) c.classList.add('lockc');
     cr.append(c);
   });
   ac.classList.add('bal'); ac.append(av); R.amt=av; cr.append(ac); el.append(cr);
