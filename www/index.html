@@ -514,6 +514,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       </div>
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
       <button class="btn" type="button" id="accCats">Manage categories</button>
+      <label class="f"><span>Period</span>
+        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="all">All transactions (all months)</option></select>
+      </label>
       <label class="f"><span>Show</span>
         <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option></select>
       </label>
@@ -749,9 +752,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
     <h2 id="accHead">New entry</h2>
     <p id="accNo"></p>
     <label>Nursery<select id="accNurs"><option value="1">Chalmatti</option><option value="2">Raynal</option></select></label>
-    <div class="two">
-      <label>Date<input type="date" id="accDate"></label>
-      <label>Amount (₹)<input type="number" id="accAmt" min="0" step="0.01" inputmode="decimal"></label>
+    <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+      <label style="min-width:0">Date<input type="date" id="accDate" style="width:100%;min-width:0;box-sizing:border-box;height:48px"></label>
+      <label style="min-width:0">Amount (₹)<input type="number" id="accAmt" style="width:100%;min-width:0;box-sizing:border-box;height:48px" min="0" step="0.01" inputmode="decimal"></label>
     </div>
     <label id="accInvL">Against invoice (optional)<select id="accInv"></select></label>
     <label id="accPartyL"><span id="accPartyT">Party name</span><input type="text" id="accParty" maxlength="80" autocomplete="off"></label>
@@ -3082,9 +3085,9 @@ function accNext(k,nid){
   nid=nid||nursery; var m=0, o=accData.e||{}; Object.keys(o).forEach(function(id){ var x=o[id]; if(x&&x.k===k&&(x.nid||'1')===nid&&(x.no||0)>m) m=x.no; });
   return m+1;
 }
-function accMonthItems(){
-  var o=accData.e||{};
-  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===nursery&&String(x.d||'').slice(0,7)===accMonth; })
+function accMonthItems(mo){
+  var o=accData.e||{}, all=!mo&&$('#accPeriod').value==='all';
+  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===nursery&&(all||String(x.d||'').slice(0,7)===accMonth); })
     .map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].d||'').localeCompare(a[1].d||'') || (b[1].at||0)-(a[1].at||0); });
 }
 function accSums(items){
@@ -3116,16 +3119,17 @@ function renderAcc(){
   if(tab!=='acc'||!isOwner) return;
   accSubscribe();
   var ym=accMonth.split('-'); $('#accMonthLbl').textContent=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var allP=$('#accPeriod').value==='all'; if(allP) $('#accMonthLbl').textContent='All months'; $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
   var items=accMonthItems(), S=accSums(items), op=accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
   var net=S.rc+S.in-S.py-S.ex;
-  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Net (receipts + income − payments − expenses)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance this month',S.cash],['UPI balance this month',S.upi],['Bank balance this month',S.bank]].forEach(function(c){
+  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Net (receipts + income − payments − expenses)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(allP?'':' this month'),S.cash],['UPI balance'+(allP?'':' this month'),S.upi],['Bank balance'+(allP?'':' this month'),S.bank]].forEach(function(c){
     var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,(c[1]<0?'− ':'')+'₹'+fmtMoney(Math.abs(c[1])))); g.append(d);
   });
   var sal=0, se=(salData&&salData.e)||{}; Object.keys(se).forEach(function(id){ var x=se[id]; if(x&&x.k==='adv'&&(x.nid||'1')===nursery&&String(x.d||'').slice(0,7)===accMonth) sal+=Number(x.amt)||0; });
   $('#accNote').textContent=sal>0?'Salary advances given this month (from the Salary tab): ₹'+fmtMoney(sal)+'. This is not included in the figures above.':'';
   var shown=items.filter(function(it){ return !f||it[1].k===f; });
-  $('#accEmpty').hidden=shown.length>0;
+  $('#accEmpty').hidden=shown.length>0; $('#accEmpty').textContent=allP?'No entries yet.':'No entries this month.';
   shown.forEach(function(it){
     var id=it[0]; seen.add(id);
     var el=accEls.get(id); if(!el){ el=makeAcc(id); accEls.set(id,el); }
@@ -3136,6 +3140,7 @@ function renderAcc(){
   accEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); accEls.delete(id); } });
 }
 $('#accFilter').addEventListener('change', renderAcc);
+$('#accPeriod').addEventListener('change', renderAcc);
 $('#accPrev').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 $('#accNext').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1],1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 function accFillInv(){
@@ -3231,7 +3236,7 @@ async function accVoucher(id){
 }
 $('#accPdf').addEventListener('click', async function(){
   var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
-  var items=accMonthItems().slice().reverse(), S=accSums(items), ym=accMonth.split('-'), mon=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var items=accMonthItems(true).slice().reverse(), S=accSums(items), ym=accMonth.split('-'), mon=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26, M={cash:'Cash',upi:'UPI',bank:'Bank'};
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('ACCOUNTS STATEMENT - '+mon.toUpperCase(), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
   doc.text(NURS[nursery], 36, y+16);
