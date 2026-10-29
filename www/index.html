@@ -514,6 +514,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       </div>
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
       <button class="btn" type="button" id="accCats">Manage categories</button>
+      <label class="f"><span>Nursery view</span>
+        <select id="accScope" aria-label="Nursery view"><option value="cur">Selected nursery only</option><option value="both">Both nurseries together</option></select>
+      </label>
       <label class="f"><span>Period</span>
         <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day">This day only (today)</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
       </label>
@@ -3088,7 +3091,7 @@ function accNext(k,nid){
 }
 function accMonthItems(mo){
   var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
-  var okd=function(x){ return (x.nid||'1')===nursery&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
+  var bothN=$('#accScope').value==='both', okd=function(x){ return (bothN||(x.nid||'1')===nursery)&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
   var se=(salData&&salData.e)||{}, sl=Object.keys(se).filter(function(id){ var x=se[id]; return x&&(x.k==='adv'||x.k==='bon')&&x.d&&okd(x); })
     .map(function(id){ var x=se[id]; return ['sal:'+id,{k:'sl',sub:x.k==='adv'?'Advance':'Bonus',d:x.d,amt:x.amt,mode:'cash',party:x.n||'',note:x.note||'',nid:x.nid,at:x.at||0,auto:true}]; });
   return Object.keys(o).filter(function(id){ var x=o[id]; return x&&okd(x); })
@@ -3116,7 +3119,7 @@ function makeAcc(id){
 }
 function updateAcc(el,x){
   var R=el._r, inv=x.inv?(invData.i||{})[x.inv]:null;
-  R.t.textContent=x.auto?'Salary '+x.sub.toLowerCase()+' · '+(x.party||'-'):(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-'));
+  R.t.textContent=($('#accScope').value==='both'?(x.nid==='2'?'Raynal · ':'Chalmatti · '):'')+(x.auto?'Salary '+x.sub.toLowerCase()+' · '+(x.party||'-'):(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-')));
   R.dt.textContent=fmtIso(x.d); R.am.textContent='₹'+fmtMoney(x.amt);
   R.meta.textContent=[({cash:'Cash',upi:'UPI',bank:'Bank'})[x.mode]||'',inv?'Against '+invLabel(inv):'',x.note||''].filter(Boolean).join(' · ');
   R.pdf.hidden=!(x.k==='rc'||x.k==='py'); R.ed.hidden=!!x.auto; R.del.hidden=!!x.auto;
@@ -3129,7 +3132,7 @@ function renderAcc(){
   $('#accDayL').hidden=pv!=='date';
   if(allP){ $('#accMonthLbl').textContent=pv==='all'?'All months':(dk?new Date(dk+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'Choose a date'); }
   $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
-  var items=accMonthItems(), S=accSums(items), op=accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
+  var items=accMonthItems(), S=accSums(items), op=$('#accScope').value==='both'?(function(a,b){ return {rec:a.rec+b.rec,pay:a.pay+b.pay}; })(accOpen('1'),accOpen('2')):accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
   var net=S.rc+S.in-S.py-S.ex-S.sl;
   [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Salary advances and bonuses',S.sl],['Net (receipts + income − payments − expenses − salary)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(pv==='m'?' this month':''),S.cash],['UPI balance'+(pv==='m'?' this month':''),S.upi],['Bank balance'+(pv==='m'?' this month':''),S.bank]].forEach(function(c){
@@ -3149,23 +3152,25 @@ function renderAcc(){
   accEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); accEls.delete(id); } });
 }
 $('#accFilter').addEventListener('change', renderAcc);
+$('#accScope').addEventListener('change', renderAcc);
 $('#accPeriod').addEventListener('change', function(){ if(this.value==='date'&&!$('#accDay').value) $('#accDay').value=todayKey(); renderAcc(); });
 $('#accDay').addEventListener('change', renderAcc);
 $('#accPrev').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 $('#accNext').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1],1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
+var accNid0='1';
 function accFillInv(){
   var sel=$('#accInv'); sel.textContent='';
   var o0=mk('option',null,'Not linked to an invoice'); o0.value=''; sel.append(o0);
   var ty=accKind==='rc'?'S':'P', inv=invData.i||{};
-  Object.keys(inv).map(function(id){ return [id,inv[id]]; }).filter(function(it){ var x=it[1]; return x&&!x.void&&x.ty===ty&&(x.nid||'1')===nursery&&accDue(it[0],accEditId)>0.004; })
+  Object.keys(inv).map(function(id){ return [id,inv[id]]; }).filter(function(it){ var x=it[1]; return x&&!x.void&&x.ty===ty&&(x.nid||'1')===accNid0&&accDue(it[0],accEditId)>0.004; })
     .sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); })
     .forEach(function(it){ var o=mk('option',null,invLabel(it[1])+' · '+it[1].party+' · due ₹'+fmtMoney(accDue(it[0],accEditId))); o.value=it[0]; sel.append(o); });
 }
 function openAcc(k,eid){
-  accKind=k; accEditId=eid||''; var ex=eid?(accData.e||{})[eid]:null;
+  accKind=k; accEditId=eid||''; var ex=eid?(accData.e||{})[eid]:null; accNid0=ex?(ex.nid||'1'):nursery;
   $('#accHead').textContent=(ex?'Edit ':'New ')+ACC_T[k];
   var vch=k==='rc'||k==='py';
-  $('#accNo').textContent=NURS[nursery]+(vch?' · '+accLabel(ex?ex:{k:k,nid:nursery,no:accNext(k)}):'');
+  $('#accNo').textContent=NURS[accNid0]+(vch?' · '+accLabel(ex?ex:{k:k,nid:nursery,no:accNext(k)}):'');
   $('#accInvL').hidden=!vch; $('#accPartyL').hidden=!vch; $('#accCatL').hidden=vch;
   $('#accPartyT').textContent=k==='rc'?'Received from':'Paid to';
   $('#accNurs').value=ex?(ex.nid||'1'):nursery; $('#accDate').value=todayKey(); $('#accAmt').value=''; $('#accParty').value=''; $('#accNoteIn').value=''; $('#accErr').textContent=''; $('#accMode').value='cash';
@@ -3187,7 +3192,7 @@ $('#accNurs').addEventListener('change', function(){
   var vch=accKind==='rc'||accKind==='py', ex=accEditId?(accData.e||{})[accEditId]:null, n=this.value;
   if(vch) $('#accNo').textContent=NURS[n]+' · '+accLabel(ex&&(ex.nid||'1')===n?ex:{k:accKind,nid:n,no:accNext(accKind,n)});
   else $('#accNo').textContent=NURS[n];
-  if(vch && n!==nursery){ $('#accInv').value=''; }
+  if(vch && n!==accNid0){ $('#accInv').value=''; }
 });
 $('#accInv').addEventListener('change', function(){
   var id=this.value, x=id?(invData.i||{})[id]:null; if(!x) return;
@@ -3249,8 +3254,9 @@ $('#accPdf').addEventListener('click', async function(){
   var items=accMonthItems(true).slice().reverse(), S=accSums(items), ym=accMonth.split('-'), mon=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26, M={cash:'Cash',upi:'UPI',bank:'Bank'};
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('ACCOUNTS STATEMENT - '+mon.toUpperCase(), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
-  doc.text(NURS[nursery], 36, y+16);
+  doc.text($('#accScope').value==='both'?'Both nurseries (Chalmatti and Raynal)':NURS[nursery], 36, y+16);
   var body=items.map(function(it){ var x=it[1], inn=(x.k==='rc'||x.k==='in'), nm=x.auto?(x.party||''):(accLabel(x)?accLabel(x)+' ':'')+(x.k==='rc'||x.k==='py'?(x.party||''):(x.cat||''));
+    if($('#accScope').value==='both') nm=(x.nid==='2'?'Raynal - ':'Chalmatti - ')+nm;
     return [fmtIso(x.d), x.auto?'Salary '+x.sub.toLowerCase():ACC_T[x.k], nm+(x.note?' ('+x.note+')':''), M[x.mode]||'', inn?'Rs. '+fmtMoney(x.amt):'', inn?'':'Rs. '+fmtMoney(x.amt)]; });
   var inT=S.rc+S.in, outT=S.py+S.ex+S.sl;
   doc.autoTable({startY:y+26, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Date','Type','Details','Mode','In','Out']], body:body.length?body:[['','','No entries this month.','','','']],
