@@ -397,8 +397,15 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
       <input type="text" id="taskTitle" maxlength="120" placeholder="New task, for example Water the shade house" required>
       <select id="taskTo" aria-label="Assign task to" hidden></select>
+      <select id="taskWhen" aria-label="Task for" style="flex:1 1 100%"><option value="today">Task for today</option><option value="tomorrow">Task for tomorrow</option></select>
+      <div class="f" style="flex:1 1 100%;display:flex;flex-direction:column;gap:6px"><span>Task assigned to (labour, choose one or more)</span><div id="taskAsg" style="display:flex;flex-direction:column;gap:6px"></div></div>
       <button class="btn primary" type="submit">Add task</button>
     </form>
+    <section class="card team" id="tmrBox" hidden>
+      <h2>Tasks for tomorrow</h2>
+      <p class="pmeta" id="tmrEmpty">No tasks added for tomorrow yet.</p>
+      <div class="tl" id="tmrList"></div>
+    </section>
     <div class="bar" id="taskBar" hidden>
       <span class="tsum" id="tsum"></span>
       <button class="btn small" id="mvAllTasks" hidden></button>
@@ -1069,14 +1076,14 @@ async function ensureToday(){
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
-          tasks[id]={order:x.order||0, title:x.title, to:x.to||'', nid:x.nid||'1', status:'', reason:'', note:''};
+          tasks[id]={order:x.order||0, title:x.title, to:x.to||'', as:x.as||[], nid:x.nid||'1', status:'', reason:'', note:''};
         });
         var psug=pd.sug||{}, mo=0;
         Object.keys(tasks).forEach(function(id){ mo=Math.max(mo,tasks[id].order||0); });
         Object.keys(psug).forEach(function(id){
           var x=psug[id]; if(!x||!x.t) return;
           if(!x.st) sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:''};
-          else if(x.st==='ok' && !x.added){ mo++; tasks['g'+id]={order:mo, title:x.t, to:x.to||'', nid:x.nid||'1', once:true, sgBy:x.by||'', status:'', reason:'', note:''}; sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:'ok', to:x.to||'', added:true}; }
+          else if(x.st==='ok' && !x.added){ mo++; tasks['g'+id]={order:mo, title:x.t, to:x.to||'', as:x.as||[], nid:x.nid||'1', once:true, sgBy:x.by||'', status:'', reason:'', note:''}; sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:'ok', to:x.to||'', as:x.as||[], added:true}; }
         });
         if(!pd.closed) await db.doc('days/'+prev).update({closed:true, closedAt:Date.now(), auto:true});
       }
@@ -1463,6 +1470,7 @@ function updateTask(el,id,t,n){
   if(st==='done') bits.push('Done'); else if(st==='notdone') bits.push(t.reason?'Not done':'Not done, reason needed'); else bits.push('Pending');
   if(st && (t.who||t.at)) bits.push([t.who,fmtTime(t.at)].filter(Boolean).join(' '));
   if(t.sgBy) bits.push('Suggested by '+t.sgBy);
+  if(t.as&&t.as.length) bits.push('Labour: '+t.as.join(', '));
   R.meta.textContent=bits.join(' · ');
 }
 function taskCounts(items){
@@ -1470,11 +1478,25 @@ function taskCounts(items){
   items.forEach(function(it){ var s=it[1].status; if(s==='done') c.done++; else if(s==='notdone') c.notdone++; else c.pending++; });
   return c;
 }
+var taskAsgSel=[];
+function renderTmr(){
+  var box=$('#tmrBox'), list=$('#tmrList'); if(!box) return;
+  var items=sugItems().filter(function(it){ var x=it[1]; return x.st==='ok'&&!x.added&&x.own&&(x.nid||'1')===nursery; });
+  box.hidden=!(isOwner&&day&&(items.length||editable()));
+  $('#tmrEmpty').hidden=items.length>0; list.textContent='';
+  items.forEach(function(it){
+    var id=it[0], x=it[1], el=mk('div','pitem'), t=mk('div','pname',x.t), m=mk('div','pmeta','Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(x.to?' · Supervisor: '+assigneeName(x.to):'')), row=mk('div','sline'), del=mk('button','btn small danger','Delete'); del.type='button';
+    del.addEventListener('click', function(){ arm(del,'tm'+id,'Delete', function(){ if(!editable()) return; var p={sug:{}}; p.sug[id]=null; save(p); }); });
+    row.append(del); el.append(t,m); if(editable()) el.append(row); list.append(el);
+  });
+}
 function renderTasks(){
   renderTd();
   var items=day ? visibleTasks() : [];
   var ed=editable(), list=$('#tlist'), seen=new Set(), pos=0;
   $('#fTask').hidden=!(isOwner&&ed);
+  var tab_=$('#taskAsg'), tKey=nursery+'|'+labourNames(nursery).join(','); if(tab_._k!==tKey){ tab_._k=tKey; taskAsgSel=[]; buildAsg(tab_,labourNames(nursery),[],function(v){ taskAsgSel=v; }); }
+  renderTmr();
   $('#taskTo').hidden=!teamList('sup').length; fillAssign($('#taskTo'),$('#taskTo').value);
   $('#taskBar').hidden=!items.length;
   var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); if(!armed.mvat) mt.textContent='Move all to '+NURS[otherN()];
@@ -2044,9 +2066,14 @@ $('#fTask').addEventListener('submit', async function(e){
   var tasks=(day&&day.tasks)||{}, maxO=0;
   Object.keys(tasks).forEach(function(id){ maxO=Math.max(maxO,tasks[id].order||0); });
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  var p={tasks:{}}; p.tasks[id]={order:maxO+1, title:title, nid:nursery, to:$('#taskTo').hidden?'':$('#taskTo').value, status:'', reason:'', note:''};
+  var to=$('#taskTo').hidden?'':$('#taskTo').value, asg=taskAsgSel.slice(), p;
+  if($('#taskWhen').value==='tomorrow'){
+    p={sug:{}}; p.sug['o'+id]={t:title, by:'Owner', sid:'', nid:nursery, at:Date.now(), d:selDate, st:'ok', to:to, as:asg, own:true};
+  }else{
+    p={tasks:{}}; p.tasks[id]={order:maxO+1, title:title, nid:nursery, to:to, as:asg, status:'', reason:'', note:''};
+  }
   $('#taskTitle').value='';
-  await save(p);
+  if(await save(p)){ taskAsgSel=[]; $('#taskAsg')._k=''; renderTasks(); toast($('#taskWhen').value==='tomorrow'?'Added to tomorrow\u2019s tasks':'Task added'); }
 });
 $('#resetTasks').addEventListener('click', function(){
   var b=this; arm(b,'reset','Reset All Tasks', async function(){
