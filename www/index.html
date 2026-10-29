@@ -1391,9 +1391,17 @@ function makeTask(id){
   reason.addEventListener('change', function(){ taskField(id,'reason',reason.value.trim()); });
   var note=document.createElement('input'); note.type='text'; note.maxLength=300; note.placeholder='Brief report (optional)';
   note.addEventListener('change', function(){ taskField(id,'note',note.value.trim()); });
+  var nsave=mk('button','btn small','Save notes'); nsave.type='button';
+  nsave.addEventListener('click', function(){
+    var t=day&&day.tasks&&day.tasks[id]; if(!t||!editable()) return;
+    if(needSup()){ toast('Choose your name at the top first.'); return; }
+    if(t.status==='notdone' && !reason.value.trim()){ toast('A reason is required when a task is not done.'); return; }
+    var p={tasks:{}}; p.tasks[id]={note:note.value.trim()}; if(t.status==='notdone') p.tasks[id].reason=reason.value.trim();
+    save(p).then(function(ok){ if(ok) toast('Notes saved'); });
+  });
   var meta=mk('div','tmeta');
-  el.append(top,asgRow); if(mvRow) el.append(mvRow); el.append(seg,reason,note,meta);
-  el._r={asgRow:asgRow,asgSel:asgSel,asgTxt:asgTxt,num:num_,title:title,edit:edit,mv:mv,mvRow:mvRow,mvLbl:mvLabelEl,done:done,nd:nd,reason:reason,note:note,meta:meta};
+  el.append(top,asgRow); if(mvRow) el.append(mvRow); el.append(seg,reason,note,nsave,meta);
+  el._r={asgRow:asgRow,asgSel:asgSel,asgTxt:asgTxt,num:num_,title:title,edit:edit,mv:mv,mvRow:mvRow,mvLbl:mvLabelEl,done:done,nd:nd,reason:reason,note:note,nsave:nsave,meta:meta};
   return el;
 }
 function updateTask(el,id,t,n){
@@ -1410,7 +1418,7 @@ function updateTask(el,id,t,n){
   R.note.hidden = !ed && !t.note;
   if(document.activeElement!==R.reason) R.reason.value=t.reason||'';
   if(document.activeElement!==R.note) R.note.value=t.note||'';
-  R.reason.disabled=!ed; R.note.disabled=!ed;
+  R.reason.disabled=!ed; R.note.disabled=!ed; R.nsave.hidden=!ed;
   R.reason.setAttribute('aria-label','Reason for '+t.title); R.note.setAttribute('aria-label','Brief report for '+t.title);
   var bits=[];
   if(st==='done') bits.push('Done'); else if(st==='notdone') bits.push(t.reason?'Not done':'Not done, reason needed'); else bits.push('Pending');
@@ -1459,7 +1467,8 @@ function tdItems(n){
 function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
-  var fin=mk('button','btn small primary','Mark done'), del=mk('button','btn small danger','Delete'); fin.type='button'; del.type='button'; row.append(fin,del);
+  var sv=mk('button','btn small','Save notes'), fin=mk('button','btn small primary','Mark done'), del=mk('button','btn small danger','Delete'); sv.type='button'; fin.type='button'; del.type='button'; row.append(sv,fin,del);
+  sv.addEventListener('click', function(){ if(!editable()) return; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p).then(function(ok){ if(ok) toast('Notes saved'); }); });
   ta.addEventListener('change', function(){ if(!editable()) return; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p); });
   fin.addEventListener('click', async function(){
     var x=el._x; if(!x||x.en||!editable()) return;
@@ -1469,7 +1478,7 @@ function makeTd(id){
     if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
   });
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
-  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,del:del}; return el;
+  el.append(t,meta,ta,row); el._r={t:t,meta:meta,ta:ta,sv:sv,fin:fin,del:del}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -1480,7 +1489,7 @@ function updateTd(el,x,ed){
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.meta.textContent=tdMeta(x);
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
-  R.ta.disabled=!ed; R.fin.hidden=!(ed&&!x.en); R.del.hidden=!(isOwner&&ed);
+  R.ta.disabled=!ed; R.sv.hidden=!ed; R.fin.hidden=!(ed&&!x.en); R.del.hidden=!(isOwner&&ed);
 }
 function renderTd(){
   var sub=taskSub;
