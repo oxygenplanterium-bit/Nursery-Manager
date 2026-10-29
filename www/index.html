@@ -1175,7 +1175,7 @@ function mvLabel(n){ return 'Move to '+NURS[otherN(n)]; }
 function makeRow(id){
   var el=mk('div','row'); el.dataset.id=id;
   var idw=mk('div','id'), sl=mk('span','sl'), nm=mk('div','nm'), top=mk('div','nmtop'), name=mk('span','name');
-  var edit=null, mv=null, xf=null;
+  var edit=null, mv=null, xf=null, dlBtn=null;
   if(isOwner){
     var dl=mk('button','delx'); dl.type='button'; dl.setAttribute('aria-label','Delete this stock item');
     dl.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg><span class="delt" hidden>Tap again</span>';
@@ -1187,9 +1187,10 @@ function makeRow(id){
       var p={rows:{}}; p.rows[id]={removed:true};
       if(await save(p)) toast('Item removed from the register');
     });
-    top.append(dl);
+    dlBtn=dl;
   }
   top.append(name);
+  if(dlBtn) top.append(dlBtn);
   if(isOwner){
     edit=mk('button','edit','Edit'); edit.type='button';
     edit.addEventListener('click', function(){ openEdit('item',id); });
