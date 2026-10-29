@@ -2836,7 +2836,15 @@ function invAddLine(){
   dsel.addEventListener('change', function(){ dv.hidden=!dsel.value; if(!dsel.value) dv.value=''; invTotals(); }); dv.hidden=true; dv.addEventListener('input', invTotals);
   x.type='button';
   x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
-  sel.addEventListener('change', function(){ var rr=day&&day.rows&&day.rows[sel.value]; var pv=rr&&(invType!=='P'?(rr.sp||0):(isOwner?(rr.cost||0):0)); if(pv&&!r.value){ r.value=pv; } });
+  function autoRate(){
+    var key=invType!=='P'?'sp':'cost'; if(key==='cost'&&!isOwner) return;
+    var pv=0, rr=day&&day.rows&&day.rows[sel.value]; if(rr&&Number(rr[key])>0) pv=Number(rr[key]);
+    if(!pv&&sel.value){ var ks=Object.keys(cache.days||{}).sort().reverse(); for(var i=0;i<ks.length&&!pv;i++){ var dd=cache.days[ks[i]], q=dd&&dd.rows&&dd.rows[sel.value]; if(q&&Number(q[key])>0) pv=Number(q[key]); } }
+    if(pv&&(!r.value||r.dataset.auto==='1')){ r.value=pv; r.dataset.auto='1'; } else if(!pv&&r.dataset.auto==='1'){ r.value=''; r.dataset.auto=''; }
+    invTotals();
+  }
+  r.addEventListener('input', function(){ r.dataset.auto=''; });
+  sel.addEventListener('change', autoRate);
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
   el.append(sel,q,r,x,dsel,dv); box.append(el);
 }
