@@ -517,7 +517,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       <label class="f"><span>Period</span>
         <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day">This day only (today)</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
       </label>
-      <label class="f" id="accDayL" hidden><span>Date</span><input type="date" id="accDay" aria-label="Choose date"></label>
+      <label class="f" id="accDayL" hidden style="min-width:0;max-width:100%"><span>Date</span><input type="date" id="accDay" aria-label="Choose date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;-webkit-appearance:none;appearance:none"></label>
       <label class="f"><span>Show</span>
         <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option></select>
       </label>
