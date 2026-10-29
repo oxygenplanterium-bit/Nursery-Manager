@@ -519,7 +519,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
       </label>
       <label class="f" id="accDayL" hidden style="min-width:0;max-width:100%"><span>Date</span><input type="date" id="accDay" aria-label="Choose date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;-webkit-appearance:none;appearance:none"></label>
       <label class="f"><span>Show</span>
-        <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option></select>
+        <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option><option value="sl">Salary advances and bonuses</option></select>
       </label>
       <p class="pmeta" id="accEmpty">No entries this month.</p>
       <div class="tl" id="accList"></div>
@@ -3015,7 +3015,7 @@ async function invPdf(id){
 /* ---------- accounts: receipts, payments, income, expenses (owner only) ---------- */
 var accData={e:{}}, accSubbed=false, accEls=new Map(), accKind='rc';
 var accMonth=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); })();
-var ACC_T={rc:'Receipt',py:'Payment',in:'Income',ex:'Expense'};
+var ACC_T={rc:'Receipt',py:'Payment',in:'Income',ex:'Expense',sl:'Salary'};
 var ACC_CATS={ex:['Fertiliser','Soil and manure','Pots and planters','Seeds and saplings','Pesticides','Transport','Fuel','Electricity and water','Rent','Repairs and maintenance','Labour (other than salary)','Packing','Miscellaneous'],in:['Other sales','Service charges','Rent received','Miscellaneous']};
 function catList(k){
   var c=accData.cats||{};
@@ -3088,11 +3088,14 @@ function accNext(k,nid){
 }
 function accMonthItems(mo){
   var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
-  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===nursery&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); })
-    .map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].d||'').localeCompare(a[1].d||'') || (b[1].at||0)-(a[1].at||0); });
+  var okd=function(x){ return (x.nid||'1')===nursery&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
+  var se=(salData&&salData.e)||{}, sl=Object.keys(se).filter(function(id){ var x=se[id]; return x&&(x.k==='adv'||x.k==='bon')&&x.d&&okd(x); })
+    .map(function(id){ var x=se[id]; return ['sal:'+id,{k:'sl',sub:x.k==='adv'?'Advance':'Bonus',d:x.d,amt:x.amt,mode:'cash',party:x.n||'',note:x.note||'',nid:x.nid,at:x.at||0,auto:true}]; });
+  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&okd(x); })
+    .map(function(id){ return [id,o[id]]; }).concat(sl).sort(function(a,b){ return (b[1].d||'').localeCompare(a[1].d||'') || (b[1].at||0)-(a[1].at||0); });
 }
 function accSums(items){
-  var s={rc:0,py:0,in:0,ex:0,cash:0,upi:0,bank:0};
+  var s={rc:0,py:0,in:0,ex:0,sl:0,cash:0,upi:0,bank:0};
   items.forEach(function(it){ var x=it[1], a=Number(x.amt)||0; s[x.k]+=a; var sg=(x.k==='rc'||x.k==='in')?1:-1; if(s[x.mode]!==undefined) s[x.mode]+=sg*a; });
   return s;
 }
@@ -3109,18 +3112,18 @@ function makeAcc(id){
   ed.addEventListener('click', function(){ var x=(accData.e||{})[id]; if(x) openAcc(x.k,id); });
   pdf.addEventListener('click', function(){ accVoucher(id); });
   del.addEventListener('click', function(){ arm(del,'acc'+id,'Delete', function(){ var p={e:{}}; p.e[id]=null; accSave(p); }); });
-  el.append(t,dl,meta,row); el._r={t:t,meta:meta,pdf:pdf,dt:dt,am:am}; return el;
+  el.append(t,dl,meta,row); el._r={t:t,meta:meta,pdf:pdf,dt:dt,am:am,ed:ed,del:del}; return el;
 }
 function updateAcc(el,x){
   var R=el._r, inv=x.inv?(invData.i||{})[x.inv]:null;
-  R.t.textContent=(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-'));
+  R.t.textContent=x.auto?'Salary '+x.sub.toLowerCase()+' · '+(x.party||'-'):(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-'));
   R.dt.textContent=fmtIso(x.d); R.am.textContent='₹'+fmtMoney(x.amt);
   R.meta.textContent=[({cash:'Cash',upi:'UPI',bank:'Bank'})[x.mode]||'',inv?'Against '+invLabel(inv):'',x.note||''].filter(Boolean).join(' · ');
-  R.pdf.hidden=!(x.k==='rc'||x.k==='py');
+  R.pdf.hidden=!(x.k==='rc'||x.k==='py'); R.ed.hidden=!!x.auto; R.del.hidden=!!x.auto;
 }
 function renderAcc(){
   if(tab!=='acc'||!isOwner) return;
-  accSubscribe();
+  accSubscribe(); salSubscribe();
   var ym=accMonth.split('-'); $('#accMonthLbl').textContent=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var pv=$('#accPeriod').value, allP=pv!=='m', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
   $('#accDayL').hidden=pv!=='date';
@@ -3128,12 +3131,12 @@ function renderAcc(){
   $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
   var items=accMonthItems(), S=accSums(items), op=accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
-  var net=S.rc+S.in-S.py-S.ex;
-  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Net (receipts + income − payments − expenses)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(pv==='m'?' this month':''),S.cash],['UPI balance'+(pv==='m'?' this month':''),S.upi],['Bank balance'+(pv==='m'?' this month':''),S.bank]].forEach(function(c){
+  var net=S.rc+S.in-S.py-S.ex-S.sl;
+  [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Salary advances and bonuses',S.sl],['Net (receipts + income − payments − expenses − salary)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(pv==='m'?' this month':''),S.cash],['UPI balance'+(pv==='m'?' this month':''),S.upi],['Bank balance'+(pv==='m'?' this month':''),S.bank]].forEach(function(c){
     var d=mk('div','card fdc fdsal'); d.append(mk('span',null,c[0]), mk('b',null,(c[1]<0?'− ':'')+'₹'+fmtMoney(Math.abs(c[1])))); g.append(d);
   });
   var sal=0, se=(salData&&salData.e)||{}; Object.keys(se).forEach(function(id){ var x=se[id]; if(x&&x.k==='adv'&&(x.nid||'1')===nursery&&String(x.d||'').slice(0,7)===accMonth) sal+=Number(x.amt)||0; });
-  $('#accNote').textContent=sal>0?'Salary advances given this month (from the Salary tab): ₹'+fmtMoney(sal)+'. This is not included in the figures above.':'';
+  $('#accNote').textContent=S.sl>0?'Salary advances and bonuses come from the Salary tab automatically and are counted as cash paid out. Change them in the Salary tab.':'';
   var shown=items.filter(function(it){ return !f||it[1].k===f; });
   $('#accEmpty').hidden=shown.length>0; $('#accEmpty').textContent=pv==='all'?'No entries yet.':pv==='m'?'No entries this month.':'No entries on this day.';
   shown.forEach(function(it){
@@ -3247,14 +3250,14 @@ $('#accPdf').addEventListener('click', async function(){
   var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26, M={cash:'Cash',upi:'UPI',bank:'Bank'};
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('ACCOUNTS STATEMENT - '+mon.toUpperCase(), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
   doc.text(NURS[nursery], 36, y+16);
-  var body=items.map(function(it){ var x=it[1], inn=(x.k==='rc'||x.k==='in'), nm=(accLabel(x)?accLabel(x)+' ':'')+(x.k==='rc'||x.k==='py'?(x.party||''):(x.cat||''));
-    return [fmtIso(x.d), ACC_T[x.k], nm+(x.note?' ('+x.note+')':''), M[x.mode]||'', inn?'Rs. '+fmtMoney(x.amt):'', inn?'':'Rs. '+fmtMoney(x.amt)]; });
-  var inT=S.rc+S.in, outT=S.py+S.ex;
+  var body=items.map(function(it){ var x=it[1], inn=(x.k==='rc'||x.k==='in'), nm=x.auto?(x.party||''):(accLabel(x)?accLabel(x)+' ':'')+(x.k==='rc'||x.k==='py'?(x.party||''):(x.cat||''));
+    return [fmtIso(x.d), x.auto?'Salary '+x.sub.toLowerCase():ACC_T[x.k], nm+(x.note?' ('+x.note+')':''), M[x.mode]||'', inn?'Rs. '+fmtMoney(x.amt):'', inn?'':'Rs. '+fmtMoney(x.amt)]; });
+  var inT=S.rc+S.in, outT=S.py+S.ex+S.sl;
   doc.autoTable({startY:y+26, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Date','Type','Details','Mode','In','Out']], body:body.length?body:[['','','No entries this month.','','','']],
     foot:[[{content:'Total',colSpan:4,styles:{halign:'right'}},'Rs. '+fmtMoney(inT),'Rs. '+fmtMoney(outT)],[{content:'Net',colSpan:4,styles:{halign:'right'}},{content:(inT-outT<0?'- ':'')+'Rs. '+fmtMoney(Math.abs(inT-outT)),colSpan:2,styles:{halign:'right'}}]],
     showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{4:{halign:'right'},5:{halign:'right'}}});
   var yy=doc.lastAutoTable.finalY+18; doc.setFontSize(9);
-  doc.text('Receipts Rs. '+fmtMoney(S.rc)+'   Payments Rs. '+fmtMoney(S.py)+'   Income Rs. '+fmtMoney(S.in)+'   Expenses Rs. '+fmtMoney(S.ex), 36, yy);
+  doc.text('Receipts Rs. '+fmtMoney(S.rc)+'   Payments Rs. '+fmtMoney(S.py)+'   Income Rs. '+fmtMoney(S.in)+'   Expenses Rs. '+fmtMoney(S.ex)+'   Salary Rs. '+fmtMoney(S.sl), 36, yy);
   doc.text('Cash Rs. '+fmtMoney(S.cash)+'   UPI Rs. '+fmtMoney(S.upi)+'   Bank Rs. '+fmtMoney(S.bank), 36, yy+13);
   var buf=doc.output('arraybuffer');
   try{ await downloads.save({filename:'accounts-'+accMonth+'-'+(nursery==='2'?'raynal':'chalmatti')+'.pdf', data:buf}); }
@@ -4012,7 +4015,7 @@ function salEntries(kind){
 function salSum(kind,sid){ var t=0; salEntries(kind).forEach(function(it){ if(!sid||it[1].sid===sid) t+=Number(it[1].amt)||0; }); return t; }
 function salSubscribe(){
   if(salSubbed||!db) return; salSubbed=true;
-  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; cache.meta.salary=salData; cacheSave(); if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
+  db.doc('meta/salary').onSnapshot(function(s){ salData=s.exists?s.data():{e:{},b:{}}; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; cache.meta.salary=salData; cacheSave(); if(tab==='sal') renderSal(); if(tab==='att') renderAtt(); if(tab==='acc') renderAcc(); renderFull(); if(tab==='team') renderTeam(); }, function(){});
 }
 function salPeople(kind){
   var l=teamList(kind); return l.filter(function(it){ return (it[1].nid||'1')===nursery; });
