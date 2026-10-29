@@ -3103,17 +3103,19 @@ function accOpen(n){
 }
 function makeAcc(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), row=mk('div','sline');
+  var dl=mk('div','pmeta'), dt=mk('span'), am=mk('b'); dl.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:2px 0'; am.style.cssText='font-size:1rem;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums'; dl.append(dt,am);
   var pdf=mk('button','btn small','PDF / Share'), del=mk('button','btn small danger','Delete'), ed=mk('button','btn small','Edit');
   pdf.type='button'; del.type='button'; ed.type='button'; row.append(pdf,ed,del);
   ed.addEventListener('click', function(){ var x=(accData.e||{})[id]; if(x) openAcc(x.k,id); });
   pdf.addEventListener('click', function(){ accVoucher(id); });
   del.addEventListener('click', function(){ arm(del,'acc'+id,'Delete', function(){ var p={e:{}}; p.e[id]=null; accSave(p); }); });
-  el.append(t,meta,row); el._r={t:t,meta:meta,pdf:pdf}; return el;
+  el.append(t,dl,meta,row); el._r={t:t,meta:meta,pdf:pdf,dt:dt,am:am}; return el;
 }
 function updateAcc(el,x){
   var R=el._r, inv=x.inv?(invData.i||{})[x.inv]:null;
   R.t.textContent=(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-'));
-  R.meta.textContent=[fmtIso(x.d),'₹'+fmtMoney(x.amt),({cash:'Cash',upi:'UPI',bank:'Bank'})[x.mode]||'',inv?'Against '+invLabel(inv):'',x.note||''].filter(Boolean).join(' · ');
+  R.dt.textContent=fmtIso(x.d); R.am.textContent='₹'+fmtMoney(x.amt);
+  R.meta.textContent=[({cash:'Cash',upi:'UPI',bank:'Bank'})[x.mode]||'',inv?'Against '+invLabel(inv):'',x.note||''].filter(Boolean).join(' · ');
   R.pdf.hidden=!(x.k==='rc'||x.k==='py');
 }
 function renderAcc(){
