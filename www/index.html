@@ -1559,7 +1559,7 @@ function makeTd(id){
       asP.hidden=true; asE.textContent='Change assigned to';
       if(asPend){
         var v=asPend; asPend=null;
-        var now=Date.now(), p={td:{}}, same=(x.as||[]).slice().sort().join('|')===v.slice().sort().join('|');
+        var now=Date.now(), p={td:{}}, same=!v.length||(x.as||[]).slice().sort().join('|')===v.slice().sort().join('|');
         if(!same){
           p.td[id]={as:v, ast:now};
           if(x.as&&x.as.length){ p.td[id].seg=(x.seg||[]).concat([{as:x.as,st:x.ast||x.st,en:now}]); }
@@ -1569,7 +1569,7 @@ function makeTd(id){
       return;
     }
     asPend=null;
-    buildAsg(asP, labourNames(x.nid||'1'), x.as||[], function(v){ asPend=v; });
+    buildAsg(asP, labourNames(x.nid||'1'), [], function(v){ asPend=v; });
     asP.hidden=false; asE.textContent='Save assigned to';
   });
   el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP}; return el;
