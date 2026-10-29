@@ -1498,6 +1498,14 @@ function fmtDur(ms){
   var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
   return h ? h+' h '+('0'+m).slice(-2)+' min' : (m ? m+' min '+('0'+sec).slice(-2)+' s' : sec+' s');
 }
+function tdSegs(x,now){
+  var out=(x.seg||[]).map(function(s){ return {as:s.as||[],st:s.st,en:s.en}; });
+  if(x.as&&x.as.length) out.push({as:x.as,st:x.ast||x.st,en:x.en||now||Date.now(),cur:!x.en});
+  return out;
+}
+function tdWork(x,now){
+  return tdSegs(x,now).map(function(s){ return s.as.join(', ')+' - '+fmtDur(Math.max(0,(s.en||0)-(s.st||0)))+' ('+fmtTime(s.st)+' to '+fmtTime(s.en)+(s.cur?', running':'')+')'; });
+}
 function tdItems(n){
   n=n||nursery; var o=(day&&day.td)||{};
   return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
@@ -1544,11 +1552,25 @@ function makeTd(id){
   });
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
   var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; asB.append(asV,asE,asP);
+  var asPend=null;
   asE.addEventListener('click', function(){
-    var x=el._x; if(!x||!editable()) return;
-    if(!asP.hidden){ asP.hidden=true; asE.textContent='Change assigned to'; return; }
-    buildAsg(asP, labourNames(x.nid||'1'), x.as||[], function(v){ var p={td:{}}; p.td[id]={as:v}; save(p); });
-    asP.hidden=false; asE.textContent='Done choosing';
+    var x=el._x; if(!x||x.en||!editable()) return;
+    if(!asP.hidden){
+      asP.hidden=true; asE.textContent='Change assigned to';
+      if(asPend){
+        var v=asPend; asPend=null;
+        var now=Date.now(), p={td:{}}, same=(x.as||[]).slice().sort().join('|')===v.slice().sort().join('|');
+        if(!same){
+          p.td[id]={as:v, ast:now};
+          if(x.as&&x.as.length){ p.td[id].seg=(x.seg||[]).concat([{as:x.as,st:x.ast||x.st,en:now}]); }
+          save(p);
+        }
+      }
+      return;
+    }
+    asPend=null;
+    buildAsg(asP, labourNames(x.nid||'1'), x.as||[], function(v){ asPend=v; });
+    asP.hidden=false; asE.textContent='Save assigned to';
   });
   el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP}; return el;
 }
@@ -1560,8 +1582,8 @@ function updateTd(el,x,ed){
   var R=el._r; el._x=x;
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.meta.textContent=tdMeta(x);
-  R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned'); R.asE.hidden=!ed;
-  if(!ed){ R.asP.hidden=true; }
+  R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
+  if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
   R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!R.ta.value.trim();
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
@@ -1604,7 +1626,7 @@ $('#fTd').addEventListener('submit', async function(e){
   if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
-  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice()};
+  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice()}; p.td[id].ast=p.td[id].st;
   if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); toast('Task started'); }
 });
 function pdfTd(doc){
@@ -1617,7 +1639,7 @@ function pdfTd(doc){
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
       head:[['Sl.No.','Task','Assigned to','By','Started','Ended','Time taken','Report']],
-      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',(x.as||[]).join(', '),x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',(tdWork(x).join('; ')||'Not assigned'),x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
       headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:36}}
     });
     y=doc.lastAutoTable.finalY+16;
