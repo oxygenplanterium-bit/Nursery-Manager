@@ -288,6 +288,9 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 .invbar{position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--bg); border-bottom:1px solid var(--line); padding:max(36px, calc(env(safe-area-inset-top,0px) + 10px)) 0 10px; margin:0 0 4px}
 #dlgInv .invbar .btn{min-height:44px}
 #invAddLine{background:#ffd6e5; border-color:#f4a9c4; color:#000}
+body,button,input,select,option,textarea,label,th,td{text-transform:capitalize}
+input[type=email],input[type=url],input[type=password],input[type=date],input[type=number],input[type=tel]{text-transform:none}
+.nocap{text-transform:none}
 </style>
 
 <div class="wrap">
@@ -925,6 +928,8 @@ window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=
 document.getElementById('instGo').onclick=function(){if(!ev)return;ev.prompt();ev.userChoice.then(function(){ev=null;bar.style.display='none';});};
 document.getElementById('instNo').onclick=function(){bar.style.display='none';try{localStorage.setItem('instNo','1');}catch(e){}};
 window.addEventListener('appinstalled',function(){bar.style.display='none';});})();</script>
+<script>(function(){function fix(r){ r.querySelectorAll('input[type=text],input:not([type]),textarea').forEach(function(e){ if(!e.hasAttribute('autocapitalize')) e.setAttribute('autocapitalize','words'); }); }
+fix(document); new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if(n.nodeType===1){ if(n.matches&&n.matches('input,textarea')&&!n.hasAttribute('autocapitalize')&&n.type!=='email') n.setAttribute('autocapitalize','words'); fix(n); } }); }); }).observe(document.body,{childList:true,subtree:true}); })();</script>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
 <script src="platform.js"></script>
 <script>
