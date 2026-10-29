@@ -501,7 +501,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 
   <section class="pane" id="paneAcc" role="tabpanel" aria-labelledby="tabAcc" hidden>
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
-      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option><option value="both" id="accBothOpt">Both Nurseries Together</option></select>
     </label>
     <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="accPrev" aria-label="Previous month">Prev</button><b id="accMonthLbl"></b><button class="btn" type="button" id="accNext" aria-label="Next month">Next</button></div>
     <div class="fdgrid" id="accCards"></div>
@@ -517,9 +517,6 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       </div>
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
       <button class="btn" type="button" id="accCats">Manage categories</button>
-      <label class="f"><span>Nursery view</span>
-        <select id="accScope" aria-label="Nursery view"><option value="cur">Selected nursery only</option><option value="both">Both nurseries together</option></select>
-      </label>
       <label class="f"><span>Period</span>
         <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day">This day only (today)</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
       </label>
@@ -970,7 +967,7 @@ function cacheSave(){
     }
   }, 800);
 }
-var nursery='1', NURS={'1':'Chalmatti Nursery','2':'Raynal Nursery'}, sortMode='', team={sup:{},staff:{}}, res={}, resEls=new Map(), sugEls=new Map(), csEls=new Map(), supId='', attEls=new Map(), teamEls=new Map();
+var accBoth=false, nursery='1', NURS={'1':'Chalmatti Nursery','2':'Raynal Nursery'}, sortMode='', team={sup:{},staff:{}}, res={}, resEls=new Map(), sugEls=new Map(), csEls=new Map(), supId='', attEls=new Map(), teamEls=new Map();
 var noteCtx=null, edCtx=null, edArmed=false, armed={}, selSig='', pendReady=false, seenPend={}, ownerWa='', pendEls=new Map(), pinData=null, pinFails=0, pinLockUntil=0;
 
 function toast(msg,ms){
@@ -1141,7 +1138,7 @@ function renderTop(){
     else cb.hidden=true;
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='';
-  document.querySelectorAll('.nursel').forEach(function(sel){ if(sel.value!==nursery) sel.value=nursery; });
+  document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
   var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc'};
   $('#tabTeam').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
@@ -1299,7 +1296,8 @@ function sortItems(items){
 }
 document.querySelectorAll('.nursel').forEach(function(sel){
   sel.addEventListener('change', function(){
-    nursery=this.value==='2'?'2':'1';
+    if(this.value==='both'){ accBoth=true; renderAll(); return; }
+    accBoth=false; nursery=this.value==='2'?'2':'1';
     if(typeof PADS!=='undefined') Object.keys(PADS).forEach(function(k){ PADS[k].dirty=false; });
     try{ localStorage.setItem('nurseryNo', nursery); }catch(e){}
     filter=''; $('#filter').value='';
@@ -3096,7 +3094,7 @@ function accNext(k,nid){
 }
 function accMonthItems(mo){
   var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
-  var bothN=$('#accScope').value==='both', okd=function(x){ return (bothN||(x.nid||'1')===nursery)&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
+  var bothN=accBoth, okd=function(x){ return (bothN||(x.nid||'1')===nursery)&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
   var se=(salData&&salData.e)||{}, sl=Object.keys(se).filter(function(id){ var x=se[id]; return x&&(x.k==='adv'||x.k==='bon')&&x.d&&okd(x); })
     .map(function(id){ var x=se[id]; return ['sal:'+id,{k:'sl',sub:x.k==='adv'?'Advance':'Bonus',d:x.d,amt:x.amt,mode:'cash',party:x.n||'',note:x.note||'',nid:x.nid,at:x.at||0,auto:true}]; });
   return Object.keys(o).filter(function(id){ var x=o[id]; return x&&okd(x); })
@@ -3124,7 +3122,7 @@ function makeAcc(id){
 }
 function updateAcc(el,x){
   var R=el._r, inv=x.inv?(invData.i||{})[x.inv]:null;
-  R.t.textContent=($('#accScope').value==='both'?(x.nid==='2'?'Raynal · ':'Chalmatti · '):'')+(x.auto?'Salary '+x.sub.toLowerCase()+' · '+(x.party||'-'):(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-')));
+  R.t.textContent=(accBoth?(x.nid==='2'?'Raynal · ':'Chalmatti · '):'')+(x.auto?'Salary '+x.sub.toLowerCase()+' · '+(x.party||'-'):(accLabel(x)?accLabel(x)+' · ':'')+ACC_T[x.k]+' · '+(x.k==='rc'||x.k==='py'?(x.party||'-'):(x.cat||'-')));
   R.dt.textContent=fmtIso(x.d); R.am.textContent='₹'+fmtMoney(x.amt);
   R.meta.textContent=[({cash:'Cash',upi:'UPI',bank:'Bank'})[x.mode]||'',inv?'Against '+invLabel(inv):'',x.note||''].filter(Boolean).join(' · ');
   R.pdf.hidden=!(x.k==='rc'||x.k==='py'); R.ed.hidden=!!x.auto; R.del.hidden=!!x.auto;
@@ -3137,7 +3135,7 @@ function renderAcc(){
   $('#accDayL').hidden=pv!=='date';
   if(allP){ $('#accMonthLbl').textContent=pv==='all'?'All months':(dk?new Date(dk+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'Choose a date'); }
   $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
-  var items=accMonthItems(), S=accSums(items), op=$('#accScope').value==='both'?(function(a,b){ return {rec:a.rec+b.rec,pay:a.pay+b.pay}; })(accOpen('1'),accOpen('2')):accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
+  var items=accMonthItems(), S=accSums(items), op=accBoth?(function(a,b){ return {rec:a.rec+b.rec,pay:a.pay+b.pay}; })(accOpen('1'),accOpen('2')):accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
   var net=S.rc+S.in-S.py-S.ex-S.sl;
   [['Receipts',S.rc],['Payments',S.py],['Income',S.in],['Expenses',S.ex],['Salary advances and bonuses',S.sl],['Net (receipts + income − payments − expenses − salary)',net],['To receive (open sales invoices)',op.rec],['To pay (open purchase invoices)',op.pay],['Cash balance'+(pv==='m'?' this month':''),S.cash],['UPI balance'+(pv==='m'?' this month':''),S.upi],['Bank balance'+(pv==='m'?' this month':''),S.bank]].forEach(function(c){
@@ -3157,7 +3155,6 @@ function renderAcc(){
   accEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); accEls.delete(id); } });
 }
 $('#accFilter').addEventListener('change', renderAcc);
-$('#accScope').addEventListener('change', renderAcc);
 $('#accPeriod').addEventListener('change', function(){ if(this.value==='date'&&!$('#accDay').value) $('#accDay').value=todayKey(); renderAcc(); });
 $('#accDay').addEventListener('change', renderAcc);
 $('#accPrev').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
@@ -3259,9 +3256,9 @@ $('#accPdf').addEventListener('click', async function(){
   var items=accMonthItems(true).slice().reverse(), S=accSums(items), ym=accMonth.split('-'), mon=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26, M={cash:'Cash',upi:'UPI',bank:'Bank'};
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('ACCOUNTS STATEMENT - '+mon.toUpperCase(), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
-  doc.text($('#accScope').value==='both'?'Both nurseries (Chalmatti and Raynal)':NURS[nursery], 36, y+16);
+  doc.text(accBoth?'Both nurseries (Chalmatti and Raynal)':NURS[nursery], 36, y+16);
   var body=items.map(function(it){ var x=it[1], inn=(x.k==='rc'||x.k==='in'), nm=x.auto?(x.party||''):(accLabel(x)?accLabel(x)+' ':'')+(x.k==='rc'||x.k==='py'?(x.party||''):(x.cat||''));
-    if($('#accScope').value==='both') nm=(x.nid==='2'?'Raynal - ':'Chalmatti - ')+nm;
+    if(accBoth) nm=(x.nid==='2'?'Raynal - ':'Chalmatti - ')+nm;
     return [fmtIso(x.d), x.auto?'Salary '+x.sub.toLowerCase():ACC_T[x.k], nm+(x.note?' ('+x.note+')':''), M[x.mode]||'', inn?'Rs. '+fmtMoney(x.amt):'', inn?'':'Rs. '+fmtMoney(x.amt)]; });
   var inT=S.rc+S.in, outT=S.py+S.ex+S.sl;
   doc.autoTable({startY:y+26, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Date','Type','Details','Mode','In','Out']], body:body.length?body:[['','','No entries this month.','','','']],
