@@ -301,6 +301,11 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .delx.on{background:#fdecea}
 .delx .delt{text-transform:none;font-weight:600}
 #sugBox,#padTasks{display:none !important}
+.asgwrap{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.asghead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.asghead b{font-weight:600;font-size:.9rem}
+.asgbody{display:flex;flex-direction:column;gap:6px}
+.asgbody[hidden]{display:none}
 </style>
 
 <div class="wrap">
@@ -398,7 +403,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <input type="text" id="taskTitle" maxlength="120" placeholder="New task, for example Water the shade house" required>
       <select id="taskTo" aria-label="Assign task to" hidden></select>
       <select id="taskWhen" aria-label="Task for" style="flex:1 1 100%"><option value="today">Task for today</option><option value="tomorrow">Task for tomorrow</option></select>
-      <div class="f" style="flex:1 1 100%;display:flex;flex-direction:column;gap:6px"><span>Task assigned to (labour, choose one or more)</span><div id="taskAsg" style="display:flex;flex-direction:column;gap:6px"></div></div>
+      <div class="asgwrap" style="flex:1 1 100%"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="taskAsg" aria-expanded="true">Hide</button></div><div id="taskAsg" class="asgbody"></div></div>
       <button class="btn primary" type="submit">Add task</button>
     </form>
     <section class="card team" id="tmrBox" hidden>
@@ -427,7 +432,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
         <form class="team" id="fTd" hidden novalidate>
           <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
-          <div class="f"><span>Task assigned to (labour, choose one or more)</span><div id="tdAsg" style="display:flex;flex-direction:column;gap:6px"></div></div>
+          <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit">Start task</button>
         </form>
@@ -947,6 +952,11 @@ document.getElementById('instNo').onclick=function(){bar.style.display='none';tr
 window.addEventListener('appinstalled',function(){bar.style.display='none';});})();</script>
 <script>(function(){function fix(r){ r.querySelectorAll('input[type=text],input:not([type]),textarea').forEach(function(e){ if(!e.hasAttribute('autocapitalize')) e.setAttribute('autocapitalize','words'); }); }
 fix(document); new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if(n.nodeType===1){ if(n.matches&&n.matches('input,textarea')&&!n.hasAttribute('autocapitalize')&&n.type!=='email') n.setAttribute('autocapitalize','words'); fix(n); } }); }); }).observe(document.body,{childList:true,subtree:true}); })();</script>
+<script>(function(){
+function st(k){ try{ return localStorage.getItem('asgHide_'+k)==='1'; }catch(e){ return false; } }
+function apply(b){ var t=document.getElementById(b.dataset.t), hide=st(b.dataset.t); t.hidden=hide; b.textContent=hide?'Show':'Hide'; b.setAttribute('aria-expanded',String(!hide)); }
+document.querySelectorAll('.asgtog').forEach(function(b){ apply(b); b.addEventListener('click', function(){ var k=b.dataset.t; try{ localStorage.setItem('asgHide_'+k, st(k)?'0':'1'); }catch(e){ var t=document.getElementById(k); t.hidden=!t.hidden; b.textContent=t.hidden?'Show':'Hide'; return; } apply(b); }); });
+})();</script>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
 <script src="platform.js"></script>
 <script>
