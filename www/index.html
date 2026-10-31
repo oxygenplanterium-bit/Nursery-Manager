@@ -5037,7 +5037,7 @@ function lowItems(){
 function lowUpdate(){
   var l=day?lowItems():[], bx=$('#lowBox');
   bx.hidden=!l.length;
-  if(l.length) $('#lowText').textContent=l.length+(l.length===1?' item is':' items are')+' low on stock and need to be potted or bought';
+  if(l.length) $('#lowText').textContent=l.length+(l.length===1?' item':' items')+' low on stock';
   $('#tabLow').textContent='Low Stock'+(l.length?' '+l.length:'');
 }
 function renderLow(){
