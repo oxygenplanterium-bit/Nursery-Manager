@@ -4810,7 +4810,7 @@ function renderSalDlg(){
     wa.addEventListener('click', async function(){
       var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
       if(!downloads){ toast('Saving files is not available in this view.'); return; }
-      var doc=new J({unit:'pt',format:'a5'}), W=doc.internal.pageSize.getWidth(); var hy=letterhead(doc)-26;
+      var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(); var hy=letterhead(doc)-26;
       doc.setFontSize(16); doc.text('Salary Slip - '+mon, 36, 44+hy);
       doc.setFontSize(10); doc.text(NURS[nursery], 36, 62+hy);
       doc.setFontSize(12); doc.text('Name: '+rec.n+(salDlg.kind==='sup'?'  (Supervisor)':''), 36, 84+hy);
@@ -4825,7 +4825,7 @@ function renderSalDlg(){
       var ciAmt=(m.paid&&m.paid.adv)?(Number(m.paid.ci)||0):(m.carryIn>0?m.carryIn:0);
       if(ciAmt>0) advRows.push(['','','Carried from earlier months','',R(ciAmt)]);
       try{
-      var PH=doc.internal.pageSize.getHeight?doc.internal.pageSize.getHeight():595;
+      var PH=doc.internal.pageSize.getHeight?doc.internal.pageSize.getHeight():842;
       if(y+90>PH){ doc.addPage(); y=40; }
       doc.setFontSize(11); doc.text('Advance entries - '+mon+(m.paid?' (salary paid)':' (salary not yet paid)'), 36, y+14); doc.setFontSize(10); y+=18;
       if(!advRows.length){ doc.text('No advance entries for this month.', 36, y+14); }
