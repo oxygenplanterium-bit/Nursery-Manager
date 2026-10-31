@@ -346,6 +346,12 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tdhead .tdarr{flex:none; padding:2px 10px; min-height:0; font-size:1rem; line-height:1.2}
 .tdbd{display:flex; flex-direction:column; gap:8px}
 .tdbd[hidden]{display:none}
+.fdpick{display:flex; gap:8px; align-items:stretch}
+.fdpick .fdnl{flex:1.5 1 0; min-width:0; padding:4px 10px; margin:0; display:flex; align-items:center}
+.fdpick .fdnl select{min-height:36px; padding:4px 24px 4px 8px; font-size:15px}
+.fdpick .fdnl{padding:4px 6px}
+.fdpick .dayTog{flex:1 1 0; min-width:0; padding:6px 10px; min-height:44px}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 .dayTog{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; font-weight:600}
 .dayTog span{flex:1; min-width:0}
 #fTask,#tmrBox,#tstate,#tAsgBar,#tabChat{display:none !important}
@@ -1111,16 +1117,18 @@ select:not([multiple]){pointer-events:none}
         <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
         <button class="btn small" id="waSetBtn" hidden style="grid-column:1/-1">Owner WhatsApp number</button>
       </div>
-    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+    <div class="fdpick">
+    <label class="f card fdnl"><span class="sr">Nursery</span>
       <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
+    <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap" aria-label="Pick a date for previous days reports and entries"><span>Pick a date</span><b id="dayArr">▾</b></button>
+    </div>
+    <div id="dayWrap" class="card" hidden><label class="f"><span>Open a previous day</span><select id="daySel"></select></label></div>
     <section class="card fields">
       <div class="two">
         <label class="f"><span>Date (automatic)</span><input id="todayField" readonly></label>
         
       </div>
-      <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap"><span>Pick a date for previous days reports and entries</span><b id="dayArr">▾</b></button>
-      <div id="dayWrap" hidden><label class="f"><span>Open a previous day</span><select id="daySel"></select></label></div>
       <div class="statusline" id="statusline"><span id="dstat"></span></div>
       <div class="statusline" id="actrow" style="flex-wrap:nowrap;align-items:center"><button class="btn small" id="closeBtn" hidden>Close day</button><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
       <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name above to mark tasks and attendance.</p>
