@@ -4667,7 +4667,7 @@ function renderSalDlg(){
       pbox.append(pb, mk('span','pmeta',zero?'Balance to pay is ₹0 – ready to mark as paid.':'Available only when the Balance to pay is ₹0 (now '+(m.balance<0?'excess advance ₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))+').'));
       pb.addEventListener('click', function(){
         if(Math.round(m.balance)!==0){ toast('Balance to pay must be ₹0.'); return; }
-        var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]={amt:0,at:Date.now()}; salSave(p);
+        var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]={amt:0,at:Date.now(),ci:m.carryIn>0?m.carryIn:0,adv:m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); }).map(function(x){ return {d:x.d||'',amt:Number(x.amt)||0,note:x.note||'',at:x.at||0,m:x.m||''}; })}; salSave(p);
       });
     }
     b.append(pbox);
@@ -4693,11 +4693,13 @@ function renderSalDlg(){
       if(m.paid){ doc.text('Salary paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):''), 36, y); y+=14; }
       if(m.carryOut>0){ doc.text('Rs. '+fmtN(m.carryOut)+' carried forward to next month as advance.', 36, y, {maxWidth:W-72}); y+=14; }
       doc.setFontSize(8); doc.text('Until this month\'s salary is marked as paid, all advances are deducted in the old or previous month salary. Any excess advance paid is carried forward to next month as advance.', 36, y+6, {maxWidth:W-72});
-      var advRows=m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); }).map(function(x,i){ return [i+1, x.d?fmtIso(x.d):'', x.note||'', R(Number(x.amt)||0)]; });
-      if(m.carryIn>0) advRows.push(['','','Carried from earlier months',R(m.carryIn)]);
+      var advSrc=(m.paid&&m.paid.adv)?m.paid.adv:m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); });
+      var advRows=advSrc.map(function(x,i){ return [i+1, x.d?fmtIso(x.d):'', x.note||'', x.at?fmtIso(keyOf(new Date(x.at))):'', R(Number(x.amt)||0)]; });
+      var ciAmt=(m.paid&&m.paid.adv)?(Number(m.paid.ci)||0):(m.carryIn>0?m.carryIn:0);
+      if(ciAmt>0) advRows.push(['','','Carried from earlier months','',R(ciAmt)]);
       if(advRows.length){
-        var advTot=m.adv+(m.carryIn>0?m.carryIn:0);
-        doc.autoTable({startY:y+30, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:3,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:36},3:{halign:'right',cellWidth:80}}, margin:{left:36,right:36}});
+        var advTot=advSrc.reduce(function(s,x){ return s+(Number(x.amt)||0); },0)+ciAmt;
+        doc.autoTable({startY:y+30, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Entered on','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:4,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:30},4:{halign:'right',cellWidth:70}}, margin:{left:36,right:36}});
       }
       var buf=doc.output('arraybuffer');
       try{ await downloads.save({filename:'salary-slip-'+rec.n.replace(/[^A-Za-z0-9]+/g,'-')+'-'+salMonth+'.pdf', data:buf}); }
@@ -4719,9 +4721,10 @@ function renderSalDlg(){
       salSave(p); amt.value=''; note.value='';
     });
     var items=salEntries(k).filter(function(it){ return it[1].sid===sid; });
-    var elsewhere=[];
+    var elsewhere=[], snapAdv=null;
     if(k==='adv'){
       items=m.advItems.map(function(x){ return [x.id,x]; }).sort(function(a,b){ return (a[1].d||'').localeCompare(b[1].d||'') || (a[1].at||0)-(b[1].at||0); });
+      if(m.paid&&m.paid.adv){ snapAdv=m.paid.adv.map(function(x,i){ return ['snap'+i,x]; }); items=snapAdv; b.append(mk('p','pmeta','Saved advance record. Salary for this month was paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'')+'. These entries are kept for reference.')); }
       var all=salCalc(sid,salDlg.kind); Object.keys(all).forEach(function(mm){ if(mm!==salMonth) all[mm].advItems.forEach(function(x){ if(x.m===salMonth) elsewhere.push([mm,x]); }); });
       if(m.carryIn>0){ var ci=mk('div','sline'); ci.style.cssText='border:1px solid var(--line);border-radius:10px;padding:8px 10px;justify-content:space-between'; ci.append(mk('span',null,'Advance recovered from previous month'), mk('b',null,'₹'+fmtN(m.carryIn))); b.append(ci); }
     }
@@ -4731,10 +4734,13 @@ function renderSalDlg(){
       [['Absent: '+m.A+(m.A===1?' day':' days')+' × ₹'+fmtN(m.rate),m.absA],['Half days: '+m.H+' × ₹'+fmtN(m.rate)+' × ½',m.absH]].forEach(function(r){ var x=mk('div','sline'); x.style.justifyContent='space-between'; x.append(mk('span',null,r[0]), mk('b',null,'₹'+fmtN(r[1]))); al.append(x); });
       b.append(al);
     }
-    b.append(mk('p',null,items.length+(k==='ded'||(k==='bon'&&m.autoBon>0)?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?m.advAll:(k==='bon'?m.bon:salSum(k,sid))))));
+    b.append(mk('p',null,items.length+(k==='ded'||(k==='bon'&&m.autoBon>0)?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?(snapAdv?snapAdv.reduce(function(t,it){ return t+(Number(it[1].amt)||0); },0)+(Number(m.paid.ci)||0):m.advAll):(k==='bon'?m.bon:salSum(k,sid))))));
     items.forEach(function(it){
       var e=it[1], c=mk('div','sline');
-      c.append(mk('span','grow',(e.note||'—')+(e.m!==salMonth?' (given in '+new Date(+e.m.slice(0,4),+e.m.slice(5)-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})+')':'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)), mk('b',null,'₹'+fmtN(e.amt)));
+      c.style.flexWrap='wrap';
+      c.append(mk('span','grow',(e.note||'—')+(e.m&&e.m!==salMonth?' (given in '+new Date(+e.m.slice(0,4),+e.m.slice(5)-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})+')':'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)+'/'+e.d.slice(0,4)), mk('b',null,'₹'+fmtN(e.amt)));
+      if(e.at){ var em=mk('div','pmeta','Entered on '+new Date(e.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(e.at)); em.style.flexBasis='100%'; c.append(em); }
+      if(snapAdv){ b.append(c); return; }
       var del=mk('button','btn small','Delete'); del.type='button';
       del.addEventListener('click', function(){
         if(del.dataset.arm!=='1'){ del.dataset.arm='1'; del.textContent='Tap to confirm'; setTimeout(function(){ del.dataset.arm=''; del.textContent='Delete'; },3000); return; }
