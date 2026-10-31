@@ -4824,6 +4824,7 @@ function renderSalDlg(){
       var advRows=advSrc.map(function(x,i){ return [i+1, x.d?fmtIso(x.d):'', x.note||'', x.at?fmtIso(keyOf(new Date(x.at))):'', R(Number(x.amt)||0)]; });
       var ciAmt=(m.paid&&m.paid.adv)?(Number(m.paid.ci)||0):(m.carryIn>0?m.carryIn:0);
       if(ciAmt>0) advRows.push(['','','Carried from earlier months','',R(ciAmt)]);
+      try{
       var PH=doc.internal.pageSize.getHeight?doc.internal.pageSize.getHeight():595;
       if(y+90>PH){ doc.addPage(); y=40; }
       doc.setFontSize(11); doc.text('Advance entries - '+mon+(m.paid?' (salary paid)':' (salary not yet paid)'), 36, y+14); doc.setFontSize(10); y+=18;
@@ -4832,6 +4833,7 @@ function renderSalDlg(){
         var advTot=advSrc.reduce(function(s,x){ return s+(Number(x.amt)||0); },0)+ciAmt;
         doc.autoTable({startY:y+4, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Entered on','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:4,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:30},4:{halign:'right',cellWidth:70}}, margin:{left:36,right:36}});
       }
+      }catch(err){ toast('The advance list could not be added to the slip.'); }
       var buf=doc.output('arraybuffer');
       try{ await downloads.save({filename:'salary-slip-'+rec.n.replace(/[^A-Za-z0-9]+/g,'-')+'-'+salMonth+'.pdf', data:buf}); }
       catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
