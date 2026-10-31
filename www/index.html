@@ -5041,13 +5041,13 @@ function renderLow(){
   lw.append(mk('b',null,'Needs Reordering ('+l.length+')'));
   if(!l.length) lw.append(mk('p','pmeta','Nothing is low on stock right now.'));
   l.forEach(function(x,i){
-    var c=mk('div','bcard'), r=mk('div','brow'), ar=mk('button','btn tdarr',lowOpen[x.id]?'\u25B4':'\u25BE'), dt=mk('div'); c.style.background=RC_BG[i%2];
+    var c=mk('div','bcard'), r=mk('div','brow'), ar=mk('button','btn tdarr',lowOpen[x.id]?'\u25B4':'\u25BE'), dt=mk('div'); c.style.background=RC_BG[i%2]; c.style.padding='4px 8px'; c.style.gap='2px'; ar.style.cssText='padding:0 8px;min-height:26px;height:26px;font-size:.85rem;line-height:1';
     r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; ar.type='button'; ar.setAttribute('aria-expanded',!!lowOpen[x.id]); ar.setAttribute('aria-label','Show or hide details of '+x.name);
     dt.style.cssText='display:flex;flex-direction:column;gap:4px'; dt.hidden=!lowOpen[x.id];
     dt.append(mk('b',null,'Qty '+fmtN(x.bal)+' / Min '+fmtN(x.min)), mk('div','pmeta',NURS[x.nid]+(x.bal<=0?' · Out of stock':' · Short by '+fmtN(x.min-x.bal))));
     var tg=function(){ lowOpen[x.id]=!lowOpen[x.id]; dt.hidden=!lowOpen[x.id]; ar.textContent=lowOpen[x.id]?'\u25B4':'\u25BE'; ar.setAttribute('aria-expanded',!!lowOpen[x.id]); };
     ar.addEventListener('click', tg);
-    var nm=mk('b',null,x.name); nm.style.cssText='flex:1;min-width:0;cursor:pointer'; nm.addEventListener('click', tg);
+    var nm=mk('b',null,x.name); nm.title=x.name; nm.style.cssText='flex:1;min-width:0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem'; nm.addEventListener('click', tg);
     r.append(nm, ar); c.append(r, dt); lw.append(c);
   });
   body.append(lw);
@@ -5072,10 +5072,10 @@ function renderLow(){
       var rs=rowsOf(n); if(!rs.length) return;
       body.append(mk('div','pmeta',NURS[n]));
       rs.forEach(function(it,i){
-        var c=mk('div','bcard'), r=mk('div','brow'), inp=mkIn('number','Min'); c.style.background=RC_BG[i%2];
-        inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.style.cssText='width:90px;flex:none'; inp.value=Number(minMap[it[0]])>0?minMap[it[0]]:''; inp.setAttribute('aria-label','Minimum quantity for '+it[1].name);
+        var c=mk('div','bcard'), r=mk('div','brow'), inp=mkIn('number','Min'); c.style.background=RC_BG[i%2]; c.style.padding='4px 8px';
+        inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.style.cssText='width:64px;flex:none;padding:4px 6px;min-height:0;height:30px;text-align:center'; inp.value=Number(minMap[it[0]])>0?minMap[it[0]]:''; inp.setAttribute('aria-label','Minimum quantity for '+it[1].name);
         inp.addEventListener('change', function(){ var v=Math.max(0,Math.round(Number(inp.value)||0)), pt={min:{}}; pt.min[it[0]]=v>0?v:null; saveSettings(pt).then(function(ok){ if(ok) toast('Minimum saved'); }); });
-        r.append(mk('span',null,it[1].name+' (Qty '+fmtN(bal(it[1]))+')'), inp); c.append(r); body.append(c);
+        var ns=mk('span',null,it[1].name+' ('+fmtN(bal(it[1]))+')'); ns.title=it[1].name; ns.style.cssText='flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem'; r.style.cssText='display:flex;align-items:center;gap:8px'; r.append(ns, inp); c.append(r); body.append(c);
       });
     });
   }
