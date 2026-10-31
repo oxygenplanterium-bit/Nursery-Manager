@@ -1145,6 +1145,34 @@ select:not([multiple]){pointer-events:none}
       <summary>Salary</summary>
       <div class="fdattin"><div class="fdgrid" id="fdSal"></div><p class="pmeta" id="fdSalNote"></p></div>
     </details>
+    <details class="card fddrop" id="fdxCs">
+      <summary>Customers</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgCs"></div><p class="pmeta" id="fdnCs"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxRes">
+      <summary>Resources</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgRes"></div><p class="pmeta" id="fdnRes"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxInv">
+      <summary>Invoices</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgInv"></div><p class="pmeta" id="fdnInv"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxAcc" hidden>
+      <summary>Accounts</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgAcc"></div><p class="pmeta" id="fdnAcc"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxDue" hidden>
+      <summary>Money Owed</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgDue"></div><p class="pmeta" id="fdnDue"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxBat">
+      <summary>Batches And Losses</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgBat"></div><p class="pmeta" id="fdnBat"></p></div>
+    </details>
+    <details class="card fddrop" id="fdxLow">
+      <summary>Low Stock</summary>
+      <div class="fdattin"><div class="fdgrid" id="fdgLow"></div><p class="pmeta" id="fdnLow"></p></div>
+    </details>
     <div class="card" id="fdReset" style="display:flex;flex-direction:column;gap:10px" hidden>
       <h2 style="margin:0">Reset (owner only)</h2>
       <button class="btn small danger" id="rstTxBtn" type="button">Reset All Transactions</button>
@@ -2058,6 +2086,45 @@ function renderAll(){ renderPads(); renderTop(); renderChat(); renderPending(); 
 
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
+
+function fdStats(id,pairs,note){
+  var g=$('#fdg'+id); g.textContent='';
+  pairs.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,String(c[1]))); g.append(d); });
+  $('#fdn'+id).textContent=note||'';
+}
+function fdExtra(sel){
+  var ns=sel==='all'?['1','2']:[sel], mon=selDate.slice(0,7), inN=function(x){ return ns.indexOf((x&&x.nid)||'1')>=0; }, mrs='₹';
+  var monName=new Date(mon+'-01T00:00:00').toLocaleString('en-IN',{month:'long',year:'numeric'});
+  /* customers */
+  var cs=[], tot=0, modes={};
+  ns.forEach(function(n){ csItems(n).forEach(function(it){ cs.push(it); tot+=Number(it[1].amt)||0; var m=(it[1].mode||'cash'); modes[m]=(modes[m]||0)+(Number(it[1].amt)||0); }); });
+  fdStats('Cs',[['Sales today',cs.length],['Total',mrs+fmtMoney(tot)]].concat(Object.keys(modes).map(function(m){ return [m.charAt(0).toUpperCase()+m.slice(1),mrs+fmtMoney(modes[m])]; })));
+  /* resources */
+  var rc={yes:0,no:0,none:0}; ns.forEach(function(n){ var c=resCounts(resShown(n)); rc.yes+=c.yes; rc.no+=c.no; rc.none+=c.none; });
+  fdStats('Res',[['Available',rc.yes],['Not available',rc.no],['Not checked',rc.none]]);
+  /* invoices (this month, not void) */
+  var inv=invData.i||{}, I={S:[0,0],P:[0,0]};
+  Object.keys(inv).forEach(function(id){ var x=inv[id]; if(!x||x.void||!inN(x)||(x.ty!=='S'&&x.ty!=='P')) return; if(String(x.d||x.day||'').slice(0,7)!==mon) return; I[x.ty][0]++; I[x.ty][1]+=invCalc(x.l,x.g,x.dt,x.dv,x.sh).total; });
+  fdStats('Inv',[['Sales invoices',I.S[0]],['Sales value',mrs+fmtMoney(I.S[1])],['Purchase invoices',I.P[0]],['Purchase value',mrs+fmtMoney(I.P[1])]],monName);
+  /* accounts (this month) */
+  if(isOwner){
+    var A={rc:0,py:0,in:0,ex:0}, ae=accData.e||{};
+    Object.keys(ae).forEach(function(id){ var x=ae[id]; if(!x||!inN(x)||!(x.k in A)) return; if(String(x.d||'').slice(0,7)!==mon) return; A[x.k]+=Number(x.amt)||0; });
+    var inc=A.rc+A.in, out=A.py+A.ex;
+    fdStats('Acc',[['Received',mrs+fmtMoney(A.rc)],['Paid',mrs+fmtMoney(A.py)],['Other income',mrs+fmtMoney(A.in)],['Expenses',mrs+fmtMoney(A.ex)],['Net',mrs+fmtMoney(inc-out)]],monName+' · Net = money in minus money out');
+    var dg=dueGroups(), nr=Object.keys(dg.G.S).length, np=Object.keys(dg.G.P).length;
+    fdStats('Due',[['To receive',mrs+fmtMoney(dg.tot.S)],['From',nr+(nr===1?' customer':' customers')],['To pay',mrs+fmtMoney(dg.tot.P)],['To',np+(np===1?' supplier':' suppliers')]]);
+  }
+  /* batches and losses */
+  var bt=Object.keys(batData.b||{}).map(function(id){ return batData.b[id]; }).filter(function(x){ return x&&inN(x); }),
+      act=bt.filter(function(x){ return x.st!=='done'; }), aq=0; act.forEach(function(x){ aq+=Number(x.qty)||0; });
+  var ls=Object.keys(batData.l||{}).map(function(id){ return batData.l[id]; }).filter(function(x){ return x&&inN(x)&&String(x.d||'').slice(0,7)===mon; }), lq=0; ls.forEach(function(x){ lq+=Number(x.qty)||0; });
+  fdStats('Bat',[['Active batches',act.length],['Plants in batches',fmtN(aq)],['Losses',ls.length],['Plants lost',fmtN(lq)]],'Losses for '+monName);
+  /* low stock */
+  var lw=lowItems().filter(function(x){ return ns.indexOf(x.nid)>=0; });
+  fdStats('Low',[['Items low',lw.length]],lw.slice(0,5).map(function(x){ return x.name+' ('+fmtN(x.bal)+'/'+fmtN(x.min)+')'; }).join(', ')+(lw.length>5?' and '+(lw.length-5)+' more':''));
+  $('#fdxAcc').hidden=!isOwner; $('#fdxDue').hidden=!isOwner;
+}
 function renderFull(){
   if(!isOwner) fdOpen=false;
   $('#fdBtn').hidden=!isOwner;
@@ -2065,6 +2132,8 @@ function renderFull(){
   document.body.style.overflow=(fdOpen||tab)?'hidden':'';
   if(!fdOpen) return;
   var sel=$('#fdNurs').value||'all', g=$('#fdGrid'), nl=$('#fdNew'), ml=$('#fdMod');
+  invSubscribe(); batSubscribe(); if(isOwner) accSubscribe();
+  if(day) fdExtra(sel);
   g.textContent=''; nl.textContent=''; ml.textContent='';
   $('#fdDate').textContent = day ? fmtLong(selDate)+' · '+(sel==='all'?'Both nurseries':NURS[sel]) : (day===undefined?'Loading…':'No report was saved for this date.');
   if(!day){ $('#fdTk').textContent=''; $('#fdAtt').textContent=''; $('#fdAttNote').textContent=''; $('#fdNewN').textContent=''; $('#fdModN').textContent=''; return; }
@@ -3109,7 +3178,7 @@ $('#fCs').addEventListener('submit', function(e){
 var invData={i:{}}, invSubbed=false, invType='S', invEls=new Map();
 function invSubscribe(){
   if(invSubbed||!db) return; invSubbed=true;
-  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(tab==='inv') renderInv(); if($('#dlgInv').open||$('#dlgTc').open) renderTc(); }, function(){});
+  db.doc('meta/invoices').onSnapshot(function(s){ invData=s.exists?(s.data()||{}):{}; invData.i=invData.i||{}; cache.meta.invoices=invData; cacheSave(); if(fdOpen) renderFull(); if(tab==='inv') renderInv(); if($('#dlgInv').open||$('#dlgTc').open) renderTc(); }, function(){});
 }
 function invSave(patch){
   var d=db.doc('meta/invoices');
@@ -3511,7 +3580,7 @@ $('#catAdd').addEventListener('click', async function(){
 $('#catNew').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#catAdd').click(); } });
 function accSubscribe(){
   if(accSubbed||!db||!isOwner) return; accSubbed=true;
-  db.doc('meta/accounts').onSnapshot(function(s){ accData=s.exists?(s.data()||{}):{}; accData.e=accData.e||{}; cache.meta.accounts=accData; cacheSave(); if(tab==='acc') renderAcc(); if($('#dlgCat').open) renderCats(); if(tab==='inv') renderInv(); }, function(){});
+  db.doc('meta/accounts').onSnapshot(function(s){ accData=s.exists?(s.data()||{}):{}; accData.e=accData.e||{}; cache.meta.accounts=accData; cacheSave(); if(fdOpen) renderFull(); if(tab==='acc') renderAcc(); if($('#dlgCat').open) renderCats(); if(tab==='inv') renderInv(); }, function(){});
 }
 function accSave(patch){
   var d=db.doc('meta/accounts');
@@ -5172,7 +5241,7 @@ $('#dueClose').addEventListener('click', function(){ $('#dlgDue').close(); });
 /* batches and losses */
 function batSubscribe(){
   if(batSubbed||!db) return; batSubbed=true;
-  db.doc('meta/batches').onSnapshot(function(s){ batData=s.exists?(s.data()||{}):{}; batData.b=batData.b||{}; batData.l=batData.l||{}; if($('#dlgBat').open) renderBat(); }, function(){ batSubbed=false; });
+  db.doc('meta/batches').onSnapshot(function(s){ batData=s.exists?(s.data()||{}):{}; batData.b=batData.b||{}; batData.l=batData.l||{}; if(fdOpen) renderFull(); if($('#dlgBat').open) renderBat(); }, function(){ batSubbed=false; });
 }
 function batSave(patch){
   var d=db.doc('meta/batches');
