@@ -335,10 +335,11 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tasgbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .tasgbox[hidden]{display:none}
 .hideasg .tasgbox{display:none}
-.pitem.tdrun{background:color-mix(in srgb,var(--accent) 22%,var(--bg)); border-color:var(--accent)}
-.pitem.tdend{background:color-mix(in srgb,var(--loss) 20%,var(--bg)); border-color:var(--loss)}
+.pitem.tdrun,.card.task.tkrun{background:color-mix(in srgb,var(--accent) 22%,var(--bg)); border-color:var(--accent)}
+.pitem.tdend,.card.task.tkend{background:color-mix(in srgb,var(--loss) 20%,var(--bg)); border-color:var(--loss)}
 .tdhead{display:flex; align-items:center; justify-content:space-between; gap:8px}
 .tdhead .pname{flex:1; min-width:0}
+.ttop .tdarr{flex:none; align-self:center; padding:2px 10px; min-height:0; height:auto; font-size:1rem; line-height:1.2}
 .tdhead .tdarr{flex:none; padding:2px 10px; min-height:0; font-size:1rem; line-height:1.2}
 .tdbd{display:flex; flex-direction:column; gap:8px}
 .tdbd[hidden]{display:none}
@@ -1587,12 +1588,18 @@ function makeTask(id){
   note.addEventListener('change', function(){ taskField(id,'note',note.value.trim()); });
   var meta=mk('div','tmeta');
   var asBox=mk('div','tasgbox'), labRow=mk('div','tassign tlab'); asBox.append(asgRow,labRow);
-  el.append(top,asBox); if(mvRow) el.append(mvRow); el.append(seg,reason,note,meta);
-  el._r={asBox:asBox,labRow:labRow,asgRow:asgRow,asgSel:asgSel,asgTxt:asgTxt,num:num_,title:title,edit:edit,mv:mv,mvRow:mvRow,mvLbl:mvLabelEl,done:done,nd:nd,reason:reason,note:note,meta:meta};
+  var arr=mk('button','btn tdarr','\u25BE'), bd=mk('div','tdbd'); arr.type='button'; arr.setAttribute('aria-label','Show or hide task details'); top.append(arr);
+  arr.addEventListener('click', function(){ tkOpen[id]=!tkOpen[id]; var tt=(day&&day.tasks&&day.tasks[id]); if(tt) updateTask(el,id,tt,+el._r.num.textContent||0); });
+  bd.append(asBox); if(mvRow) bd.append(mvRow); bd.append(seg,reason,note,meta); el.append(top,bd);
+  el._r={arr:arr,bd:bd,asBox:asBox,labRow:labRow,asgRow:asgRow,asgSel:asgSel,asgTxt:asgTxt,num:num_,title:title,edit:edit,mv:mv,mvRow:mvRow,mvLbl:mvLabelEl,done:done,nd:nd,reason:reason,note:note,meta:meta};
   return el;
 }
+var tkOpen={};
 function updateTask(el,id,t,n){
   var R=el._r, ed=editable(), st=t.status||'';
+  var ended=(st==='done')||(st==='notdone'&&!!t.reason), coll=ended&&!tkOpen[id];
+  el.classList.toggle('tkrun',st===''); el.classList.toggle('tkend',st!==''); R.bd.hidden=coll; R.arr.hidden=!ended;
+  R.arr.textContent=coll?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!coll);
   R.num.textContent=n; R.title.textContent=t.title;
   R.asgRow.hidden=!(teamList('sup').length||t.to);
   if(R.asgSel){ fillAssign(R.asgSel,t.to||''); R.asgSel.disabled=!ed; } else R.asgTxt.textContent=assigneeName(t.to);
