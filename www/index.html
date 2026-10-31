@@ -5052,6 +5052,7 @@ function renderLow(){
   });
   body.append(lw);
   if(isOwner){
+    var mwStart=body.children.length;
     var h=mk('b',null,'Set Minimum Quantity'); h.style.marginTop='10px'; body.append(h);
     var bk=mk('div','bcard'), bi=mkIn('number','Same minimum for all items'), br=mk('div','sline'), ba=mk('button','btn small primary','Apply To All Items'), bo=mk('button','btn small','Only Without Minimum'), bc=mk('button','btn small danger','Clear All');
     bi.min='1'; bi.step='1'; bi.inputMode='numeric'; bi.setAttribute('aria-label','Minimum quantity for all items'); ba.type='button'; bo.type='button'; bc.type='button';
@@ -5070,14 +5071,16 @@ function renderLow(){
     bk.append(bh, br, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
     ['1','2'].forEach(function(n){
       var rs=rowsOf(n); if(!rs.length) return;
-      body.append(mk('div','pmeta',NURS[n]));
+      var nb=mk('div','bcard'); nb.style.cssText='border:1px solid var(--line);border-radius:12px;padding:8px;gap:6px'; nb.append(mk('b',null,NURS[n]+' ('+rs.length+')')); body.append(nb);
       rs.forEach(function(it,i){
         var c=mk('div','bcard'), r=mk('div','brow'), inp=mkIn('number','Min'); c.style.background=RC_BG[i%2]; c.style.padding='4px 8px';
         inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.style.cssText='width:64px;flex:none;padding:4px 6px;min-height:0;height:30px;text-align:center'; inp.value=Number(minMap[it[0]])>0?minMap[it[0]]:''; inp.setAttribute('aria-label','Minimum quantity for '+it[1].name);
         inp.addEventListener('change', function(){ var v=Math.max(0,Math.round(Number(inp.value)||0)), pt={min:{}}; pt.min[it[0]]=v>0?v:null; saveSettings(pt).then(function(ok){ if(ok) toast('Minimum saved'); }); });
-        var ns=mk('span',null,it[1].name+' ('+fmtN(bal(it[1]))+')'); ns.title=it[1].name; ns.style.cssText='flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem'; r.style.cssText='display:flex;align-items:center;gap:8px'; r.append(ns, inp); c.append(r); body.append(c);
+        var ns=mk('span',null,it[1].name+' ('+fmtN(bal(it[1]))+')'); ns.title=it[1].name; ns.style.cssText='flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem'; r.style.cssText='display:flex;align-items:center;gap:8px'; r.append(ns, inp); c.append(r); nb.append(c);
       });
     });
+    var mw=mk('div','bcard'); mw.style.cssText='border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px';
+    Array.prototype.slice.call(body.children,mwStart).forEach(function(n){ mw.append(n); }); body.append(mw);
   }
 }
 function openLow(){ renderLow(); var d=$('#dlgLow'); if(!d.open) d.showModal(); }
