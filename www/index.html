@@ -5047,7 +5047,7 @@ function renderLow(){
   });
   if(isOwner){
     var h=mk('b',null,'Set Minimum Quantity'); h.style.marginTop='10px'; body.append(h);
-    var bk=mk('div','bcard'), bi=mkIn('number','Same minimum for all items'), br=mk('div','sline'), ba=mk('button','btn small primary','Apply To All Items'), bo=mk('button','btn small','Only Items Without A Minimum'), bc=mk('button','btn small danger','Clear All');
+    var bk=mk('div','bcard'), bi=mkIn('number','Same minimum for all items'), br=mk('div','sline'), ba=mk('button','btn small primary','Apply To All Items'), bo=mk('button','btn small','Only Without Minimum'), bc=mk('button','btn small danger','Clear All');
     bi.min='1'; bi.step='1'; bi.inputMode='numeric'; bi.setAttribute('aria-label','Minimum quantity for all items'); ba.type='button'; bo.type='button'; bc.type='button';
     var setAll=function(v,onlyEmpty){
       var pt={min:{}}, n=0;
@@ -5059,7 +5059,10 @@ function renderLow(){
     ba.addEventListener('click', function(){ var v=readV(); if(v) arm(ba,'minAll','Apply To All Items',function(){ setAll(v,false); }); });
     bo.addEventListener('click', function(){ var v=readV(); if(v) setAll(v,true); });
     bc.addEventListener('click', function(){ arm(bc,'minClr','Clear All',function(){ setAll(0,false); }); });
-    br.append(ba,bo,bc); bk.append(mk('b',null,'Set For All Items At Once'), bi, br, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
+    var bh=mk('div','brow'); bh.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; bi.placeholder='Qty'; bi.style.cssText='width:100px;flex:none';
+    br.style.flexWrap='nowrap'; ba.style.flex='1 1 0'; bo.style.flex='1 1 0'; bh.append(mk('b',null,'Set For All'), bi); br.append(ba,bo);
+    var br2=mk('div','sline'); br2.append(bc);
+    bk.append(bh, br, br2, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
     ['1','2'].forEach(function(n){
       var rs=rowsOf(n); if(!rs.length) return;
       body.append(mk('div','pmeta',NURS[n]));
