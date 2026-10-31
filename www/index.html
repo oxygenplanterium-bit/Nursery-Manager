@@ -2892,6 +2892,7 @@ function renderRes(){
     var id=it[0]; seen.add(id);
     var el=resEls.get(id); if(!el){ el=makeRes(id); resEls.set(id,el); }
     updateRes(el,id,it[1],ed);
+    el.style.background=pos%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))';
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
@@ -2978,6 +2979,7 @@ function renderCs(){
     var id=it[0]; seen.add(id);
     var el=csEls.get(id); if(!el){ el=makeCs(id); csEls.set(id,el); }
     updateCs(el,it[1],ed);
+    el.style.background=pos%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))';
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
@@ -3078,6 +3080,7 @@ function renderInv(){
     var id=it[0]; seen.add(id);
     var el=invEls.get(id); if(!el){ el=makeInv(id); invEls.set(id,el); }
     updateInv(el,it[1]);
+    el.style.background=pos%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))';
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
