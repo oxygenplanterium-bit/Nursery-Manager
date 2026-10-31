@@ -347,8 +347,11 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .pickbtn::after{content:'\25BE'; float:right}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh}
 #pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0}
+.pickopt:nth-child(odd){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
+.pickopt:nth-child(even){background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+select:not([multiple]){pointer-events:none}
 .pickopt{display:block; width:100%; text-align:left; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:inherit; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.pickopt[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.pickopt[aria-pressed="true"],.pickopt[aria-pressed="true"]:nth-child(n){background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .tdasg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:4px 0}
 #tdList.hideasg .tdasg{display:none}
 </style>
@@ -3534,6 +3537,16 @@ function openPick(sel,title,done){
   if(!box.children.length) box.append(mk('p','pmeta','Nothing to choose from yet.'));
   var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
+document.addEventListener('click', function(e){
+  if(e.target&&e.target.closest&&e.target.closest('#dlgPick')) return;
+  var all=document.querySelectorAll('select'), sel=null, i, r;
+  if(e.target&&e.target.tagName==='SELECT') sel=e.target;
+  for(i=0;i<all.length&&!sel;i++){ r=all[i].getBoundingClientRect(); if(r.width>0&&r.height>0&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom&&all[i].parentElement&&all[i].parentElement.contains(e.target)) sel=all[i]; }
+  if(!sel||sel.disabled||sel.multiple||!sel.options.length) return;
+  var lb=sel.closest('label'), t=sel.getAttribute('aria-label')||'';
+  if(!t&&lb){ t=Array.prototype.filter.call(lb.childNodes,function(n){ return n!==sel&&n.nodeType===1&&n.tagName!=='SELECT'||n.nodeType===3; }).map(function(n){ return n.textContent; }).join(' ').trim(); }
+  e.preventDefault(); e.stopPropagation(); openPick(sel,t||'Choose');
+}, true);
 var pickBtn=mk('button','pickbtn',''); pickBtn.type='button'; pickBtn.setAttribute('aria-haspopup','dialog'); $('#accCat').style.display='none'; $('#accCatL').append(pickBtn);
 function pickSync(){ var c=$('#accCat'), o=c.options[c.selectedIndex]; pickBtn.textContent=o?o.textContent:'Select a category'; }
 pickBtn.addEventListener('click', function(){
