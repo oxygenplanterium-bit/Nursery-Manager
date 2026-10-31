@@ -1367,7 +1367,7 @@ function renderTop(){
   mo.classList.toggle('cur', isOwner); ms.classList.toggle('cur', !isOwner);
   mo.classList.toggle('sw', !isOwner); ms.classList.toggle('sw', isOwner);
   mo.textContent='Owner Mode'; ms.textContent='Supervisor Mode';
-  $('#tabDue').hidden=!isOwner; lowUpdate(); dockUpdate();
+  $('#tabDue').hidden=!isOwner; $('#homeSup').hidden=isOwner; lowUpdate(); dockUpdate();
   var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
   ab.hidden=!(isOwner && pn>0);
   if(!ab.hidden) $('#alertText').textContent=''+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
