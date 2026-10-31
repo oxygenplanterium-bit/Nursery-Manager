@@ -261,8 +261,8 @@ span.note{cursor:default}
 
 dialog{border:1px solid var(--line); border-radius:16px; background:var(--card); color:var(--ink); padding:0; width:min(460px, calc(100vw - 32px))}
 dialog::backdrop{background:rgba(3,9,6,.6)}
-dialog:not(#dlgInv):not(.pickdlg){max-height:92vh; max-height:calc(100dvh - 24px); overflow:hidden; margin:auto}
-dialog:not(#dlgInv):not(.pickdlg) form,dialog:not(#dlgInv):not(.pickdlg) .dbody{max-height:92vh; max-height:calc(100dvh - 24px); overflow-y:auto; overflow-x:hidden; box-sizing:border-box; -webkit-overflow-scrolling:touch}
+dialog:not(#dlgInv):not(.pickdlg){top:max(env(safe-area-inset-top,0px),24px); bottom:max(env(safe-area-inset-bottom,0px),12px); max-height:92vh; max-height:calc(100dvh - max(env(safe-area-inset-top,0px),24px) - max(env(safe-area-inset-bottom,0px),12px)); overflow:hidden; margin:auto}
+dialog:not(#dlgInv):not(.pickdlg) form,dialog:not(#dlgInv):not(.pickdlg) .dbody{max-height:inherit; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; -webkit-overflow-scrolling:touch}
 dialog:not(#dlgInv):not(.pickdlg) .actions{position:sticky; bottom:-18px; background:var(--card); padding:10px 0 6px; margin-top:4px; z-index:2}
 dialog form,dialog .dbody{padding:18px; display:flex; flex-direction:column; gap:12px}
 dialog label{display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.92rem}
