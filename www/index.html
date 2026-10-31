@@ -52,8 +52,9 @@ textarea{resize:vertical; min-height:76px}
 .btn.danger{color:var(--loss); border-color:var(--loss)}
 .btn.small{min-height:38px; padding:6px 12px; font-size:.9rem}
 .addwide{flex:1 1 100%; order:-1; width:100%; min-height:54px; font-size:1.05rem; border-radius:12px}
-.modes{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.modes{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
 .modes .btn.cur{cursor:default}
+.modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
 .modes .btn{min-height:54px; font-size:.95rem; border-radius:12px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .alertcard{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--warn-soft); border-color:var(--warn)}
