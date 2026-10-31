@@ -490,6 +490,11 @@ select:not([multiple]){pointer-events:none}
       <div id="padDone"></div>
       <div id="padNext"></div>
     </section>
+    <section class="card team" id="tdFinBox" hidden>
+      <h2>Completed from Tasks Start</h2>
+      <p class="pmeta">Tasks that were started and marked done move here with their time, assigned people, photos and report.</p>
+      <div class="tl" id="tdFinList"></div>
+    </section>
     </div>
     <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
       <section class="card team" id="tdBox">
@@ -1847,8 +1852,7 @@ function renderTd(){
   var sub=taskSub;
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
   $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
-  if(sub!=='done') return;
-  var ed=editable(), items=tdItems(), list=$('#tdList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
+  var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
   $('#fTd').hidden=!ed;
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
@@ -1856,10 +1860,19 @@ function renderTd(){
   pk.value=cur;
   var asb=$('#tdAsg'), asKey=nursery+'|'+labourNames(nursery).join(','); if(asb._k!==asKey){ asb._k=asKey; tdAsgSel=[]; buildAsg(asb,labourNames(nursery),[],function(v){ tdAsgSel=v; tdStartState(); }); }
   tdStartState();
-  items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } else run++; });
-  $('#tdBar').hidden=!items.length;
+  allItems.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } else run++; });
+  $('#tdBar').hidden=!allItems.length;
   $('#tdSum').textContent=run+' running · '+done+' done · Total time '+fmtDur(tot);
-  $('#tdEmpty').hidden=items.length>0;
+  $('#tdEmpty').hidden=items.length>0; $('#tdEmpty').textContent=fin.length?'No task is in progress. Completed tasks are in the Tasks Done tab.':'No tasks recorded on this day.';
+  $('#tdFinBox').hidden=!fin.length;
+  var fpos=0;
+  fin.forEach(function(it){
+    var id=it[0]; seen.add(id);
+    var el=tdEls.get(id); if(!el){ el=makeTd(id); el._id=id; tdEls.set(id,el); }
+    el._n=fpos+1; updateTd(el,it[1],ed);
+    if(flist.children[fpos]!==el) flist.insertBefore(el, flist.children[fpos]||null);
+    fpos++;
+  });
   items.forEach(function(it){
     var id=it[0]; seen.add(id);
     var el=tdEls.get(id); if(!el){ el=makeTd(id); el._id=id; tdEls.set(id,el); }
@@ -1869,7 +1882,7 @@ function renderTd(){
   });
   tdEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); tdEls.delete(id); } });
 }
-setInterval(function(){ if(tab==='tasks'&&taskSub==='done'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
+setInterval(function(){ if(tab==='tasks'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
 $('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
 $('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
 $('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; tdStartState(); });
