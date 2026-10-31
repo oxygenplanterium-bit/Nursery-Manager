@@ -5047,6 +5047,19 @@ function renderLow(){
   });
   if(isOwner){
     var h=mk('b',null,'Set Minimum Quantity'); h.style.marginTop='10px'; body.append(h);
+    var bk=mk('div','bcard'), bi=mkIn('number','Same minimum for all items'), br=mk('div','sline'), ba=mk('button','btn small primary','Apply To All Items'), bo=mk('button','btn small','Only Items Without A Minimum'), bc=mk('button','btn small danger','Clear All');
+    bi.min='1'; bi.step='1'; bi.inputMode='numeric'; bi.setAttribute('aria-label','Minimum quantity for all items'); ba.type='button'; bo.type='button'; bc.type='button';
+    var setAll=function(v,onlyEmpty){
+      var pt={min:{}}, n=0;
+      ['1','2'].forEach(function(nn){ rowsOf(nn).forEach(function(it){ if(onlyEmpty&&Number(minMap[it[0]])>0) return; pt.min[it[0]]=v>0?v:null; n++; }); });
+      if(!n){ toast('No items to update.'); return; }
+      saveSettings(pt).then(function(ok){ if(ok) toast(v>0?'Minimum '+v+' set for '+n+(n===1?' item':' items'):'Minimum cleared for '+n+(n===1?' item':' items')); });
+    };
+    var readV=function(){ var v=Math.round(Number(bi.value)||0); if(!(v>0)){ toast('Enter a minimum quantity first.'); return 0; } return v; };
+    ba.addEventListener('click', function(){ var v=readV(); if(v) arm(ba,'minAll','Apply To All Items',function(){ setAll(v,false); }); });
+    bo.addEventListener('click', function(){ var v=readV(); if(v) setAll(v,true); });
+    bc.addEventListener('click', function(){ arm(bc,'minClr','Clear All',function(){ setAll(0,false); }); });
+    br.append(ba,bo,bc); bk.append(mk('b',null,'Set For All Items At Once'), bi, br, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
     ['1','2'].forEach(function(n){
       var rs=rowsOf(n); if(!rs.length) return;
       body.append(mk('div','pmeta',NURS[n]));
