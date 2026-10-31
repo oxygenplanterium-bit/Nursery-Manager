@@ -325,6 +325,12 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     <button class="btn small primary" id="alertBtn">Review</button>
   </section>
 
+  <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
+    <b id="homeChatHead">New messages</b>
+    <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
+    <button class="btn small primary" type="button" id="homeChatBtn">Open chat</button>
+  </section>
+
   <section class="card fields">
     <div class="two">
       <label class="f"><span>Date (automatic)</span><input id="todayField" readonly></label>
@@ -3539,6 +3545,16 @@ function chatSubscribe(){
 function chatBadge(){
   var n=0; chatIds().forEach(function(id){ n+=chatUnread(id); });
   var b=$('#tabChat'); if(b) b.textContent='Chat'+(n?' '+n:'');
+  var hc=$('#homeChat'); if(!hc) return;
+  var me=chatMe(), items=[], convs={};
+  chatIds().forEach(function(id){ var seen=chatSeen[id]||0; chatMsgs(chatData[id]).forEach(function(it){ if(it[1].s!==me&&it[1].at>seen){ items.push({cid:id,m:it[1]}); convs[id]=1; } }); });
+  items.sort(function(a,b){ return b.m.at-a.m.at; });
+  hc.hidden=!items.length; if(!items.length) return;
+  $('#homeChatHead').textContent='New messages ('+items.length+')';
+  var l=$('#homeChatList'); l.textContent='';
+  items.slice(0,4).forEach(function(q){ var d=mk('div','pmeta',((chatData[q.cid].n||(chatData[q.cid].p||[]).length>1)?chatTitle(q.cid)+' · ':'')+(q.m.n||'')+': '+(q.m.t?q.m.t.slice(0,80):'Photo')+' · '+fmtTime(q.m.at)); d.style.cssText='text-transform:none'; l.append(d); });
+  if(items.length>4) l.append(mk('div','pmeta','and '+(items.length-4)+' more'));
+  var ks=Object.keys(convs); $('#homeChatBtn')._cid=ks.length===1?ks[0]:'';
 }
 /* notifications */
 function chatNotifOn(){ try{ return localStorage.getItem('nurseryChatNotif')==='1'; }catch(e){ return false; } }
@@ -3582,6 +3598,7 @@ async function chatNotify(cid,c,m){
     }
   }catch(e){}
 }
+$('#homeChatBtn').addEventListener('click', function(){ tab='chat'; chatOpen=this._cid||''; renderAll(); });
 $('#chatNotifBtn').addEventListener('click', function(){ if(chatNotifOn()) chatNotifDisable(); else chatNotifEnable(); });
 /* views */
 function renderChat(){
