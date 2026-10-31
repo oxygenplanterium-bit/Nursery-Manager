@@ -434,7 +434,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
-          <button class="btn primary" type="submit">Start task</button>
+          <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
         </form>
         <div class="bar" id="tdBar" hidden><span class="tsum" id="tdSum"></span></div>
         <p class="pmeta" id="tdEmpty">No tasks recorded on this day.</p>
@@ -1624,6 +1624,11 @@ function updateTd(el,x,ed){
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
 var tdAsgSel=[];
+function tdStartState(){
+  var b=$('#tdStart'); if(!b) return;
+  var need=labourNames(nursery).length>0;
+  b.disabled=!(cleanName($('#tdName').value)&&(!need||tdAsgSel.length>0));
+}
 function renderTd(){
   var sub=taskSub;
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
@@ -1635,7 +1640,8 @@ function renderTd(){
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
   pk.value=cur;
-  var asb=$('#tdAsg'), asKey=nursery+'|'+labourNames(nursery).join(','); if(asb._k!==asKey){ asb._k=asKey; tdAsgSel=[]; buildAsg(asb,labourNames(nursery),[],function(v){ tdAsgSel=v; }); }
+  var asb=$('#tdAsg'), asKey=nursery+'|'+labourNames(nursery).join(','); if(asb._k!==asKey){ asb._k=asKey; tdAsgSel=[]; buildAsg(asb,labourNames(nursery),[],function(v){ tdAsgSel=v; tdStartState(); }); }
+  tdStartState();
   items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } else run++; });
   $('#tdBar').hidden=!items.length;
   $('#tdSum').textContent=run+' running · '+done+' done · Total time '+fmtDur(tot);
@@ -1652,17 +1658,18 @@ function renderTd(){
 setInterval(function(){ if(tab==='tasks'&&taskSub==='done'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
 $('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
 $('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
-$('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; });
+$('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; tdStartState(); });
+$('#tdName').addEventListener('input', tdStartState);
 $('#fTd').addEventListener('submit', async function(e){
   e.preventDefault();
-  if(!editable()) return;
+  if(!editable()||$('#tdStart').disabled) return;
   var err=$('#tdErr'), pick=$('#tdPick').value, name=cleanName($('#tdName').value);
   if(!name){ err.textContent='Enter the task name or choose an allotted task.'; return; }
   if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice()}; p.td[id].ast=p.td[id].st;
-  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); toast('Task started'); }
+  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc){
   var y=secStart(doc,'7. Tasks done and time taken',false);
