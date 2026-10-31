@@ -461,7 +461,7 @@ select:not([multiple]){pointer-events:none}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Done</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Allotted</button></div>
+    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Start</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Done</button></div>
     <div id="taskAllot" style="display:flex;flex-direction:column;gap:14px">
     <form class="card addtask" id="fTask" hidden>
       <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
@@ -493,7 +493,7 @@ select:not([multiple]){pointer-events:none}
     </div>
     <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
       <section class="card team" id="tdBox">
-        <h2>Tasks done</h2>
+        <h2>Tasks start</h2>
         <p class="pmeta">Start a task when the work begins and mark it done when it ends. The time taken is recorded automatically. Write the report of the task in the notes.</p>
         <form class="team" id="fTd" hidden novalidate>
           <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
@@ -1887,7 +1887,7 @@ $('#fTd').addEventListener('submit', async function(e){
   if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc){
-  var y=secStart(doc,'7. Tasks done and time taken',false);
+  var y=secStart(doc,'7. Tasks started and time taken',false);
   ['1','2'].forEach(function(n){
     var items=tdItems(n).slice().reverse(), tot=0, done=0;
     items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } });
