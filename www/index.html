@@ -301,6 +301,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .delx.on{background:#fdecea}
 .delx .delt{text-transform:none;font-weight:600}
 #sugBox,#padTasks{display:none !important}
+#chatIn{text-transform:none}
 .asgwrap{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .asghead{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .asghead b{font-weight:600;font-size:.9rem}
@@ -344,6 +345,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     <button class="tab" id="salBtn" role="tab" aria-selected="false" hidden>Salary</button>
     <button class="tab" id="tabAcc" type="button" role="tab" aria-selected="false" hidden>Accounts</button>
     <button class="tab" id="tabInv" type="button" role="tab" aria-selected="false">Invoices</button>
+    <button class="tab" id="tabChat" type="button" role="tab" aria-selected="false" hidden>Chat</button>
     <button class="tab" id="fdBtn" type="button">Dashboard</button>
   </nav>
 
@@ -553,6 +555,31 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <p class="pmeta" id="accEmpty">No entries this month.</p>
       <div class="tl" id="accList"></div>
     </section>
+  </section>
+
+  <section class="pane" id="paneChat" role="tabpanel" aria-labelledby="tabChat" hidden>
+    <div id="chatListView">
+      <section class="card team">
+        <h2>Chats</h2>
+        <p class="pmeta" id="chatNote"></p>
+        <div class="two" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+          <button class="btn primary" type="button" id="chatNew" hidden>New chat</button>
+          <button class="btn" type="button" id="chatNotifBtn">Turn on notifications</button>
+        </div>
+        <p class="pmeta" id="chatEmpty">No chats yet.</p>
+        <div class="tl" id="chatList"></div>
+      </section>
+    </div>
+    <div id="chatConvView" hidden>
+      <section class="card team">
+        <div class="sline" style="justify-content:space-between;align-items:center"><button class="btn small" type="button" id="chatBack">Back</button><b id="chatTitle" style="text-align:right"></b></div>
+        <p class="pmeta" id="chatWho"></p>
+        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;padding:4px 2px"></div>
+        <img id="chatPrev" alt="Photo to send" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)">
+        <textarea id="chatIn" rows="2" maxlength="1000" placeholder="Type a message" aria-label="Message"></textarea>
+        <div class="sline"><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="chatPh" accept="image/*" capture="environment" style="display:none"></label><button class="btn small" type="button" id="chatPhX" hidden>Remove photo</button><button class="btn primary" type="button" id="chatSend" style="margin-left:auto" disabled>Send</button></div>
+      </section>
+    </div>
   </section>
 
   <section class="pane" id="paneRes" role="tabpanel" aria-labelledby="tabRes" hidden>
@@ -814,6 +841,17 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     <div id="phBody" style="display:flex;flex-direction:column;gap:12px"></div>
     <div class="actions"><button type="button" class="btn primary" id="phClose">Close</button></div>
   </div>
+</dialog>
+
+<dialog id="dlgChatNew">
+  <form id="fChatNew" novalidate>
+    <h2>New chat</h2>
+    <p class="pmeta">Choose one supervisor for an individual chat, or several for a shared chat. Only supervisors who have chat access (set in the Team tab) are listed.</p>
+    <label>Chat name (optional)<input type="text" id="chatNm" maxlength="40" autocomplete="off"></label>
+    <div id="chatPick" style="display:flex;flex-direction:column;gap:8px"></div>
+    <p id="chatNewErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="chatNewCancel">Cancel</button><button type="submit" class="btn primary">Create chat</button></div>
+  </form>
 </dialog>
 
 <dialog id="dlgTc">
@@ -1178,15 +1216,16 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
+  $('#tabChat').hidden=!chatAllowed(); chatSubscribe(); if(tab==='chat'&&!chatAllowed()) tab='';
   $('#tabTeam').hidden=!isOwner; $('#invRstBtn').hidden=!isOwner; $('#accRstBtn').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
   if(tab==='acc' && !isOwner) tab='';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
   $('.acts').hidden=tab!=='';
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
-  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts'};
+  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
   var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs')); }
   document.body.style.overflow=(tab||fdOpen)?'hidden':'';
   if(tab && !winPushed){ winPushed=true; try{ history.pushState({win:1},''); }catch(e){} }
@@ -1805,7 +1844,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderInv(); renderAcc(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
+function renderAll(){ renderPads(); renderTop(); renderChat(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderInv(); renderAcc(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
 
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
@@ -2504,9 +2543,11 @@ function makeTeam(kind,id){
     nsel.style.cssText='flex:1 1 140px; width:auto; padding:8px 6px';
     nsel.innerHTML='<option value="1">'+NURS['1']+'</option><option value="2">'+NURS['2']+'</option>';
     nsel.addEventListener('change', function(){ var p={team:{}}; p.team[kind]={}; p.team[kind][id]={nid:nsel.value}; saveSettings(p); });
-    el.append(inp,rin,nsel,btn);
+    var cb=null;
+    if(kind==='sup'){ cb=mk('button','btn small','Add chat'); cb.type='button'; cb.addEventListener('click', function(){ var on=!!(team.sup[id]&&team.sup[id].chat), p={team:{sup:{}}}; p.team.sup[id]={chat:on?null:true}; saveSettings(p); }); }
+    el.append(inp,rin,nsel); if(cb) el.append(cb); el.append(btn);
   }
-  el._r={inp:inp,nsel:nsel,rin:rin}; el._kind=kind;
+  el._r={inp:inp,nsel:nsel,rin:rin,cb:cb}; el._kind=kind;
   return el;
 }
 function renderTeam(){
@@ -2523,6 +2564,7 @@ function renderTeam(){
       if(document.activeElement!==el._r.inp) el._r.inp.value=it[1].n;
       if(document.activeElement!==el._r.rin) el._r.rin.value=rateOf(it[0])||'';
       if(el._r.nsel && document.activeElement!==el._r.nsel) el._r.nsel.value=it[1].nid||'1';
+      if(el._r.cb) el._r.cb.textContent=it[1].chat?'Remove chat':'Add chat';
       if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
       pos++;
     });
@@ -3454,6 +3496,188 @@ $('#accPdf').addEventListener('click', async function(){
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 });
 
+/* ---------- chat ---------- */
+var VAPID_PUB='BHjJf0WCJHthEozCTRF9TbPgMEGq-JdcXKtEzKwHHJI7HybJ3HT8JJ6CQkIaYLs-ulS7EDZ8NRbe3kScUdx8QM0';
+var chatData={}, chatSubbed=false, chatOpen='', chatSeen={}, chatKnown=null, chatPhCache={}, chatPhoto='', chatNotifReg=null;
+try{ chatSeen=JSON.parse(localStorage.getItem('nurseryChatSeen')||'{}')||{}; }catch(e){}
+function chatMe(){ return isOwner?'owner':(supId||''); }
+function chatMyName(){ return isOwner?'Owner':(supName||'Supervisor'); }
+function chatAllowed(){ if(isOwner) return true; var s=supId&&team&&team.sup&&team.sup[supId]; return !!(s&&!s.x&&s.chat); }
+function chatMsgs(c){ var o=(c&&c.m)||{}; return Object.keys(o).filter(function(k){ return o[k]&&o[k].at; }).map(function(k){ return [k,o[k]]; }).sort(function(a,b){ return a[1].at-b[1].at; }); }
+function chatVisible(c){ return isOwner || (c.p||[]).indexOf(supId)>=0; }
+function chatIds(){
+  return Object.keys(chatData).filter(function(id){ return chatVisible(chatData[id]); }).sort(function(a,b){
+    var ma=chatMsgs(chatData[a]), mb=chatMsgs(chatData[b]); var ta=ma.length?ma[ma.length-1][1].at:(chatData[a].at||0), tb=mb.length?mb[mb.length-1][1].at:(chatData[b].at||0); return tb-ta; });
+}
+function chatUnread(id){ var me=chatMe(), seen=chatSeen[id]||0; return chatMsgs(chatData[id]).filter(function(it){ return it[1].s!==me && it[1].at>seen; }).length; }
+function chatMarkSeen(id){ var m=chatMsgs(chatData[id]); if(!m.length) return; var t=m[m.length-1][1].at; if((chatSeen[id]||0)<t){ chatSeen[id]=t; try{ localStorage.setItem('nurseryChatSeen',JSON.stringify(chatSeen)); }catch(e){} } }
+function chatTitle(id){
+  var c=chatData[id]||{}; if(c.n) return c.n;
+  var names=(c.p||[]).map(function(s){ return team.sup[s]&&!team.sup[s].x?team.sup[s].n:'Supervisor'; });
+  return isOwner ? names.join(', ') : ((c.p||[]).length>1?'Shared chat':'Owner');
+}
+function chatSubscribe(){
+  if(chatSubbed||!db||!chatAllowed()) return; chatSubbed=true;
+  var apply=function(list){
+    var nd={}; list.forEach(function(it){ nd[it.path.slice(5)]=it.data||{}; });
+    var first=chatKnown===null; if(first) chatKnown={};
+    Object.keys(nd).forEach(function(cid){
+      if(!chatVisible(nd[cid])) return;
+      chatMsgs(nd[cid]).forEach(function(it){
+        if(chatKnown[it[0]]) return; chatKnown[it[0]]=1;
+        if(!first && it[1].s!==chatMe()) chatNotify(cid,nd[cid],it[1]);
+      });
+    });
+    chatData=nd;
+    chatBadge();
+    if(tab==='chat') renderChat();
+  };
+  if(db.watch) db.watch('chat/',apply);
+  else{ var run=function(){ db.list('chat/').then(apply,function(){}); }; run(); setInterval(run,4000); }
+  chatPushSync();
+}
+function chatBadge(){
+  var n=0; chatIds().forEach(function(id){ n+=chatUnread(id); });
+  var b=$('#tabChat'); if(b) b.textContent='Chat'+(n?' '+n:'');
+}
+/* notifications */
+function chatNotifOn(){ try{ return localStorage.getItem('nurseryChatNotif')==='1'; }catch(e){ return false; } }
+function b64uBytes(s){ var p='='.repeat((4-s.length%4)%4), b=(s+p).replace(/-/g,'+').replace(/_/g,'/'), r=atob(b), o=new Uint8Array(r.length), i; for(i=0;i<r.length;i++) o[i]=r.charCodeAt(i); return o; }
+function hashStr(s){ var h=5381, i; for(i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; return h.toString(36); }
+async function chatPushSync(){
+  try{
+    if(!chatNotifOn()||!('serviceWorker' in navigator)||!('PushManager' in window)||!window.Notification||Notification.permission!=='granted'||location.protocol!=='https:'||!db) return;
+    var reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64uBytes(VAPID_PUB)});
+    var j=sub.toJSON(); await db.doc('push/'+hashStr(j.endpoint)).set({sub:j, who:chatMe(), at:Date.now()});
+  }catch(e){}
+}
+async function chatNotifEnable(){
+  var ok=false, nat=null;
+  try{ nat=await window.claude.use('notify'); }catch(e){}
+  if(nat&&nat.native){ try{ ok=await nat.enable(); }catch(e){} }
+  else if(window.Notification){ try{ ok=(await Notification.requestPermission())==='granted'; }catch(e){} }
+  if(!ok){ toast('Notifications are blocked. Allow them in your phone settings for this app.'); return; }
+  try{ localStorage.setItem('nurseryChatNotif','1'); }catch(e){}
+  await chatPushSync(); chatNotifBtn(); toast('Notifications turned on');
+}
+async function chatNotifDisable(){
+  try{ localStorage.setItem('nurseryChatNotif','0'); }catch(e){}
+  try{ if('serviceWorker' in navigator){ var reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription(); if(sub){ var j=sub.toJSON(); await sub.unsubscribe(); if(db) await db.doc('push/'+hashStr(j.endpoint)).delete().catch(function(){}); } } }catch(e){}
+  chatNotifBtn(); toast('Notifications turned off');
+}
+function chatNotifBtn(){ var b=$('#chatNotifBtn'); if(b) b.textContent=chatNotifOn()?'Turn off notifications':'Turn on notifications'; }
+async function chatNotify(cid,c,m){
+  if(!chatNotifOn()) return;
+  if(!document.hidden && tab==='chat' && chatOpen===cid) return;
+  var title=(c.n?c.n+' · ':'')+(m.n||'Message'), body=m.t?m.t:'Sent a photo';
+  if(!document.hidden){ toast(title+': '+body.slice(0,60)); return; }
+  try{
+    var nat=null; try{ nat=await window.claude.use('notify'); }catch(e){}
+    if(nat&&nat.native){ await nat.show(title,body); return; }
+    if(window.Notification&&Notification.permission==='granted'){
+      var reg=('serviceWorker' in navigator)?await navigator.serviceWorker.getRegistration():null;
+      if(reg&&reg.showNotification) reg.showNotification(title,{body:body,tag:'chat-'+cid,icon:'icon-192.png',vibrate:[200,100,200],data:{url:'./'}});
+      else new Notification(title,{body:body,tag:'chat-'+cid});
+    }
+  }catch(e){}
+}
+$('#chatNotifBtn').addEventListener('click', function(){ if(chatNotifOn()) chatNotifDisable(); else chatNotifEnable(); });
+/* views */
+function renderChat(){
+  if(tab!=='chat') return;
+  chatNotifBtn();
+  var ids=chatIds(), inConv=chatOpen&&chatData[chatOpen]&&chatVisible(chatData[chatOpen]);
+  if(chatOpen&&!inConv) chatOpen='';
+  $('#chatListView').hidden=!!chatOpen; $('#chatConvView').hidden=!chatOpen;
+  $('#chatNew').hidden=!isOwner;
+  if(!chatOpen){
+    $('#chatNote').textContent=isOwner?'Start a chat with one supervisor, or with several in a shared chat. Give a supervisor chat access in the Team tab first.':'Messages from the owner appear here.';
+    $('#chatEmpty').hidden=ids.length>0; var list=$('#chatList'); list.textContent='';
+    ids.forEach(function(id){
+      var c=chatData[id], ms=chatMsgs(c), last=ms.length?ms[ms.length-1][1]:null, un=chatUnread(id);
+      var el=mk('div','pitem'), t=mk('div','pname',chatTitle(id)+(un?'  ('+un+' new)':'')), m=mk('div','pmeta',((c.p||[]).length>1?'Shared chat':'Individual chat')+' · '+(last?(last.n||'')+': '+(last.t||'Photo')+' · '+fmtTime(last.at):'No messages yet')), row=mk('div','sline');
+      var op=mk('button','btn small primary','Open'); op.type='button'; op.addEventListener('click', function(){ chatOpen=id; chatPhoto=''; renderChat(); });
+      row.append(op);
+      if(isOwner){ var dl=mk('button','btn small danger','Delete chat'); dl.type='button'; dl.addEventListener('click', function(){ arm(dl,'chd'+id,'Delete chat', async function(){ ms.forEach(function(q){ if(q[1].ph) db.doc('chatph/'+q[0]).delete().catch(function(){}); }); try{ await db.doc('chat/'+id).delete(); delete chatData[id]; renderChat(); chatBadge(); }catch(e){ toast('The chat could not be deleted.'); } }); }); row.append(dl); }
+      el.append(t,m,row); list.append(el);
+    });
+    return;
+  }
+  var c=chatData[chatOpen];
+  $('#chatTitle').textContent=chatTitle(chatOpen);
+  $('#chatWho').textContent=(c.p||[]).length>1?('Shared chat: Owner, '+(c.p||[]).map(function(s){ return team.sup[s]&&!team.sup[s].x?team.sup[s].n:'Supervisor'; }).join(', ')):'Individual chat with the owner';
+  var box=$('#chatMsgs'), near=box.scrollHeight-box.scrollTop-box.clientHeight<80||!box.children.length; box.textContent='';
+  var me=chatMe(), ms=chatMsgs(c);
+  if(!ms.length) box.append(mk('p','pmeta','No messages yet. Say hello.'));
+  ms.forEach(function(it){
+    var id=it[0], m=it[1], mine=m.s===me, b=mk('div');
+    b.style.cssText='max-width:85%;padding:8px 10px;border-radius:12px;border:1px solid var(--line);align-self:'+(mine?'flex-end':'flex-start')+';background:'+(mine?'#dcefe1':'#fff')+';color:#14201a;text-transform:none';
+    b.append(mk('div','pmeta',(mine?'You':(m.n||'Someone'))+' · '+fmtTime(m.at)));
+    if(m.t){ var tx=mk('div',null,m.t); tx.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere'; b.append(tx); }
+    if(m.ph){
+      var pb=mk('button','btn small','Show photo'); pb.type='button';
+      var show=function(d){ var im=document.createElement('img'); im.src=d; im.alt='Photo'; im.style.cssText='max-width:100%;border-radius:8px;margin-top:6px;display:block'; pb.replaceWith(im); };
+      if(chatPhCache[id]) show(chatPhCache[id]);
+      else pb.addEventListener('click', async function(){ pb.textContent='Loading...'; try{ var s=await db.doc('chatph/'+id).get(), d=s.exists&&s.data()&&s.data().d; if(d){ chatPhCache[id]=d; show(d); } else pb.textContent='Photo not available'; }catch(e){ pb.textContent='Show photo'; toast('The photo could not be loaded.'); } });
+      b.append(pb);
+    }
+    if(mine||isOwner){ var dl=mk('button','edit','Delete'); dl.type='button'; dl.style.cssText='align-self:flex-end;margin-left:8px'; dl.addEventListener('click', function(){ arm(dl,'chm'+id,'Delete', async function(){ var p={m:{}}; p.m[id]=null; try{ await db.doc('chat/'+chatOpen).update(p); if(m.ph) db.doc('chatph/'+id).delete().catch(function(){}); }catch(e){ toast('The message could not be deleted.'); } }); }); b.append(dl); }
+    box.append(b);
+  });
+  if(near) box.scrollTop=box.scrollHeight;
+  chatMarkSeen(chatOpen); chatBadge(); chatSendState();
+}
+function chatSendState(){ $('#chatSend').disabled=!($('#chatIn').value.trim()||chatPhoto); }
+$('#chatIn').addEventListener('input', chatSendState);
+$('#chatBack').addEventListener('click', function(){ chatOpen=''; renderChat(); });
+$('#chatPh').addEventListener('change', async function(){
+  var f=this.files&&this.files[0]; this.value=''; if(!f) return;
+  try{ chatPhoto=await phCompress(f); var im=$('#chatPrev'); im.src=chatPhoto; im.hidden=false; $('#chatPhX').hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
+  chatSendState();
+});
+$('#chatPhX').addEventListener('click', function(){ chatPhoto=''; $('#chatPrev').hidden=true; this.hidden=true; chatSendState(); });
+$('#chatSend').addEventListener('click', async function(){
+  var cid=chatOpen, t=$('#chatIn').value.trim().slice(0,1000); if(!cid||(!t&&!chatPhoto)||!chatMe()) return;
+  var btn=this; btn.disabled=true;
+  var mid='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), msg={s:chatMe(), n:chatMyName(), at:Date.now()};
+  if(t) msg.t=t;
+  try{
+    if(chatPhoto){ await db.doc('chatph/'+mid).set({d:chatPhoto}); msg.ph=1; chatPhCache[mid]=chatPhoto; }
+    var p={m:{}}; p.m[mid]=msg;
+    var ms=chatMsgs(chatData[cid]); if(ms.length>=200){ ms.slice(0,ms.length-199).forEach(function(q){ p.m[q[0]]=null; if(q[1].ph) db.doc('chatph/'+q[0]).delete().catch(function(){}); }); }
+    chatKnown=chatKnown||{}; chatKnown[mid]=1;
+    await db.doc('chat/'+cid).update(p);
+    chatData[cid].m=chatData[cid].m||{}; chatData[cid].m[mid]=msg;
+    $('#chatIn').value=''; chatPhoto=''; $('#chatPrev').hidden=true; $('#chatPhX').hidden=true;
+    renderChat();
+  }catch(e){ toast('The message could not be sent. Check your internet and try again.'); }
+  chatSendState();
+});
+/* new chat (owner) */
+$('#chatNew').addEventListener('click', function(){
+  if(!isOwner) return;
+  var box=$('#chatPick'); box.textContent=''; $('#chatNm').value=''; $('#chatNewErr').textContent='';
+  var sups=teamList('sup').filter(function(it){ return it[1].chat; });
+  if(!sups.length) box.append(mk('p','pmeta','No supervisor has chat access yet. Open the Team tab and tap Add chat next to a supervisor.'));
+  sups.forEach(function(it){
+    var l=mk('label'), c=document.createElement('input'); c.type='checkbox'; c.value=it[0]; c.style.cssText='width:20px;height:20px;flex:none';
+    l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; l.append(c,mk('span',null,it[1].n+' ('+NURS[it[1].nid||'1']+')')); box.append(l);
+  });
+  var d=$('#dlgChatNew'); if(!d.open) d.showModal();
+});
+$('#chatNewCancel').addEventListener('click', function(){ $('#dlgChatNew').close(); });
+$('#fChatNew').addEventListener('submit', async function(e){
+  e.preventDefault(); if(!isOwner) return;
+  var ps=Array.prototype.slice.call(document.querySelectorAll('#chatPick input:checked')).map(function(c){ return c.value; }), nm=cleanName($('#chatNm').value);
+  if(!ps.length){ $('#chatNewErr').textContent='Choose at least one supervisor.'; return; }
+  var same=Object.keys(chatData).filter(function(id){ var q=chatData[id].p||[]; return q.length===ps.length&&ps.every(function(s){ return q.indexOf(s)>=0; }); })[0];
+  if(same){ $('#dlgChatNew').close(); chatOpen=same; renderChat(); return; }
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), c={n:nm||'', k:ps.length>1?'g':'d', p:ps, at:Date.now(), m:{}};
+  try{ await db.doc('chat/'+id).set(c); chatData[id]=c; $('#dlgChatNew').close(); chatOpen=id; renderChat(); }
+  catch(err){ $('#chatNewErr').textContent='The chat could not be created. Try again.'; }
+});
+
 /* ---------- weekly attendance report ---------- */
 function fmtShort(d){ return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
 function weekStartOf(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()); }
@@ -3683,6 +3907,7 @@ $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
 $('#tabInv').addEventListener('click', function(){ tab='inv'; renderAll(); });
 $('#tabAcc').addEventListener('click', function(){ if(isOwner){ tab='acc'; renderAll(); } });
+$('#tabChat').addEventListener('click', function(){ if(chatAllowed()){ tab='chat'; chatOpen=''; renderAll(); } });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
 function setMode(m){
@@ -3850,6 +4075,7 @@ $('#fRst').addEventListener('submit', async function(e){
     if(rstMode==='all'){
       for(var i=0;i<days.length;i++){ await db.doc(days[i].path).delete(); n++; }
       try{ var phs=await db.list('photos/'); for(var pi=0;pi<phs.length;pi++){ await db.doc(phs[pi].path).delete(); } }catch(e){}
+      try{ var chs=(await db.list('chat/')).concat(await db.list('chatph/')); for(var ci=0;ci<chs.length;ci++){ await db.doc(chs[ci].path).delete(); } chatData={}; chatKnown={}; }catch(e){}
       var delDoc=function(path){ return db.doc(path).delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; }); };
       await delDoc('meta/index'); await delDoc('meta/salary'); await delDoc('meta/invoices'); await delDoc('meta/accounts');
       await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});

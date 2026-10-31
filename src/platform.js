@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { jsPDF, applyPlugin } from './jspdf-autotable-shim.js';
 import * as XLSX from 'xlsx';
 import { SUPABASE_URL, SUPABASE_KEY, OWNER_EMAIL } from './config.js';
@@ -47,6 +48,20 @@ const db = {
       if (!r.data || r.data.length < 1000) break;
     }
     return out;
+  },
+  /* call cb(list) now and whenever a document under the prefix changes; returns a stop function */
+  watch(prefix, cb) {
+    let dead = false;
+    const run = async () => { try { const l = await db.list(prefix); if (!dead) cb(l); } catch (e) {} };
+    run();
+    const timer = setInterval(run, 15000);
+    const ch = sb.channel('watch-' + prefix + Math.random().toString(36).slice(2))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'docs' }, p => {
+        const path = (p.new && p.new.path) || (p.old && p.old.path) || '';
+        if (path.indexOf(prefix) === 0) run();
+      })
+      .subscribe();
+    return () => { dead = true; clearInterval(timer); sb.removeChannel(ch); };
   },
   doc(path) {
     return {
@@ -164,11 +179,18 @@ const downloads = {
   }
 };
 
+const notify = {
+  native: Capacitor.isNativePlatform(),
+  async enable() { const r = await LocalNotifications.requestPermissions(); return r.display === 'granted'; },
+  async show(title, body) { await LocalNotifications.schedule({ notifications: [{ id: Math.floor(Math.random() * 2000000000), title, body }] }); }
+};
+
 window.claude = {
   use: async n => {
     if (n === 'db') { await ready; return db; }
     if (n === 'user') { await ready; return user; }
     if (n === 'downloads') return downloads;
+    if (n === 'notify') return notify;
     return null;
   }
 };
