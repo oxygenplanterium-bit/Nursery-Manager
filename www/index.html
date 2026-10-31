@@ -502,7 +502,7 @@ select:not([multiple]){pointer-events:none}
         <h2>Tasks start</h2>
         <p class="pmeta">Start a task when the work begins and mark it done when it ends. The time taken is recorded automatically. Write the report of the task in the notes.</p>
         <form class="team" id="fTd" hidden novalidate>
-          <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
+          <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
           <div class="asgwrap"><div class="asghead"><b>Photo before starting</b></div><div class="asgbody"><label class="btn small" style="align-self:flex-start;cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label><img id="tdPhBImg" alt="Photo before starting" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour or supervisor, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
