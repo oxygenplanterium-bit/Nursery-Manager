@@ -3170,7 +3170,7 @@ function invAddLine(){
   dv.type='number'; dv.min='0'; dv.step='0.01'; dv.inputMode='decimal'; dv.placeholder='Value'; dv.setAttribute('aria-label','Discount value for this item'); dv.style.cssText='grid-column:1/-1;width:100%;min-width:0';
   dsel.addEventListener('change', function(){ dv.hidden=!dsel.value; if(!dsel.value) dv.value=''; invTotals(); }); dv.hidden=true; dv.addEventListener('input', invTotals);
   x.type='button';
-  x.addEventListener('click', function(){ if(document.querySelectorAll('#invLines .invl').length>1){ el.remove(); invTotals(); } });
+  x.addEventListener('click', function(){ var one=document.querySelectorAll('#invLines .invl').length<=1; el.remove(); if(one) invAddLine(); invTotals(); });
   function autoRate(){
     var key=invType!=='P'?'sp':'cost'; if(key==='cost'&&!isOwner) return;
     var pv=0, rr=day&&day.rows&&day.rows[sel.value]; if(rr&&Number(rr[key])>0) pv=Number(rr[key]);
