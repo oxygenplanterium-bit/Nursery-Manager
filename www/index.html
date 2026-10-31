@@ -237,6 +237,20 @@ span.note{cursor:default}
 .trow{display:flex; gap:8px; align-items:center; flex-wrap:wrap; border:1px solid var(--line); border-radius:12px; padding:10px; background:var(--card)}
 .trow input{flex:1 1 150px; min-width:0; padding:8px 12px}
 .arow{display:flex; flex-direction:column; gap:10px}
+.amrow{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.amrow .btn{padding:4px 10px; font-size:.82rem; min-height:0; flex:none}
+.calg{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin:8px 0}
+.calg .calh{font-size:.72rem; color:var(--muted); text-align:center}
+.calg button{padding:6px 0; min-height:42px; border:1px solid var(--line); border-radius:8px; background:transparent; color:inherit; font:inherit; font-size:.85rem; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15}
+.calg button small{font-size:.7rem; font-weight:700}
+.calg button:disabled{opacity:.35}
+.calg button.cp{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.calg button.ch{background:var(--warn); color:var(--bg); border-color:var(--warn)}
+.calg button.ca{background:var(--loss); color:var(--bg); border-color:var(--loss)}
+.calg button.cx{outline:2px solid currentColor; outline-offset:1px}
+.calbr{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px}
+.calbr .btn{padding:8px 2px; font-size:.84rem}
+.calbr .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .aseg{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .aseg .btn{padding:8px 4px; font-size:.92rem}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
@@ -760,6 +774,17 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 
 <dialog id="dlgSalP"><div class="dbody" id="salPBody"></div></dialog>
 
+<dialog id="dlgCal">
+  <div class="dbody">
+    <h2 id="calName">Attendance</h2>
+    <div class="sline" style="justify-content:space-between"><button type="button" class="btn small" id="calPrev">Prev</button><b id="calMon"></b><button type="button" class="btn small" id="calNext">Next</button></div>
+    <p class="pmeta">Pick a status below, then tap days to mark them. Use Apply To All Days to fill the whole month at once.</p>
+    <div class="calbr" id="calBr"></div>
+    <div class="calg" id="calGrid"></div>
+    <div class="sline"><button type="button" class="btn small" id="calAll">Apply To All Days</button><span class="pmeta" id="calSum"></span></div>
+    <div class="actions"><button type="button" class="btn" id="calCancel">Cancel</button><button type="button" class="btn primary" id="calSave" disabled>Save</button></div>
+  </div>
+</dialog>
 <dialog id="dlgSalAdv">
   <div class="dbody">
     <h2>All unpaid advances</h2>
@@ -3914,8 +3939,10 @@ function makeAtt(id){
     x.addEventListener('click', function(){ setAtt(id,d[0]); });
     b[d[0]]=x; seg.append(x);
   });
-  var meta=mk('div','tmeta');
-  el.append(top,seg,meta); el._r={num:num_,nm:nm,b:b,meta:meta,bal:bal_}; el._id=id;
+  var meta=mk('div','tmeta'), mrow=mk('div','amrow'), cal=mk('button','btn','Calendar'); cal.type='button'; cal.setAttribute('aria-label','Open attendance calendar');
+  cal.addEventListener('click', function(){ openCal(id); });
+  mrow.append(meta,cal);
+  el.append(top,seg,mrow); el._r={num:num_,nm:nm,b:b,meta:meta,bal:bal_,cal:cal}; el._id=id;
   return el;
 }
 function updateAtt(el,a,n,ed){
@@ -3928,6 +3955,7 @@ function updateAtt(el,a,n,ed){
     if(info && info.rate){ var bv=info.balance; R.bal.textContent=(bv<0?'− ':'')+'₹'+fmtN(Math.abs(bv)); R.bal.title='Bal To Pay Amount'; R.bal.setAttribute('aria-label','Bal To Pay Amount '+R.bal.textContent); R.bal.classList.toggle('neg',bv<0); R.bal.hidden=false; } else R.bal.hidden=true;
   } else R.bal.hidden=true;
   ['P','H','A'].forEach(function(k){ R.b[k].setAttribute('aria-pressed', a.s===k); R.b[k].disabled=!ed; });
+  R.cal.hidden=!(isOwner&&db);
   R.meta.textContent = a.s ? ATT_TXT[a.s]+(a.who||a.at ? ' · '+[a.who,fmtTime(a.at)].filter(Boolean).join(' ') : '') : 'Not marked';
 }
 function renderAtt(){
@@ -3959,6 +3987,61 @@ function setAtt(id,s){
   var p={att:{}}; p.att[id]={s:next, n:rec[1].n, nid:rec[1].nid, who:next?whoNow():'', at:next?Date.now():null};
   save(p);
 }
+var calCtx=null;
+function calOrig(id,d){ var s=(salAtt[id]||{})[d]; if(d===selDate){ var cu=day&&day.att&&day.att[id]; if(cu) s=cu.s||undefined; } return s||''; }
+function calValid(d){ return !!(index&&index[d]) && d<=todayKey(); }
+function openCal(id){
+  if(!isOwner||!db) return;
+  var rec=attList().filter(function(it){ return it[0]===id; })[0]; if(!rec) return;
+  salSubscribe(); loadSalAtt();
+  var t=todayKey();
+  calCtx={id:id,n:rec[1].n,nid:rec[1].nid,month:t.slice(0,7),pend:{},brush:'P'};
+  renderCal(); var d=$('#dlgCal'); if(!d.open) d.showModal();
+}
+function renderCal(){
+  var c=calCtx; if(!c) return;
+  var q=c.month.split('-'), y=+q[0], mo=+q[1]-1, dim=new Date(y,mo+1,0).getDate(), first=new Date(y,mo,1).getDay();
+  $('#calName').textContent=c.n+' · Attendance';
+  $('#calMon').textContent=new Date(y,mo,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var br=$('#calBr'); br.textContent='';
+  [['P','Present'],['H','Half day'],['A','Absent'],['','Clear']].forEach(function(b){ var x=mk('button','btn',b[1]); x.type='button'; x.setAttribute('aria-pressed',c.brush===b[0]); x.addEventListener('click', function(){ c.brush=b[0]; renderCal(); }); br.append(x); });
+  var g=$('#calGrid'); g.textContent='';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(n){ g.append(mk('div','calh',n)); });
+  for(var i=0;i<first;i++) g.append(mk('div'));
+  var any=0;
+  for(var dd=1;dd<=dim;dd++){
+    (function(dd){
+      var k=c.month+'-'+('0'+dd).slice(-2), ok=calValid(k), o=calOrig(c.id,k), v=(k in c.pend)?c.pend[k]:o;
+      var b=mk('button',v?'c'+v.toLowerCase():'',''); b.type='button'; b.append(document.createTextNode(String(dd))); b.append(mk('small',null,v||' '));
+      b.disabled=!ok; if(k in c.pend) b.classList.add('cx');
+      b.addEventListener('click', function(){ if(c.brush===o) delete c.pend[k]; else c.pend[k]=c.brush; renderCal(); });
+      g.append(b);
+    })(dd);
+  }
+  var n=Object.keys(c.pend).length;
+  $('#calSum').textContent=n?n+(n===1?' day':' days')+' changed':'No changes yet';
+  $('#calSave').disabled=!n;
+}
+function calShift(n){ var c=calCtx; if(!c) return; var q=c.month.split('-'), d=new Date(+q[0],+q[1]-1+n,1); c.month=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderCal(); }
+$('#calPrev').addEventListener('click', function(){ calShift(-1); });
+$('#calNext').addEventListener('click', function(){ calShift(1); });
+$('#calCancel').addEventListener('click', function(){ $('#dlgCal').close(); calCtx=null; });
+$('#calAll').addEventListener('click', function(){
+  var c=calCtx; if(!c) return; var q=c.month.split('-'), dim=new Date(+q[0],+q[1],0).getDate();
+  for(var dd=1;dd<=dim;dd++){ var k=c.month+'-'+('0'+dd).slice(-2); if(!calValid(k)) continue; if(c.brush===calOrig(c.id,k)) delete c.pend[k]; else c.pend[k]=c.brush; }
+  renderCal();
+});
+$('#calSave').addEventListener('click', async function(){
+  var c=calCtx; if(!c||!isOwner) return; var ds=Object.keys(c.pend).sort(), btn=this; if(!ds.length) return;
+  btn.disabled=true; var fail=0;
+  for(var i=0;i<ds.length;i++){
+    var s=c.pend[ds[i]], p={att:{}}; p.att[c.id]={s:s, n:c.n, nid:c.nid, who:s?whoNow():'', at:s?Date.now():null};
+    try{ await db.doc('days/'+ds[i]).update(p); }catch(e){ fail++; }
+  }
+  salAttFor=''; loadSalAtt();
+  $('#dlgCal').close(); calCtx=null;
+  toast(fail?(fail+' of '+ds.length+' days could not be saved.'):'Attendance saved for '+ds.length+(ds.length===1?' day.':' days.'));
+});
 $('#attAll').addEventListener('click', function(){
   if(!editable()) return;
   if(needSup()){ toast('Choose your name at the top first.'); return; }
