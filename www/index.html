@@ -349,7 +349,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     </div>
     <label class="f"><span>Open a previous day</span><select id="daySel"></select></label>
     <div class="statusline" id="statusline"><span id="dstat"></span></div>
-    <div class="statusline" id="actrow"><button class="btn small" id="closeBtn" hidden>Close day</button><span id="homeMsg" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:#fdf0cf;border:1px solid #e8c871;border-radius:999px;padding:3px 4px 3px 12px;font-size:.82rem;color:#5f4300;font-weight:600"><span id="homeMsgTxt">New message</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:4px 12px;min-height:0">Open</button></span></div>
+    <div class="statusline" id="actrow" style="flex-wrap:nowrap;align-items:center"><button class="btn small" id="closeBtn" hidden>Close day</button><span id="homeMsg" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
     <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name above to mark tasks and attendance.</p>
   </section>
 
@@ -1237,7 +1237,7 @@ function renderTop(){
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
   var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
-  $('#tabChat').hidden=false; chatSubscribe(); if(!chatSubbed) chatPill(0);
+  $('#tabChat').hidden=false; chatSubscribe(); if(chatSubbed) chatBadge(); else chatPill(0);
   $('#tabTeam').hidden=!isOwner; $('#invRstBtn').hidden=!isOwner; $('#accRstBtn').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
   if(tab==='acc' && !isOwner) tab='';
@@ -3529,15 +3529,16 @@ function chatIds(){
   return Object.keys(chatData).filter(function(id){ return chatVisible(chatData[id]); }).sort(function(a,b){
     var ma=chatMsgs(chatData[a]), mb=chatMsgs(chatData[b]); var ta=ma.length?ma[ma.length-1][1].at:(chatData[a].at||0), tb=mb.length?mb[mb.length-1][1].at:(chatData[b].at||0); return tb-ta; });
 }
-function chatUnread(id){ var me=chatMe(), seen=chatSeen[id]||0; return chatMsgs(chatData[id]).filter(function(it){ return it[1].s!==me && it[1].at>seen; }).length; }
-function chatMarkSeen(id){ var m=chatMsgs(chatData[id]); if(!m.length) return; var t=m[m.length-1][1].at; if((chatSeen[id]||0)<t){ chatSeen[id]=t; try{ localStorage.setItem('nurseryChatSeen',JSON.stringify(chatSeen)); }catch(e){} } }
+function chatSeenKey(id){ return chatMe()+'|'+id; }
+function chatUnread(id){ var me=chatMe(), seen=chatSeen[chatSeenKey(id)]||0; return chatMsgs(chatData[id]).filter(function(it){ return it[1].s!==me && it[1].at>seen; }).length; }
+function chatMarkSeen(id){ var m=chatMsgs(chatData[id]); if(!m.length) return; var t=m[m.length-1][1].at; var sk=chatSeenKey(id); if((chatSeen[sk]||0)<t){ chatSeen[sk]=t; try{ localStorage.setItem('nurseryChatSeen',JSON.stringify(chatSeen)); }catch(e){} } }
 function chatTitle(id){
   var c=chatData[id]||{}; if(c.n) return c.n;
   var names=(c.p||[]).map(function(s){ return team.sup[s]&&!team.sup[s].x?team.sup[s].n:'Supervisor'; });
   return isOwner ? names.join(', ') : ((c.p||[]).length>1?'Shared chat':'Owner');
 }
 function chatSubscribe(){
-  if(chatSubbed||!db||!chatAllowed()) return; chatSubbed=true;
+  if(chatSubbed||!db) return; chatSubbed=true;
   var apply=function(list){
     var nd={}; list.forEach(function(it){ nd[it.path.slice(5)]=it.data||{}; });
     var first=chatKnown===null; if(first) chatKnown={};
@@ -3545,7 +3546,7 @@ function chatSubscribe(){
       if(!chatVisible(nd[cid])) return;
       chatMsgs(nd[cid]).forEach(function(it){
         if(chatKnown[it[0]]) return; chatKnown[it[0]]=1;
-        if(!first && it[1].s!==chatMe()) chatNotify(cid,nd[cid],it[1]);
+        if(!first && it[1].s!==chatMe() && chatAllowed()) chatNotify(cid,nd[cid],it[1]);
       });
     });
     chatData=nd;
@@ -3553,20 +3554,20 @@ function chatSubscribe(){
     if(tab==='chat') renderChat();
   };
   if(db.watch) db.watch('chat/',apply);
-  else{ var run=function(){ db.list('chat/').then(apply,function(){}); }; run(); setInterval(run,4000); }
+  else{ var run=function(){ db.list('chat/').then(apply,function(){}); }; run(); setInterval(run,5000); }
   chatPushSync();
 }
 function chatPill(n){
   var hm=$('#homeMsg'); if(!hm) return;
   hm.style.background=n?'#fdf0cf':'#eef2ef'; hm.style.borderColor=n?'#e8c871':'#cfd8d2'; hm.style.color=n?'#5f4300':'#4a5a50';
-  $('#homeMsgTxt').textContent=n>1?'New messages ('+n+')':(n===1?'New message':'No new messages');
+  $('#homeMsgTxt').textContent=n?(n+' new'):'Chat';
 }
 function chatBadge(){
   var n=0; chatIds().forEach(function(id){ n+=chatUnread(id); });
   var b=$('#tabChat'); if(b) b.textContent='Chat'+(n?' '+n:'');
   var hc=$('#homeChat'); if(!hc) return;
   var me=chatMe(), items=[], convs={};
-  chatIds().forEach(function(id){ var seen=chatSeen[id]||0; chatMsgs(chatData[id]).forEach(function(it){ if(it[1].s!==me&&it[1].at>seen){ items.push({cid:id,m:it[1]}); convs[id]=1; } }); });
+  chatIds().forEach(function(id){ var seen=chatSeen[chatSeenKey(id)]||0; chatMsgs(chatData[id]).forEach(function(it){ if(it[1].s!==me&&it[1].at>seen){ items.push({cid:id,m:it[1]}); convs[id]=1; } }); });
   items.sort(function(a,b){ return b.m.at-a.m.at; });
   chatPill(items.length);
   hc.hidden=!items.length; if(!items.length) return;

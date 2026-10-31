@@ -54,7 +54,7 @@ const db = {
     let dead = false;
     const run = async () => { try { const l = await db.list(prefix); if (!dead) cb(l); } catch (e) {} };
     run();
-    const timer = setInterval(run, 15000);
+    const timer = setInterval(run, 6000);
     const ch = sb.channel('watch-' + prefix + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'docs' }, p => {
         const path = (p.new && p.new.path) || (p.old && p.old.path) || '';
