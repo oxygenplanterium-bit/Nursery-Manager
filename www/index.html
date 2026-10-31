@@ -450,7 +450,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <input type="text" id="taskTitle" maxlength="120" placeholder="New task, for example Water the shade house" required>
       <select id="taskTo" aria-label="Assign task to" hidden></select>
       <select id="taskWhen" aria-label="Task for" style="flex:1 1 100%"><option value="today">Task for today</option><option value="tomorrow">Task for tomorrow</option></select>
-      <div class="asgwrap" style="flex:1 1 100%"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="taskAsg" aria-expanded="true">Hide</button></div><div id="taskAsg" class="asgbody"></div></div>
+      <div class="asgwrap" style="flex:1 1 100%"><div class="asghead"><b>Task assigned to (labour or supervisor, choose one or more)</b><button type="button" class="btn small asgtog" data-t="taskAsg" aria-expanded="true">Hide</button></div><div id="taskAsg" class="asgbody"></div></div>
       <button class="btn primary" type="submit">Add task</button>
     </form>
     <section class="card team" id="tmrBox" hidden>
@@ -481,7 +481,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
           <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
           <div class="asgwrap"><div class="asghead"><b>Photo before starting</b></div><div class="asgbody"><label class="btn small" style="align-self:flex-start;cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label><img id="tdPhBImg" alt="Photo before starting" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
-          <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
+          <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour or supervisor, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
         </form>
@@ -1681,10 +1681,10 @@ function tdItems(n){
   n=n||nursery; var o=(day&&day.td)||{};
   return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
 }
-function labourNames(nid){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nid; }).map(function(it){ return it[1].n; }).filter(Boolean); }
+function labourNames(nid){ return teamList('staff').concat(teamList('sup')).filter(function(it){ return (it[1].nid||'1')===nid; }).map(function(it){ return it[1].n; }).filter(Boolean); }
 function buildAsg(box,names,sel,onChange){
   box.textContent='';
-  if(!names.length){ box.append(mk('span','pmeta','No labour added for this nursery yet. Owner can add them in the Team tab.')); return; }
+  if(!names.length){ box.append(mk('span','pmeta','No labour or supervisors added for this nursery yet. Owner can add them in the Team tab.')); return; }
   var all=mk('label'), ac=document.createElement('input'); ac.type='checkbox'; all.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; ac.style.cssText='width:20px;height:20px;flex:none'; all.append(ac,mk('span',null,'Select all'));
   var boxes=[];
   var up=function(){ ac.checked=boxes.length>0&&boxes.every(function(b){ return b.checked; }); };
