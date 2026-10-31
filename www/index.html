@@ -346,6 +346,11 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .dayTog span{flex:1; min-width:0}
 #fTask,#tmrBox,#tstate,#tAsgBar,#tabChat{display:none !important}
 .asgbody:has(#tdPhBImg[hidden]){display:none}
+.seg2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.seg2 .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.bcard{display:flex; flex-direction:column; gap:6px; border:1px solid var(--line); border-radius:12px; padding:10px}
+.bcard .brow{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap}
+.bcard .sline{flex-wrap:wrap}
 .homeadm{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .homeadm .btn{width:100%; margin:0}
 .homeadm .btn[hidden]{display:none}
@@ -384,6 +389,11 @@ select:not([multiple]){pointer-events:none}
     <button class="btn small primary" id="alertBtn">Review</button>
   </section>
 
+  <section class="card alertcard" id="lowBox" hidden>
+    <div id="lowText"></div>
+    <button class="btn small primary" type="button" id="lowBtn">View</button>
+  </section>
+
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
     <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -413,6 +423,9 @@ select:not([multiple]){pointer-events:none}
     <button class="tab" id="tabAcc" type="button" role="tab" aria-selected="false" hidden>Accounts</button>
     <button class="tab" id="tabInv" type="button" role="tab" aria-selected="false">Invoices</button>
     <button class="tab" id="tabChat" type="button" role="tab" aria-selected="false" hidden>Chat</button>
+    <button class="tab" id="tabDue" type="button" hidden>Money Owed</button>
+    <button class="tab" id="tabBat" type="button">Batches And Losses</button>
+    <button class="tab" id="tabLow" type="button">Low Stock</button>
     <button class="tab" id="fdBtn" type="button">Dashboard</button>
   </nav>
 
@@ -711,6 +724,32 @@ select:not([multiple]){pointer-events:none}
   </div>
 </div>
 
+<dialog id="dlgDue">
+  <div class="dbody">
+    <h2>Money Owed</h2>
+    <div class="seg2"><button type="button" class="btn" id="dueS" aria-pressed="true">To Receive</button><button type="button" class="btn" id="dueP" aria-pressed="false">To Pay</button></div>
+    <p class="pmeta" id="dueSum"></p>
+    <div id="dueBody" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="actions"><button type="button" class="btn primary" id="dueClose">Close</button></div>
+  </div>
+</dialog>
+<dialog id="dlgBat">
+  <div class="dbody">
+    <h2>Batches And Losses</h2>
+    <div class="seg2"><button type="button" class="btn" id="batTabB" aria-pressed="true">Batches</button><button type="button" class="btn" id="batTabL" aria-pressed="false">Losses</button></div>
+    <label class="f"><span>Nursery</span><select id="batNurs"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select></label>
+    <div id="batBody" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="actions"><button type="button" class="btn primary" id="batClose">Close</button></div>
+  </div>
+</dialog>
+<dialog id="dlgLow">
+  <div class="dbody">
+    <h2>Low Stock</h2>
+    <p class="pmeta" id="lowNote"></p>
+    <div id="lowBody" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="actions"><button type="button" class="btn primary" id="lowClose">Close</button></div>
+  </div>
+</dialog>
 <dialog id="dlgPick" class="pickdlg">
   <div class="dbody">
     <h2 id="pickHead">Choose</h2>
@@ -1298,6 +1337,7 @@ function renderTop(){
   mo.classList.toggle('cur', isOwner); ms.classList.toggle('cur', !isOwner);
   mo.classList.toggle('sw', !isOwner); ms.classList.toggle('sw', isOwner);
   mo.textContent='Owner Mode'; ms.textContent='Supervisor Mode';
+  $('#tabDue').hidden=!isOwner; lowUpdate();
   var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
   ab.hidden=!(isOwner && pn>0);
   if(!ab.hidden) $('#alertText').textContent=''+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
@@ -4972,12 +5012,196 @@ function salShift(n){ var q=salMonth.split('-'), d=new Date(+q[0],+q[1]-1+n,1); 
 $('#salPrev').addEventListener('click', function(){ salShift(-1); });
 $('#salNext').addEventListener('click', function(){ salShift(1); });
 
+
+/* ---------- money owed, batches and losses, low stock ---------- */
+var minMap={}, dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
+var RC_BG=['color-mix(in srgb,var(--loss) 16%,var(--card))','color-mix(in srgb,var(--accent) 14%,var(--card))'];
+function dayDiff(a,b){ var x=new Date(a+'T00:00:00'), y=new Date(b+'T00:00:00'); return Math.round((y-x)/864e5); }
+function mkSelect(opts,val){ var sl=document.createElement('select'); opts.forEach(function(o){ var op=mk('option',null,o[1]); op.value=o[0]; sl.append(op); }); if(val!==undefined) sl.value=val; return sl; }
+function mkLbl(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
+function mkIn(type,ph,v){ var i=document.createElement('input'); i.type=type; if(ph) i.placeholder=ph; if(v!==undefined) i.value=v; return i; }
+
+/* low stock */
+function lowItems(){
+  var out=[];
+  ['1','2'].forEach(function(n){ rowsOf(n).forEach(function(it){ var mn=Number(minMap[it[0]])||0, b=bal(it[1]); if(mn>0&&b<=mn) out.push({id:it[0],name:it[1].name,nid:n,bal:b,min:mn}); }); });
+  return out.sort(function(a,b){ return (a.bal-a.min)-(b.bal-b.min); });
+}
+function lowUpdate(){
+  var l=day?lowItems():[], bx=$('#lowBox');
+  bx.hidden=!l.length;
+  if(l.length) $('#lowText').textContent=l.length+(l.length===1?' item is':' items are')+' low on stock and need to be potted or bought';
+  $('#tabLow').textContent='Low Stock'+(l.length?' '+l.length:'');
+}
+function renderLow(){
+  var body=$('#lowBody'); body.textContent='';
+  var l=lowItems();
+  $('#lowNote').textContent=isOwner?'Set a minimum quantity for each item. When the balance is at or below it, the item shows here and on the home page.':'Items at or below their minimum quantity. The owner sets the minimum.';
+  body.append(mk('b',null,'Needs Reordering ('+l.length+')'));
+  if(!l.length) body.append(mk('p','pmeta','Nothing is low on stock right now.'));
+  l.forEach(function(x,i){
+    var c=mk('div','bcard'), r=mk('div','brow'); c.style.background=RC_BG[i%2];
+    r.append(mk('b',null,x.name), mk('b',null,'Qty '+fmtN(x.bal)+' / Min '+fmtN(x.min)));
+    c.append(r, mk('div','pmeta',NURS[x.nid]+(x.bal<=0?' · Out of stock':' · Short by '+fmtN(x.min-x.bal))));
+    body.append(c);
+  });
+  if(isOwner){
+    var h=mk('b',null,'Set Minimum Quantity'); h.style.marginTop='10px'; body.append(h);
+    ['1','2'].forEach(function(n){
+      var rs=rowsOf(n); if(!rs.length) return;
+      body.append(mk('div','pmeta',NURS[n]));
+      rs.forEach(function(it,i){
+        var c=mk('div','bcard'), r=mk('div','brow'), inp=mkIn('number','Min'); c.style.background=RC_BG[i%2];
+        inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.style.cssText='width:90px;flex:none'; inp.value=Number(minMap[it[0]])>0?minMap[it[0]]:''; inp.setAttribute('aria-label','Minimum quantity for '+it[1].name);
+        inp.addEventListener('change', function(){ var v=Math.max(0,Math.round(Number(inp.value)||0)), pt={min:{}}; pt.min[it[0]]=v>0?v:null; saveSettings(pt).then(function(ok){ if(ok) toast('Minimum saved'); }); });
+        r.append(mk('span',null,it[1].name+' (Qty '+fmtN(bal(it[1]))+')'), inp); c.append(r); body.append(c);
+      });
+    });
+  }
+}
+function openLow(){ renderLow(); var d=$('#dlgLow'); if(!d.open) d.showModal(); }
+$('#tabLow').addEventListener('click', openLow);
+$('#lowBtn').addEventListener('click', openLow);
+$('#lowClose').addEventListener('click', function(){ $('#dlgLow').close(); });
+
+/* money owed */
+function dueGroups(){
+  var inv=invData.i||{}, G={S:{},P:{}}, tot={S:0,P:0};
+  Object.keys(inv).forEach(function(id){
+    var x=inv[id]; if(!x||x.void||(x.ty!=='S'&&x.ty!=='P')) return;
+    var due=accDue(id); if(due<=0.004) return;
+    var key=(x.party||'No name').trim().toLowerCase(), g=G[x.ty][key]||(G[x.ty][key]={name:x.party||'No name',phone:x.phone||'',due:0,inv:[]});
+    if(!g.phone&&x.phone) g.phone=x.phone;
+    g.due=Math.round((g.due+due)*100)/100; g.inv.push({id:id,label:invLabel(x),d:x.d||x.day||'',due:due,nid:x.nid||'1'}); tot[x.ty]+=due;
+  });
+  return {G:G,tot:tot};
+}
+function dueRecord(kind,invId){
+  var x=(invData.i||{})[invId]; if(!x) return;
+  $('#dlgDue').close(); openAcc(kind==='S'?'rc':'py');
+  var n=$('#accNurs'); n.value=x.nid||'1'; n.dispatchEvent(new Event('change',{bubbles:true}));
+  var iv=$('#accInv'); iv.value=invId; iv.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function dueRemind(g){
+  var ph=String(g.phone||'').replace(/\D/g,''); if(ph.length===10) ph='91'+ph; if(!ph){ toast('No phone number saved for this customer.'); return; }
+  var txt='Hello '+g.name+', a gentle reminder from '+(CO.n||'our nursery')+': your pending balance is Rs. '+fmtMoney(g.due)+' ('+g.inv.map(function(i){ return i.label; }).join(', ')+'). Kindly pay at the earliest. Thank you.';
+  var a=document.createElement('a'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(txt); a.target='_blank'; a.rel='noopener'; document.body.append(a); a.click(); a.remove();
+}
+function renderDue(){
+  invSubscribe(); accSubscribe();
+  var body=$('#dueBody'); body.textContent='';
+  $('#dueS').setAttribute('aria-pressed',dueKind==='S'); $('#dueP').setAttribute('aria-pressed',dueKind==='P');
+  var D=dueGroups(), list=Object.keys(D.G[dueKind]).map(function(k){ var g=D.G[dueKind][k]; g.inv.sort(function(a,b){ return String(a.d).localeCompare(String(b.d)); }); g.oldest=g.inv[0]?g.inv[0].d:''; return g; }), t=todayKey();
+  list.sort(function(a,b){ return String(a.oldest).localeCompare(String(b.oldest)); });
+  $('#dueSum').textContent=(dueKind==='S'?'Customers owe you ':'You owe suppliers ')+'₹'+fmtMoney(D.tot[dueKind])+' in total · '+list.length+(dueKind==='S'?(list.length===1?' customer':' customers'):(list.length===1?' supplier':' suppliers'));
+  if(!list.length) body.append(mk('p','pmeta',dueKind==='S'?'No customer has a pending balance.':'No supplier payment is pending.'));
+  list.forEach(function(g,i){
+    var c=mk('div','bcard'), r=mk('div','brow'), age=g.oldest?dayDiff(g.oldest,t):0; c.style.background=RC_BG[i%2];
+    r.append(mk('b',null,g.name+(g.phone?' · '+g.phone:'')), mk('b',null,'₹'+fmtMoney(g.due))); c.append(r);
+    var am=mk('div','pmeta','Oldest due '+(age>0?age+(age===1?' day':' days')+' ago':'today')); if(age>30) am.style.color='var(--warn)'; c.append(am);
+    g.inv.forEach(function(v){ var q=mk('div','brow'); q.append(mk('span','pmeta',v.label+' · '+fmtIso(v.d)+' · '+NURS[v.nid]), mk('span','pmeta','₹'+fmtMoney(v.due))); c.append(q); });
+    var act=mk('div','sline'), pay=mk('button','btn small primary',dueKind==='S'?'Record Payment Received':'Record Payment Made'); pay.type='button';
+    pay.addEventListener('click', function(){ dueRecord(dueKind,g.inv[0].id); }); act.append(pay);
+    if(dueKind==='S'){ var wa=mk('button','btn small','WhatsApp Reminder'); wa.type='button'; wa.addEventListener('click', function(){ dueRemind(g); }); act.append(wa); }
+    c.append(act); body.append(c);
+  });
+}
+$('#tabDue').addEventListener('click', function(){ if(!isOwner) return; renderDue(); var d=$('#dlgDue'); if(!d.open) d.showModal(); });
+$('#dueS').addEventListener('click', function(){ dueKind='S'; renderDue(); });
+$('#dueP').addEventListener('click', function(){ dueKind='P'; renderDue(); });
+$('#dueClose').addEventListener('click', function(){ $('#dlgDue').close(); });
+
+/* batches and losses */
+function batSubscribe(){
+  if(batSubbed||!db) return; batSubbed=true;
+  db.doc('meta/batches').onSnapshot(function(s){ batData=s.exists?(s.data()||{}):{}; batData.b=batData.b||{}; batData.l=batData.l||{}; if($('#dlgBat').open) renderBat(); }, function(){ batSubbed=false; });
+}
+function batSave(patch){
+  var d=db.doc('meta/batches');
+  return d.update(patch).catch(function(e){
+    if(e&&e.code==='not_found'){ return d.set(JSON.parse(JSON.stringify(patch,function(k,v){ return v===null?undefined:v; }))); }
+    throw e;
+  }).then(function(){ return true; }, function(){ toast('Could not save. Check your internet and try again.',4000); return false; });
+}
+var LOSS_WHY=[['Disease','Disease'],['Pest','Pests'],['Heat or cold','Heat or cold'],['Overwatering','Overwatering'],['Underwatering','Underwatering'],['Transport damage','Transport damage'],['Other','Other']];
+function batItemSel(){ var sl=mkSelect([['','Select item']].concat(rowsOf(batN).map(function(it){ return [it[0],it[1].name+' (Qty '+fmtN(bal(it[1]))+')']; }))); sl.setAttribute('aria-label','Item'); return sl; }
+function renderBat(){
+  var body=$('#batBody'); body.textContent='';
+  $('#batTabB').setAttribute('aria-pressed',batTab==='B'); $('#batTabL').setAttribute('aria-pressed',batTab==='L'); $('#batNurs').value=batN;
+  var t=todayKey();
+  if(batTab==='B'){
+    var f=mk('div','bcard'), it=batItemSel(), q=mkIn('number','Plants in this batch'), d1=mkIn('date'), d2=mkIn('date'), nt=mkIn('text','Note (optional)'), ad=mk('button','btn primary','Add Batch');
+    q.min='1'; q.step='1'; q.inputMode='numeric'; d1.value=t; nt.maxLength=60; ad.type='button';
+    f.append(mk('b',null,'New Batch'), it, q, mkLbl('Potted Or Sown On',d1), mkLbl('Expected Ready On',d2), nt, ad); body.append(f);
+    ad.addEventListener('click', async function(){
+      var n=Math.round(Number(q.value)||0), row=(day&&day.rows&&day.rows[it.value]);
+      if(!it.value||!row){ toast('Select an item.'); return; } if(!(n>0)){ toast('Enter the number of plants.'); return; } if(!d2.value){ toast('Pick the expected ready date.'); return; }
+      var id='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), pt={b:{}};
+      pt.b[id]={item:it.value,name:row.name,nid:batN,qty:n,d:d1.value||t,ready:d2.value,note:nt.value.trim(),by:nameNow()||(isOwner?'Owner':''),at:Date.now(),st:''};
+      if(await batSave(pt)) toast('Batch added');
+    });
+    var bs=Object.keys(batData.b||{}).map(function(id){ return [id,batData.b[id]]; }).filter(function(e){ return e[1]&&(e[1].nid||'1')===batN; });
+    var open=bs.filter(function(e){ return !e[1].st; }).sort(function(a,b){ return String(a[1].ready).localeCompare(String(b[1].ready)); }), closed=bs.filter(function(e){ return e[1].st; });
+    body.append(mk('b',null,'Growing ('+open.length+')'));
+    if(!open.length) body.append(mk('p','pmeta','No batches are growing.'));
+    open.forEach(function(e,i){
+      var x=e[1], c=mk('div','bcard'), r=mk('div','brow'), dd=dayDiff(t,x.ready); c.style.background=RC_BG[i%2];
+      r.append(mk('b',null,x.name), mk('b',null,fmtN(x.qty)+' plants')); c.append(r);
+      var st=dd>0?'Ready in '+dd+(dd===1?' day':' days'):(dd===0?'Ready today':'Ready '+(-dd)+(dd===-1?' day':' days')+' ago'); var sm=mk('div','pmeta',st+' · Ready on '+fmtIso(x.ready)); if(dd<=0) sm.style.color='var(--warn)'; c.append(sm);
+      c.append(mk('div','pmeta','Started '+fmtIso(x.d)+(x.by?' · By '+x.by:'')+(x.note?' · '+x.note:'')));
+      var ac=mk('div','sline'), done=mk('button','btn small primary','Mark Ready Or Sold'); done.type='button';
+      done.addEventListener('click', function(){ var pt={b:{}}; pt.b[e[0]]={st:'done',doneAt:Date.now()}; batSave(pt); }); ac.append(done);
+      if(isOwner){ var dl=mk('button','btn small danger','Delete'); dl.type='button'; dl.addEventListener('click', function(){ arm(dl,'bdel'+e[0],'Delete',function(){ var pt={b:{}}; pt.b[e[0]]=null; batSave(pt); }); }); ac.append(dl); }
+      c.append(ac); body.append(c);
+    });
+    if(closed.length){ body.append(mk('b',null,'Completed ('+closed.length+')')); closed.sort(function(a,b){ return (b[1].doneAt||0)-(a[1].doneAt||0); }).slice(0,15).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'); c.style.background=RC_BG[i%2]; c.append(mk('div','brow')); c.firstChild.append(mk('span',null,x.name+' · '+fmtN(x.qty)+' plants'), mk('span','pmeta','Ready '+fmtIso(x.ready))); body.append(c); }); }
+  } else {
+    var f2=mk('div','bcard'), it2=batItemSel(), q2=mkIn('number','Plants lost'), why=mkSelect(LOSS_WHY), d3=mkIn('date',null,t), nt2=mkIn('text','Note (optional)'), ad2=mk('button','btn primary','Record Loss');
+    q2.min='1'; q2.step='1'; q2.inputMode='numeric'; nt2.maxLength=60; ad2.type='button'; d3.max=t; why.setAttribute('aria-label','Reason');
+    f2.append(mk('b',null,'Record A Loss'), it2, q2, mkLbl('Reason',why), mkLbl('Date',d3), nt2, ad2, mk('p','pmeta','The lost plants are also deducted from the stock balance (damages) on today\'s open register.')); body.append(f2);
+    ad2.addEventListener('click', async function(){
+      var n=Math.round(Number(q2.value)||0), row=(day&&day.rows&&day.rows[it2.value]);
+      if(!editable()){ toast('Losses can be recorded only on the open (latest) day.'); return; } if(needSup()){ toast('Choose your name at the top first.'); return; }
+      if(!it2.value||!row){ toast('Select an item.'); return; } if(!(n>0)){ toast('Enter the number of plants lost.'); return; }
+      if(n>bal(row)){ toast('Only '+fmtN(bal(row))+' in stock.'); return; }
+      var pr={rows:{}}; pr.rows[it2.value]={damages:(row.damages||0)+n};
+      if(!(await save(pr))) return;
+      var id='l'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), pt={l:{}};
+      pt.l[id]={item:it2.value,name:row.name,nid:batN,qty:n,why:why.value,d:d3.value||t,note:nt2.value.trim(),by:nameNow()||(isOwner?'Owner':''),at:Date.now()};
+      if(await batSave(pt)) toast('Loss recorded');
+    });
+    var ls=Object.keys(batData.l||{}).map(function(id){ return [id,batData.l[id]]; }).filter(function(e){ return e[1]&&(e[1].nid||'1')===batN; }).sort(function(a,b){ return String(b[1].d).localeCompare(String(a[1].d))||(b[1].at||0)-(a[1].at||0); });
+    var mon=t.slice(0,7), byWhy={}, byItem={}, mt=0, at=0;
+    ls.forEach(function(e){ var x=e[1]; at+=x.qty; if(String(x.d).slice(0,7)===mon){ mt+=x.qty; byWhy[x.why]=(byWhy[x.why]||0)+x.qty; byItem[x.name]=(byItem[x.name]||0)+x.qty; } });
+    var sm=mk('div','bcard'); sm.append(mk('b',null,'Loss Report'), mk('div','pmeta','This month: '+fmtN(mt)+' plants lost · All time: '+fmtN(at)));
+    var top=function(o){ return Object.keys(o).sort(function(a,b){ return o[b]-o[a]; }); };
+    if(mt){ sm.append(mk('div','pmeta','By reason: '+top(byWhy).map(function(k){ return k+' '+fmtN(byWhy[k]); }).join(' · '))); sm.append(mk('div','pmeta','Most lost: '+top(byItem).slice(0,5).map(function(k){ return k+' '+fmtN(byItem[k]); }).join(' · '))); }
+    body.append(sm);
+    body.append(mk('b',null,'Recent Losses ('+ls.length+')'));
+    if(!ls.length) body.append(mk('p','pmeta','No losses recorded.'));
+    ls.slice(0,40).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'), r=mk('div','brow'); c.style.background=RC_BG[i%2]; r.append(mk('b',null,x.name), mk('b',null,'-'+fmtN(x.qty))); c.append(r, mk('div','pmeta',fmtIso(x.d)+' · '+x.why+(x.by?' · By '+x.by:'')+(x.note?' · '+x.note:''))); body.append(c); });
+  }
+}
+function openBat(){ batSubscribe(); batN=nursery; renderBat(); var d=$('#dlgBat'); if(!d.open) d.showModal(); }
+$('#tabBat').addEventListener('click', openBat);
+$('#batTabB').addEventListener('click', function(){ batTab='B'; renderBat(); });
+$('#batTabL').addEventListener('click', function(){ batTab='L'; renderBat(); });
+$('#batNurs').addEventListener('change', function(){ batN=this.value; renderBat(); });
+$('#batClose').addEventListener('click', function(){ $('#dlgBat').close(); });
+setInterval(function(){
+  var ae=document.activeElement, inside=function(id){ return ae&&$(id).contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='SELECT'); };
+  if($('#dlgDue').open) renderDue();
+  if($('#dlgLow').open&&!inside('#dlgLow')) renderLow();
+  if($('#dlgBat').open&&!inside('#dlgBat')&&!$('#dlgPick').open) renderBat();
+}, 2000);
+
 /* ---------- start ---------- */
 function applySettings(d){
   ownerWa = String(d.ownerWa||'');
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
+  minMap = d.min||{};
 }
 function applyCachedMeta(){
   var m=cache.meta||{};
