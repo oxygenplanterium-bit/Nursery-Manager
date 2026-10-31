@@ -764,6 +764,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
   <div class="dbody">
     <h2>All unpaid advances</h2>
     <p class="pmeta" id="salAdvNote"></p>
+    <label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="checkbox" id="salAdvHist" style="width:20px;height:20px;flex:none"><span>Also show advances already settled by a paid salary (history)</span></label>
     <div id="salAdvBody" style="display:flex;flex-direction:column;gap:10px"></div>
     <div class="actions"><button type="button" class="btn primary" id="salAdvClose">Close</button></div>
   </div>
@@ -4587,13 +4588,15 @@ function renderSalAdvAll(){
     var list=teamList(g[0]), blocks=[];
     list.forEach(function(it){
       var sid=it[0], M=salCalc(sid,g[0]), items=[], tot=0, carry=0;
-      Object.keys(M).sort().forEach(function(m){ var o=M[m]; if(o.paid) return; o.advItems.forEach(function(x){ items.push(x); tot+=Number(x.amt)||0; }); });
+      var hist=$('#salAdvHist')&&$('#salAdvHist').checked;
+      Object.keys(M).sort().forEach(function(m){ var o=M[m]; if(o.paid&&!hist) return; o.advItems.forEach(function(x){ x=Object.assign({},x,{paidM:o.paid?m:''}); items.push(x); if(!o.paid) tot+=Number(x.amt)||0; }); });
       var last=Object.keys(M).sort().filter(function(m){ return !M[m].paid; })[0]; if(last&&M[last].carryIn>0){ carry=M[last].carryIn; tot+=carry; }
       if(!items.length&&!carry) return;
+      if(!tot&&!hist&&!carry) return;
       items.sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); });
       var c=mk('div','card salp'), top=mk('div','sline'); top.append(mk('b','grow',it[1].n+' ('+(NURS[it[1].nid||'1']||'')+')'), mk('b',null,'₹'+fmtN(tot)));
       c.append(top);
-      items.forEach(function(x){ c.append(mk('div','pmeta',(x.d?fmtIso(x.d):'')+' · ₹'+fmtN(Number(x.amt)||0)+(x.note?' · '+x.note:''))); });
+      items.forEach(function(x){ c.append(mk('div','pmeta',(x.d?fmtIso(x.d):'')+' · ₹'+fmtN(Number(x.amt)||0)+(x.note?' · '+x.note:'')+(x.paidM?' · Settled, salary paid for '+x.paidM:''))); });
       if(carry>0) c.append(mk('div','pmeta','Carried forward from earlier months · ₹'+fmtN(carry)));
       blocks.push(c); grand+=tot; any=true;
     });
@@ -4602,6 +4605,7 @@ function renderSalAdvAll(){
   $('#salAdvNote').textContent=any?('Both nurseries · Every advance entry that is not yet settled by a paid salary. Total ₹'+fmtN(grand)+'.'):('Both nurseries · No unpaid advances.');
 }
 $('#salAdvAll').addEventListener('click', function(){ renderSalAdvAll(); var d=$('#dlgSalAdv'); if(!d.open) d.showModal(); });
+$('#salAdvHist').addEventListener('change', renderSalAdvAll);
 $('#salAdvClose').addEventListener('click', function(){ $('#dlgSalAdv').close(); });
 function renderSal(){
   if(tab!=='sal'||!db) return;
@@ -4689,6 +4693,12 @@ function renderSalDlg(){
       if(m.paid){ doc.text('Salary paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):''), 36, y); y+=14; }
       if(m.carryOut>0){ doc.text('Rs. '+fmtN(m.carryOut)+' carried forward to next month as advance.', 36, y, {maxWidth:W-72}); y+=14; }
       doc.setFontSize(8); doc.text('Until this month\'s salary is marked as paid, all advances are deducted in the old or previous month salary. Any excess advance paid is carried forward to next month as advance.', 36, y+6, {maxWidth:W-72});
+      var advRows=m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); }).map(function(x,i){ return [i+1, x.d?fmtIso(x.d):'', x.note||'', R(Number(x.amt)||0)]; });
+      if(m.carryIn>0) advRows.push(['','','Carried from earlier months',R(m.carryIn)]);
+      if(advRows.length){
+        var advTot=m.adv+(m.carryIn>0?m.carryIn:0);
+        doc.autoTable({startY:y+30, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:3,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:36},3:{halign:'right',cellWidth:80}}, margin:{left:36,right:36}});
+      }
       var buf=doc.output('arraybuffer');
       try{ await downloads.save({filename:'salary-slip-'+rec.n.replace(/[^A-Za-z0-9]+/g,'-')+'-'+salMonth+'.pdf', data:buf}); }
       catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
