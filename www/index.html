@@ -351,6 +351,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .fdpick .fdnl select{min-height:36px; padding:4px 24px 4px 8px; font-size:15px}
 .fdpick .fdnl{padding:4px 6px}
 .fdpick .dayTog{flex:1 1 0; min-width:0; padding:6px 10px; min-height:44px}
+.fdpick .attdate{flex:1 1 0; min-width:0; min-height:44px; text-align:center; padding:6px 8px; font-size:15px}
+#weekBtn,#attPdfBtn{font-size:.85rem; padding:8px 4px; line-height:1.2}
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 .dayTog{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; font-weight:600}
 .dayTog span{flex:1; min-width:0}
@@ -550,16 +552,21 @@ select:not([multiple]){pointer-events:none}
   </section>
 
   <section class="pane" id="paneAtt" role="tabpanel" aria-labelledby="tabAtt" hidden>
-    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+    <div class="fdpick">
+    <label class="f card fdnl"><span class="sr">Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
+    <input id="attDate" class="attdate" readonly aria-label="Date (automatic)">
+    </div>
     <section class="card team" id="weekBox">
       <h2>Weekly attendance report</h2>
       <p class="pmeta" id="weekHelp">One PDF for all staff, Sunday to Saturday.</p>
       <label class="f"><span>Week (Sunday to Saturday)</span><select id="weekSel"></select></label>
       <p class="pmeta" id="weekInfo" role="status"></p>
-      <button class="btn" id="weekBtn">Download weekly attendance PDF</button>
-      <button class="btn" id="attPdfBtn" style="margin-top:8px">Download attendance PDF</button>
+      <div class="two">
+        <button class="btn" id="weekBtn">Weekly Attendance Report</button>
+        <button class="btn" id="attPdfBtn">Daily Attendance Report</button>
+      </div>
       <p class="pmeta" id="attPdfHelp">Attendance for the selected date only. It does not need tasks, resources or other sections to be finished.</p>
     </section>
     <div class="bar" id="attBar" hidden>
@@ -1431,6 +1438,7 @@ function renderTop(){
   else if(!canWrite) st='Open · view only';
   else st=(selDate===t?'Today':fmtLong(selDate))+' is open · changes save automatically';
   $('#dstat').textContent=st;
+  $('#attDate').value=fmtLong(selDate);
   var cb=$('#closeBtn');
   if(canWrite && day && selDate===lt){
     if(!day.closed){ cb.hidden=false; cb.textContent='Close day'; }
