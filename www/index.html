@@ -355,10 +355,10 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dlgLow .bcard,#dlgBat .bcard,#dlgDue .bcard{min-width:0}
 .tabs[aria-label="Sections"]{display:none !important}
 .wrap{padding-bottom:120px}
-#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:22px; padding:12px 20px; border-radius:30px; background:color-mix(in srgb,var(--card) 82%,transparent); border:1px solid var(--line); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 8px 28px rgba(0,0,0,.28)}
+#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:12px; padding:12px 16px; border-radius:30px; background:color-mix(in srgb,var(--card) 82%,transparent); border:1px solid var(--line); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
-.dkt{width:58px; height:58px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
+.dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
 .dkt svg{width:30px; height:30px; stroke:#fff; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
 .dkb{position:absolute; top:-5px; right:-5px; min-width:20px; height:20px; border-radius:10px; background:#d33; color:#fff; font-size:.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 5px; border:2px solid var(--card)}
 #moreGrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 8px; margin:10px 0}
@@ -5274,13 +5274,15 @@ function dkTile(key,label,onclick,badge){
   if(badge) b.append(mk('span','dkb',String(badge)));
   b.addEventListener('click', onclick); return b;
 }
-var MORE_ITEMS=[['stock','Stock','#tabStock'],['cs','Customers','#tabCs'],['res','Resources','#tabRes'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['acc','Accounts','#tabAcc'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
+var MORE_ITEMS=[['cs','Customers','#tabCs'],['res','Resources','#tabRes'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
 function dockBuild(){
   var d=$('#dock'); d.textContent='';
   var low=day?lowItems().length:0;
-  d.append(dkTile('tasks','Tasks',function(){ $('#tabTasks').click(); }),
-           dkTile('att','Attendance',function(){ $('#tabAtt').click(); }),
-           dkTile('more','More',openMore,low));
+  d.append(dkTile('stock','Stock',function(){ $('#tabStock').click(); }),
+           dkTile('tasks','Tasks',function(){ $('#tabTasks').click(); }),
+           dkTile('att','Attendance',function(){ $('#tabAtt').click(); }));
+  if(isOwner) d.append(dkTile('acc','Accounts',function(){ $('#tabAcc').click(); }));
+  d.append(dkTile('more','More',openMore,low));
 }
 function openMore(){
   var g=$('#moreGrid'); g.textContent='';
@@ -5295,7 +5297,7 @@ $('#moreClose').addEventListener('click', function(){ $('#dlgMore').close(); });
 var dockSig='';
 function dockUpdate(){
   var d=$('#dock'); d.hidden=!!(tab||fdOpen);
-  var sig=String(day?lowItems().length:0); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
+  var sig=(isOwner?'o':'s')+(day?lowItems().length:0); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
 /* ---------- start ---------- */
 function applySettings(d){
