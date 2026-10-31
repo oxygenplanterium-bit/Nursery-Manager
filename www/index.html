@@ -432,6 +432,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
         <form class="team" id="fTd" hidden novalidate>
           <label class="f"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
+          <div class="asgwrap"><div class="asghead"><b>Photo before starting</b></div><div class="asgbody"><label class="btn small" style="align-self:flex-start;cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label><img id="tdPhBImg" alt="Photo before starting" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to (labour, choose one or more)</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
@@ -805,6 +806,14 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     <p id="catErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn primary" id="catClose">Done</button></div>
   </form>
+</dialog>
+
+<dialog id="dlgPh">
+  <div class="team" style="display:flex;flex-direction:column;gap:10px">
+    <h2 id="phHead">Task photos</h2>
+    <div id="phBody" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div class="actions"><button type="button" class="btn primary" id="phClose">Close</button></div>
+  </div>
 </dialog>
 
 <dialog id="dlgTc">
@@ -1563,7 +1572,7 @@ function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
   var fin=mk('button','btn small primary','Mark done'), ed=mk('button','btn small','Edit report'), del=mk('button','btn small danger','Delete'); fin.type='button'; ed.type='button'; del.type='button'; row.append(fin,ed,del);
-  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!ta.value.trim(); });
+  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!(ta.value.trim()&&phA); });
   ta.addEventListener('change', function(){
     var x=el._x; if(!editable()||!x) return;
     if(x.en && !ta.value.trim()){ toast('The report cannot be empty.'); ta.value=x.note||''; return; }
@@ -1578,12 +1587,19 @@ function makeTd(id){
   fin.addEventListener('click', async function(){
     var x=el._x; if(!x||x.en||!editable()) return;
     if(!ta.value.trim()){ toast('Fill the report in the notes box before marking the task done.'); return; }
+    if(!phA){ toast('Take the photo after finishing before marking the task done.'); return; }
     if(needSup()){ toast('Choose your name at the top first.'); return; }
-    var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600)};
+    try{ await phSave(id,'a',phA); }catch(e){ toast('The photo could not be saved. Check your internet and try again.'); return; }
+    var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600), pa:1}; phA=''; phM.hidden=true;
     if(x.tid && day.tasks && day.tasks[x.tid]){ p.tasks={}; p.tasks[x.tid]={status:'done', who:whoNow(), at:Date.now()}; }
     if(await save(p)) toast('Task marked done. Time taken '+fmtDur(p.td[id].en-(x.st||p.td[id].en)));
   });
-  del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); }); });
+  del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); try{ db.doc('photos/'+id).delete().catch(function(){}); }catch(e){} }); });
+  var phA='', phL=mk('label','btn small'), phI=document.createElement('input'), phT=mk('span',null,'Take photo after finishing'), phV=mk('button','btn small','View photos'), phM=mk('img');
+  phI.type='file'; phI.accept='image/*'; phI.setAttribute('capture','environment'); phI.style.display='none'; phL.style.cssText='cursor:pointer;align-self:flex-start'; phL.append(phT,phI);
+  phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)'; phV.type='button';
+  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&phA); });
+  phV.addEventListener('click', function(){ var x=el._x; phView(id,(x&&x.title)||'Task'); });
   var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.append(asV,asE,asC,asP);
   asC.addEventListener('click', function(){ asPend=null; asP.hidden=true; asC.hidden=true; asE.disabled=false; asE.textContent='Change assigned to'; });
   var asPend=null;
@@ -1607,7 +1623,7 @@ function makeTd(id){
     buildAsg(asP, labourNames(x.nid||'1'), [], function(v){ asPend=v; asE.disabled=!v.length; });
     asP.hidden=false; asC.hidden=false; asE.disabled=true; asE.textContent='Save assigned to';
   });
-  el.append(t,meta,asB,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC}; return el;
+  el.append(t,meta,asB,phL,phM,phV,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -1616,18 +1632,51 @@ function tdMeta(x){
 function updateTd(el,x,ed){
   var R=el._r; el._x=x;
   R.t.textContent=x.title+(x.en?'':' (in progress)');
+  R.phL.hidden=!(ed&&!x.en); R.phV.hidden=!(x.pb||x.pa); if(x.en) R.phM.hidden=true;
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
   if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; R.asE.disabled=false; if(R.asC) R.asC.hidden=true; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
-  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!R.ta.value.trim();
+  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&R.phM.src&&!R.phM.hidden);
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
-var tdAsgSel=[];
+var tdAsgSel=[], tdPhotoB='';
+function phCompress(file){
+  return new Promise(function(res,rej){
+    var fr=new FileReader(); fr.onerror=function(){ rej(); };
+    fr.onload=function(){ var im=new Image(); im.onerror=function(){ rej(); };
+      im.onload=function(){ var m=Math.max(im.width,im.height), s=m>800?800/m:1, c=document.createElement('canvas'); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s); c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.6)); };
+      im.src=fr.result; };
+    fr.readAsDataURL(file);
+  });
+}
+async function phSave(id,part,data){
+  var d=db.doc('photos/'+id), o={}; o[part]=data;
+  try{ await d.update(o); }catch(e){ if(e&&e.code==='not_found'){ await d.set(o); } else throw e; }
+}
+async function phView(id,title){
+  var body=$('#phBody'); body.textContent=''; $('#phHead').textContent=title+' photos';
+  var d=$('#dlgPh'); if(!d.open) d.showModal();
+  body.append(mk('p','pmeta','Loading...'));
+  try{
+    var s=await db.doc('photos/'+id).get(), x=s.exists?(s.data()||{}):{}; body.textContent='';
+    [['b','Before starting'],['a','After finishing']].forEach(function(q){
+      if(!x[q[0]]) return;
+      var w=mk('div'); w.append(mk('div','pmeta',q[1])); var im=document.createElement('img'); im.src=x[q[0]]; im.alt=q[1]+' photo'; im.style.cssText='max-width:100%;border-radius:10px;border:1px solid var(--line)'; w.append(im); body.append(w);
+    });
+    if(!body.children.length) body.append(mk('p','pmeta','No photos saved for this task.'));
+  }catch(e){ body.textContent=''; body.append(mk('p','pmeta','The photos could not be loaded. Check your internet and try again.')); }
+}
+$('#phClose').addEventListener('click', function(){ $('#dlgPh').close(); });
+$('#tdPhB').addEventListener('change', async function(){
+  var f=this.files&&this.files[0]; this.value=''; if(!f) return;
+  try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
+  tdStartState();
+});
 function tdStartState(){
   var b=$('#tdStart'); if(!b) return;
   var need=labourNames(nursery).length>0;
-  b.disabled=!(cleanName($('#tdName').value)&&(!need||tdAsgSel.length>0));
+  b.disabled=!(cleanName($('#tdName').value)&&(!need||tdAsgSel.length>0)&&tdPhotoB);
 }
 function renderTd(){
   var sub=taskSub;
@@ -1668,8 +1717,9 @@ $('#fTd').addEventListener('submit', async function(e){
   if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
-  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice()}; p.td[id].ast=p.td[id].st;
-  if(await save(p)){ $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
+  p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
+  try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
+  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc){
   var y=secStart(doc,'7. Tasks done and time taken',false);
@@ -3799,6 +3849,7 @@ $('#fRst').addEventListener('submit', async function(e){
     var days=await db.list('days/'), n=0;
     if(rstMode==='all'){
       for(var i=0;i<days.length;i++){ await db.doc(days[i].path).delete(); n++; }
+      try{ var phs=await db.list('photos/'); for(var pi=0;pi<phs.length;pi++){ await db.doc(phs[pi].path).delete(); } }catch(e){}
       var delDoc=function(path){ return db.doc(path).delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; }); };
       await delDoc('meta/index'); await delDoc('meta/salary'); await delDoc('meta/invoices'); await delDoc('meta/accounts');
       await db.doc('meta/settings').set({co:CO, ownerWa:ownerWa||''});
@@ -3810,6 +3861,7 @@ $('#fRst').addEventListener('submit', async function(e){
         Object.keys(tk).forEach(function(id){ if(tk[id]&&!tk[id].removed){ p.tasks=p.tasks||{}; p.tasks[id]={status:'', reason:'', note:'', who:'', at:null}; } });
         await db.doc(days[j].path).update(p); n++;
       }
+      try{ var phs2=await db.list('photos/'); for(var pj=0;pj<phs2.length;pj++){ await db.doc(phs2[pj].path).delete(); } }catch(e){}
       await db.doc('meta/salary').update({e:null, p:null}).catch(function(e){ if(!e||e.code!=='not_found') throw e; });
       await db.doc('meta/invoices').delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; });
       await db.doc('meta/accounts').delete().catch(function(e){ if(!e||e.code!=='not_found') throw e; });
