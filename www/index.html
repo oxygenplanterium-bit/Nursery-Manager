@@ -3155,7 +3155,10 @@ function invAddLine(){
   q.type='number'; q.min='1'; q.step='1'; q.inputMode='numeric'; q.placeholder='Qty'; q.setAttribute('aria-label','Quantity');
   r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate');
   el.style.cssText='display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px';
-  sel.style.cssText='grid-column:1/-1;width:100%;min-width:0;max-width:100%'; q.style.cssText='width:100%;min-width:0'; r.style.cssText='width:100%;min-width:0';
+  sel.style.cssText='display:none'; var pb=mk('button','pickbtn','Select item'); pb.type='button'; pb.style.cssText='grid-column:1/-1'; pb.setAttribute('aria-haspopup','dialog');
+  var pbSync=function(){ var o=sel.options[sel.selectedIndex]; pb.textContent=o?o.textContent:'Select item'; }; sel.addEventListener('change', pbSync);
+  pb.addEventListener('click', function(){ openPick(sel,'Select item'); });
+  q.style.cssText='width:100%;min-width:0'; r.style.cssText='width:100%;min-width:0';
   var dsel=mk('select','ldt'), dv=mk('input','ldv');
   [['','No discount'],['p','Discount %'],['i','Discount ₹ per piece'],['l','Discount ₹ lumpsum']].forEach(function(o){ var op=mk('option',null,o[1]); op.value=o[0]; dsel.append(op); });
   dsel.setAttribute('aria-label','Discount type for this item'); dsel.style.cssText='grid-column:1/-1;width:100%;min-width:0';
@@ -3173,7 +3176,7 @@ function invAddLine(){
   r.addEventListener('input', function(){ r.dataset.auto=''; });
   sel.addEventListener('change', autoRate);
   [sel,q,r].forEach(function(n){ n.addEventListener('input', invTotals); n.addEventListener('change', invTotals); });
-  el.append(sel,q,r,x,dsel,dv); box.append(el);
+  el.append(sel,pb,q,r,x,dsel,dv); box.append(el);
 }
 $('#invAddLine').addEventListener('click', invAddLine);
 ['#invGst','#invShip','#invDv'].forEach(function(q){ $(q).addEventListener('input', invTotals); }); $('#invDt').addEventListener('change', function(){ if(!this.value) $('#invDv').value=''; invTotals(); });
@@ -3524,6 +3527,12 @@ function openAcc(k,eid){
   }
   pickSync();
   var d=$('#dlgAcc'); if(!d.open) d.showModal();
+}
+function openPick(sel,title,done){
+  var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title;
+  Array.prototype.forEach.call(sel.options,function(o){ var b=mk('button','pickopt',o.textContent); b.type='button'; if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); }); box.append(b); });
+  if(!box.children.length) box.append(mk('p','pmeta','Nothing to choose from yet.'));
+  var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
 var pickBtn=mk('button','pickbtn',''); pickBtn.type='button'; pickBtn.setAttribute('aria-haspopup','dialog'); $('#accCat').style.display='none'; $('#accCatL').append(pickBtn);
 function pickSync(){ var c=$('#accCat'), o=c.options[c.selectedIndex]; pickBtn.textContent=o?o.textContent:'Select a category'; }
