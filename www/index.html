@@ -321,6 +321,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tasgbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .tasgbox[hidden]{display:none}
 .hideasg .tasgbox{display:none}
+.tdasg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:4px 0}
+#tdList.hideasg .tdasg{display:none}
 </style>
 
 <div class="wrap">
@@ -463,6 +465,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
         </form>
         <div class="bar" id="tdBar" hidden><span class="tsum" id="tdSum"></span></div>
         <p class="pmeta" id="tdEmpty">No tasks recorded on this day.</p>
+        <div class="asghead" id="tdAsgBar" style="padding:0 2px"><b style="font-size:.85rem;color:var(--muted)">Assigned to and time worked</b><button type="button" class="btn small" id="tdAsgTog" aria-expanded="true">Hide</button></div>
         <div class="tl" id="tdList"></div>
       </section>
     </div>
@@ -1033,6 +1036,12 @@ var b=document.getElementById('tAsgTog'), l=document.getElementById('tlist'); if
 function st(){ try{ return localStorage.getItem('asgHide_tlist')==='1'; }catch(e){ return false; } }
 function ap(){ var hd=st(); l.classList.toggle('hideasg',hd); b.textContent=hd?'Show':'Hide'; b.setAttribute('aria-expanded',String(!hd)); }
 ap(); b.addEventListener('click', function(){ try{ localStorage.setItem('asgHide_tlist', st()?'0':'1'); }catch(e){ l.classList.toggle('hideasg'); b.textContent=l.classList.contains('hideasg')?'Show':'Hide'; return; } ap(); });
+})();</script>
+<script>(function(){
+var b=document.getElementById('tdAsgTog'), l=document.getElementById('tdList'); if(!b||!l) return;
+function st(){ try{ return localStorage.getItem('asgHide_tdlist')==='1'; }catch(e){ return false; } }
+function ap(){ var hd=st(); l.classList.toggle('hideasg',hd); b.textContent=hd?'Show':'Hide'; b.setAttribute('aria-expanded',String(!hd)); }
+ap(); b.addEventListener('click', function(){ try{ localStorage.setItem('asgHide_tdlist', st()?'0':'1'); }catch(e){ l.classList.toggle('hideasg'); b.textContent=l.classList.contains('hideasg')?'Show':'Hide'; return; } ap(); });
 })();</script>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
 <script src="platform.js"></script>
@@ -1670,7 +1679,7 @@ function makeTd(id){
   phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)'; phV.type='button';
   phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&phA); });
   phV.addEventListener('click', function(){ var x=el._x; phView(id,(x&&x.title)||'Task'); });
-  var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.append(asV,asE,asC,asP);
+  var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.className='tdasg'; asB.append(asV,asE,asC,asP);
   asC.addEventListener('click', function(){ asPend=null; asP.hidden=true; asC.hidden=true; asE.disabled=false; asE.textContent='Change assigned to'; });
   var asPend=null;
   asE.addEventListener('click', function(){
