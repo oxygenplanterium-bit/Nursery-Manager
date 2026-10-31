@@ -580,7 +580,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <section class="card team">
         <div class="sline" style="justify-content:space-between;align-items:center"><button class="btn small" type="button" id="chatBack">Back</button><b id="chatTitle" style="text-align:right"></b></div>
         <p class="pmeta" id="chatWho"></p>
-        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;padding:4px 2px"></div>
+        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow:auto;padding:12px 10px;background:#eef2ef;border:1px solid var(--line);border-radius:14px"></div>
         <img id="chatPrev" alt="Photo to send" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)">
         <textarea id="chatIn" rows="2" maxlength="1000" placeholder="Type a message" aria-label="Message"></textarea>
         <div class="sline"><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="chatPh" accept="image/*" capture="environment" style="display:none"></label><button class="btn small" type="button" id="chatPhX" hidden>Remove photo</button><button class="btn primary" type="button" id="chatSend" style="margin-left:auto" disabled>Send</button></div>
@@ -3635,10 +3635,10 @@ function renderChat(){
   var me=chatMe(), ms=chatMsgs(c);
   if(!ms.length) box.append(mk('p','pmeta','No messages yet. Say hello.'));
   ms.forEach(function(it){
-    var id=it[0], m=it[1], mine=m.s===me, b=mk('div');
-    b.style.cssText='max-width:85%;padding:8px 10px;border-radius:12px;border:1px solid var(--line);align-self:'+(mine?'flex-end':'flex-start')+';background:'+(mine?'#dcefe1':'#fff')+';color:#14201a;text-transform:none';
-    b.append(mk('div','pmeta',(mine?'You':(m.n||'Someone'))+' · '+fmtTime(m.at)));
-    if(m.t){ var tx=mk('div',null,m.t); tx.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere'; b.append(tx); }
+    var id=it[0], m=it[1], mine=m.s===me, b=mk('div'), cl=chatColor(m.s);
+    b.style.cssText='width:fit-content;min-width:96px;max-width:74%;padding:7px 11px 6px;border:1px solid '+cl.line+';background:'+cl.bg+';color:#14201a;text-transform:none;box-shadow:0 1px 1px rgba(0,0,0,.06);align-self:'+(mine?'flex-end':'flex-start')+';border-radius:'+(mine?'14px 14px 4px 14px':'14px 14px 14px 4px');
+    var nm=mk('div',null,mine?'You':(m.n||'Someone')); nm.style.cssText='font-size:.74rem;font-weight:700;color:'+cl.ink+';margin-bottom:2px'; b.append(nm);
+    if(m.t){ var tx=mk('div',null,m.t); tx.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.35'; b.append(tx); }
     if(m.ph){
       var pb=mk('button','btn small','Show photo'); pb.type='button';
       var show=function(d){ var im=document.createElement('img'); im.src=d; im.alt='Photo'; im.style.cssText='max-width:100%;border-radius:8px;margin-top:6px;display:block'; pb.replaceWith(im); };
@@ -3646,11 +3646,19 @@ function renderChat(){
       else pb.addEventListener('click', async function(){ pb.textContent='Loading...'; try{ var s=await db.doc('chatph/'+id).get(), d=s.exists&&s.data()&&s.data().d; if(d){ chatPhCache[id]=d; show(d); } else pb.textContent='Photo not available'; }catch(e){ pb.textContent='Show photo'; toast('The photo could not be loaded.'); } });
       b.append(pb);
     }
-    if(mine||isOwner){ var dl=mk('button','edit','Delete'); dl.type='button'; dl.style.cssText='align-self:flex-end;margin-left:8px'; dl.addEventListener('click', function(){ arm(dl,'chm'+id,'Delete', async function(){ var p={m:{}}; p.m[id]=null; try{ await db.doc('chat/'+chatOpen).update(p); if(m.ph) db.doc('chatph/'+id).delete().catch(function(){}); }catch(e){ toast('The message could not be deleted.'); } }); }); b.append(dl); }
+    var ft=mk('div'); ft.style.cssText='display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:3px'; var tm=mk('span',null,fmtTime(m.at)); tm.style.cssText='font-size:.68rem;color:#5c6b62'; ft.append(tm);
+    if(mine||isOwner){ var dl=mk('button','edit','Delete'); dl.type='button'; dl.style.cssText='font-size:.68rem;padding:0;color:#7a5a5a'; dl.addEventListener('click', function(){ arm(dl,'chm'+id,'Delete', async function(){ var p={m:{}}; p.m[id]=null; try{ await db.doc('chat/'+chatOpen).update(p); if(m.ph) db.doc('chatph/'+id).delete().catch(function(){}); }catch(e){ toast('The message could not be deleted.'); } }); }); ft.append(dl); }
+    b.append(ft);
     box.append(b);
   });
   if(near) box.scrollTop=box.scrollHeight;
   chatMarkSeen(chatOpen); chatBadge(); chatSendState();
+}
+var CHAT_PAL=[{bg:'#dbe9fb',line:'#b7d0f2',ink:'#1b4f8f'},{bg:'#fde7d3',line:'#f4c9a0',ink:'#9a4b0c'},{bg:'#efe0f7',line:'#d8bdea',ink:'#6a2c8c'},{bg:'#fbf0c4',line:'#ecd98a',ink:'#7a5f05'},{bg:'#d9f0f0',line:'#aedada',ink:'#0f6464'},{bg:'#fbdfe3',line:'#f0b9c2',ink:'#a02a3e'}];
+function chatColor(s){
+  if(s==='owner') return {bg:'#d4ecd9',line:'#a9d4b3',ink:'#1d6b3a'};
+  var i=0, k; if(s){ for(k=0;k<s.length;k++) i=(i*31+s.charCodeAt(k))>>>0; }
+  return CHAT_PAL[i%CHAT_PAL.length];
 }
 function chatSendState(){ $('#chatSend').disabled=!($('#chatIn').value.trim()||chatPhoto); }
 $('#chatIn').addEventListener('input', chatSendState);
