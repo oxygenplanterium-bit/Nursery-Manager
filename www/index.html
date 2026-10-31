@@ -2675,6 +2675,7 @@ function renderTeam(){
       if(document.activeElement!==el._r.rin) el._r.rin.value=rateOf(it[0])||'';
       if(el._r.nsel && document.activeElement!==el._r.nsel) el._r.nsel.value=it[1].nid||'1';
       if(el._r.cb) el._r.cb.textContent=it[1].chat?'Remove chat':'Add chat';
+      el.style.background=pos%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))';
       if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
       pos++;
     });
