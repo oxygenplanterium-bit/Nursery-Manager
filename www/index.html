@@ -4839,6 +4839,19 @@ function renderSalDlg(){
       catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
     });
     if(isOwner) b.append(wa);
+    var aSrc=(m.paid&&m.paid.adv)?m.paid.adv:m.advItems.slice().sort(function(a,b2){ return (a.d||'').localeCompare(b2.d||'')||(a.at||0)-(b2.at||0); });
+    var aCi=(m.paid&&m.paid.adv)?(Number(m.paid.ci)||0):(m.carryIn>0?m.carryIn:0), aTot=aSrc.reduce(function(t,x){ return t+(Number(x.amt)||0); },0)+aCi;
+    var ah=mk('h3',null,'Advance entries'); ah.style.margin='14px 0 4px'; b.append(ah);
+    b.append(mk('p','pmeta',(m.paid?'Salary paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'')+'. Saved record of the advances.':'Salary not yet paid. All advances entered so far.')+' '+aSrc.length+(aSrc.length===1?' entry':' entries')+' · Total ₹'+fmtN(aTot)));
+    aSrc.forEach(function(x,ix){
+      var c=mk('div','sline'); c.style.cssText='flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px;background:'+(ix%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))');
+      var dd=x.d||'';
+      c.append(mk('span','grow',x.note||'—'), mk('span',null,dd?dd.slice(8)+'/'+dd.slice(5,7)+'/'+dd.slice(0,4):''), mk('b',null,'₹'+fmtN(Number(x.amt)||0)));
+      if(x.at){ var em=mk('div','pmeta','Entered on '+new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(x.at)); em.style.flexBasis='100%'; c.append(em); }
+      b.append(c);
+    });
+    if(aCi>0){ var cc=mk('div','sline'); cc.style.cssText='border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px;justify-content:space-between'; cc.append(mk('span',null,'Carried from earlier months'), mk('b',null,'₹'+fmtN(aCi))); b.append(cc); }
+    if(!aSrc.length&&!aCi) b.append(mk('p','pmeta','No advance entries for this month.'));
   }else{
     var f=mk('div','sline'), amt=mk('input'), note=mk('input','grow'), add=mk('button','btn primary','Add');
     amt.type='number'; amt.min='1'; amt.step='1'; amt.inputMode='numeric'; amt.placeholder='₹ Amount'; note.type='text'; note.placeholder='Note (optional)'; note.maxLength=60; add.type='button';
