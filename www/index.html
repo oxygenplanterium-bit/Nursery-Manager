@@ -545,6 +545,7 @@ dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-
           <label class="f"><span>Bill no. (optional)</span><input type="text" id="csBill" maxlength="30" autocomplete="off"></label>
           <label class="f"><span>Amount in ₹ (optional)</span><input type="number" id="csAmt" min="0" step="0.01" inputmode="decimal"></label>
         </div>
+        <label class="f"><span>Mode of payment</span><select id="csMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option><option value="card">Card</option></select></label>
         <p class="pmeta" id="csErr" style="color:var(--warn)"></p>
         <button class="btn primary" type="submit">Add Today's Customer</button>
       </form>
@@ -2964,7 +2965,7 @@ function makeCs(id){
 function updateCs(el,x,ed){
   var R=el._r;
   R.t.textContent=[x.name,x.phone].filter(Boolean).join(' \u00b7 ');
-  R.meta.textContent=[x.bill?'Bill no. '+x.bill:'No bill no.', x.amt>0?'\u20b9'+fmtMoney(x.amt):'No amount', x.by?'By '+x.by:'', fmtTime(x.at)].filter(Boolean).join(' \u00b7 ');
+  R.meta.textContent=[x.bill?'Bill no. '+x.bill:'No bill no.', x.amt>0?'\u20b9'+fmtMoney(x.amt):'No amount', x.mode?({cash:'Cash',upi:'UPI',bank:'Bank',card:'Card'}[x.mode]||x.mode):'', x.by?'By '+x.by:'', fmtTime(x.at)].filter(Boolean).join(' \u00b7 ');
   R.rm.hidden=!ed;
 }
 function renderCs(){
@@ -2998,7 +2999,7 @@ $('#fCs').addEventListener('submit', function(e){
   if(bill && csItems().some(function(it){ return it[1].bill && normName(it[1].bill)===normName(bill); })){ err.textContent='Bill no. '+bill+' is already entered today.'; return; }
   err.textContent='';
   var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={cs:{}};
-  p.cs[id]={name:name, nid:nursery, phone:phoneRaw ? digits : '', bill:bill, amt:(amt>0?Math.round(amt*100)/100:0), by:nameNow()||(isOwner?'Owner':''), at:Date.now()};
+  p.cs[id]={name:name, nid:nursery, phone:phoneRaw ? digits : '', bill:bill, amt:(amt>0?Math.round(amt*100)/100:0), mode:$('#csMode').value||'cash', by:nameNow()||(isOwner?'Owner':''), at:Date.now()};
   save(p).then(function(ok){
     if(ok){ $('#csName').value=''; $('#csPhone').value=''; $('#csBill').value=''; $('#csAmt').value=''; toast('Customer added'); }
   });
@@ -4537,8 +4538,8 @@ function pdfCs(doc){
     if(!items.length){ y=padPdf(doc,y+14,n,'sold'); return; }
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
-      head:[['Sl.No.','Customer name','Phone','Bill no.','Amount (Rs.)','Entered by','Time']],
-      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.name||'',x.phone||'',x.bill||'',{content:x.amt>0?fmtMoney(x.amt):'',styles:{halign:'right'}},x.by||'',fmtTime(x.at)]; }),
+      head:[['Sl.No.','Customer name','Phone','Bill no.','Amount (Rs.)','Mode','Entered by','Time']],
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.name||'',x.phone||'',x.bill||'',{content:x.amt>0?fmtMoney(x.amt):'',styles:{halign:'right'}},({cash:'Cash',upi:'UPI',bank:'Bank',card:'Card'}[x.mode]||''),x.by||'',fmtTime(x.at)]; }),
       foot:[['','','','Total',{content:fmtMoney(total),styles:{halign:'right'}},'','']],
       headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20}, columnStyles:{0:{cellWidth:40}}
     });
