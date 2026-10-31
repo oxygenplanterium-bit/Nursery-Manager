@@ -335,6 +335,13 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tasgbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .tasgbox[hidden]{display:none}
 .hideasg .tasgbox{display:none}
+.pitem.tdrun{background:color-mix(in srgb,var(--accent) 22%,var(--bg)); border-color:var(--accent)}
+.pitem.tdend{background:color-mix(in srgb,var(--loss) 20%,var(--bg)); border-color:var(--loss)}
+.tdhead{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.tdhead .pname{flex:1; min-width:0}
+.tdhead .tdarr{flex:none; padding:2px 10px; min-height:0; font-size:1rem; line-height:1.2}
+.tdbd{display:flex; flex-direction:column; gap:8px}
+.tdbd[hidden]{display:none}
 .tdasg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:4px 0}
 #tdList.hideasg .tdasg{display:none}
 </style>
@@ -1738,14 +1745,21 @@ function makeTd(id){
     buildAsg(asP, labourNames(x.nid||'1'), [], function(v){ asPend=v; asE.disabled=!v.length; });
     asP.hidden=false; asC.hidden=false; asE.disabled=true; asE.textContent='Save assigned to';
   });
-  el.append(t,meta,asB,phL,phM,phV,ta,row); el._r={t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
+  var head=mk('div','tdhead'), arr=mk('button','btn tdarr','\u25BE'), bd=mk('div','tdbd'); arr.type='button'; arr.setAttribute('aria-label','Show or hide task details');
+  arr.addEventListener('click', function(){ var x=el._x; if(!x||!x.en) return; tdOpen[id]=!tdOpen[id]; updateTd(el,x,editable()); });
+  head.append(t,arr); bd.append(meta,asB,phL,phM,phV,ta,row); el.append(head,bd);
+  el._r={arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
   return [x.by?'Started by '+x.by:'', 'Started '+fmtTime(x.st), run?'Running · '+fmtDur(Date.now()-(x.st||Date.now())):'Ended '+fmtTime(x.en)+' · Time taken '+fmtDur(x.en-(x.st||x.en)), (!run&&x.doneBy&&x.doneBy!==x.by)?'Done by '+x.doneBy:''].filter(Boolean).join(' · ');
 }
+var tdOpen={};
 function updateTd(el,x,ed){
   var R=el._r; el._x=x;
+  el.classList.toggle('tdrun',!x.en); el.classList.toggle('tdend',!!x.en);
+  var collapsed=!!x.en && !tdOpen[el._id] && !tdEditing[el._id];
+  R.bd.hidden=collapsed; R.arr.hidden=!x.en; R.arr.textContent=collapsed?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!collapsed);
   R.t.textContent=x.title+(x.en?'':' (in progress)');
   R.phL.hidden=!(ed&&!x.en); R.phV.hidden=!(x.pb||x.pa); if(x.en) R.phM.hidden=true;
   R.meta.textContent=tdMeta(x);
