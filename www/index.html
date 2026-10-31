@@ -5282,12 +5282,13 @@ function dockBuild(){
            dkTile('tasks','Tasks',function(){ $('#tabTasks').click(); }),
            dkTile('att','Attendance',function(){ $('#tabAtt').click(); }));
   if(isOwner) d.append(dkTile('acc','Accounts',function(){ $('#tabAcc').click(); }));
+  else d.append(dkTile('res','Resources',function(){ $('#tabRes').click(); }));
   d.append(dkTile('more','More',openMore,low));
 }
 function openMore(){
   var g=$('#moreGrid'); g.textContent='';
   MORE_ITEMS.forEach(function(m){
-    var src=$(m[2]); if(!src||src.hidden) return;
+    var src=$(m[2]); if(!src||src.hidden||(m[0]==='res'&&!isOwner)) return;
     var badge=m[0]==='low'&&day?lowItems().length:0;
     g.append(dkTile(m[0],m[1],function(){ $('#dlgMore').close(); src.click(); },badge));
   });
