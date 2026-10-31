@@ -266,6 +266,7 @@ dialog:not(#dlgInv):not(.pickdlg) form,dialog:not(#dlgInv):not(.pickdlg) .dbody{
 dialog:not(#dlgInv):not(.pickdlg) .actions{position:sticky; bottom:-18px; background:var(--card); padding:10px 0 6px; margin-top:4px; z-index:2}
 dialog form,dialog .dbody{padding:18px; display:flex; flex-direction:column; gap:12px}
 dialog label{display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.92rem}
+dialog input[type=date]{display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box; -webkit-appearance:none; appearance:none; height:48px; text-align:left}
 dialog p{margin:0; color:var(--muted); font-size:.9rem}
 .actions{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; font-size:.92rem; max-width:calc(100vw - 32px); z-index:50}
@@ -367,7 +368,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dlgLow .bcard,#dlgBat .bcard,#dlgDue .bcard{min-width:0}
 .tabs[aria-label="Sections"]{display:none !important}
 .wrap{padding-bottom:120px}
-#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:12px; padding:12px 16px; border-radius:30px; background:color-mix(in srgb,var(--card) 82%,transparent); border:1px solid var(--line); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 8px 28px rgba(0,0,0,.28)}
+#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:12px; padding:12px 16px; border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
 .dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
