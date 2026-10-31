@@ -385,11 +385,6 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
-  <div class="homeadm">
-    <button class="btn small" id="coBtn" hidden>Company Profile</button>
-    <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
-    <button class="btn small" id="waSetBtn" hidden style="grid-column:1/-1">Owner WhatsApp number</button>
-  </div>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -716,12 +711,6 @@ select:not([multiple]){pointer-events:none}
     </section>
   </section>
 
-  <div class="acts">
-    <button class="btn primary" id="pdfBtn">Download stock PDF</button>
-    <button class="btn" id="backupBtn">Download all days backup</button>
-    <button class="btn" id="importBtn" hidden>Import backup file</button>
-    <input type="file" id="importFile" hidden>
-  </div>
 </div>
 
 <dialog id="dlgDue">
@@ -1091,12 +1080,17 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
-<div id="fdash" role="dialog" aria-modal="true" aria-label="Stock dashboard" hidden>
+<div id="fdash" role="dialog" aria-modal="true" aria-label="Dashboard" hidden>
   <div class="fdin">
     <div class="fdtop">
-      <div><h2>Stock Dashboard</h2><p class="pmeta" id="fdDate"></p></div>
+      <div><h2>Dashboard</h2><p class="pmeta" id="fdDate"></p></div>
       <button class="btn" id="fdClose" type="button">Close</button>
     </div>
+    <div class="homeadm">
+        <button class="btn small" id="coBtn" hidden>Company Profile</button>
+        <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
+        <button class="btn small" id="waSetBtn" hidden style="grid-column:1/-1">Owner WhatsApp number</button>
+      </div>
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
@@ -1134,6 +1128,12 @@ select:not([multiple]){pointer-events:none}
       <button class="btn small danger" id="rstTxBtn" type="button">Reset All Transactions</button>
       <button class="btn small danger" id="rstAllBtn" type="button">Reset All</button>
     </div>
+    <div class="acts">
+        <button class="btn primary" id="pdfBtn">Download stock PDF</button>
+        <button class="btn" id="backupBtn">Download all days backup</button>
+        <button class="btn" id="importBtn" hidden>Import backup file</button>
+        <input type="file" id="importFile" hidden>
+      </div>
   </div>
 </div>
 
@@ -1389,7 +1389,7 @@ function renderTop(){
   if(tab==='acc' && !isOwner) tab='';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
   $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
-  $('.acts').hidden=tab!=='';
+  $('.acts').hidden=false;
   $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
   var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
   var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs')); }
