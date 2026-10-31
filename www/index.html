@@ -4864,7 +4864,7 @@ function renderSalDlg(){
     b.append(mk('p',null,items.length+(k==='ded'||(k==='bon'&&m.autoBon>0)?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?(snapAdv?snapAdv.reduce(function(t,it){ return t+(Number(it[1].amt)||0); },0)+(Number(m.paid.ci)||0):m.advAll):(k==='bon'?m.bon:salSum(k,sid))))));
     items.forEach(function(it){
       var e=it[1], c=mk('div','sline');
-      c.style.flexWrap='wrap';
+      c.style.cssText='flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:8px 10px';
       c.append(mk('span','grow',(e.note||'—')+(e.m&&e.m!==salMonth?' (given in '+new Date(+e.m.slice(0,4),+e.m.slice(5)-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})+')':'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)+'/'+e.d.slice(0,4)), mk('b',null,'₹'+fmtN(e.amt)));
       if(e.at){ var em=mk('div','pmeta','Entered on '+new Date(e.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(e.at)+(e.edAt?' · Edited on '+new Date(e.edAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(e.edAt):'')); em.style.flexBasis='100%'; c.append(em); }
       if(snapAdv){ b.append(c); return; }
@@ -4877,7 +4877,7 @@ function renderSalDlg(){
       edb.addEventListener('click', function(){
         var em0=(e.m||salMonth), q1=em0.split('-'), lo=em0+'-01', hi=em0+'-'+('0'+new Date(+q1[0],+q1[1],0).getDate()).slice(-2);
         var r=mk('div','sline'), d2=mk('input'), a2=mk('input'), n2=mk('input','grow'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
-        r.style.flexWrap='wrap'; d2.type='date'; d2.min=lo; d2.max=hi; d2.value=e.d||lo; d2.style.cssText='flex:0 1 150px;width:auto;min-width:0;padding:8px 8px;font-size:14px';
+        r.style.cssText='flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:8px 10px'; d2.type='date'; d2.min=lo; d2.max=hi; d2.value=e.d||lo; d2.style.cssText='flex:0 1 150px;width:auto;min-width:0;padding:8px 8px;font-size:14px';
         a2.type='number'; a2.min='1'; a2.step='1'; a2.inputMode='numeric'; a2.value=e.amt; a2.style.cssText='flex:0 1 110px;width:auto;min-width:0'; a2.setAttribute('aria-label','Amount');
         n2.type='text'; n2.maxLength=60; n2.value=e.note||''; n2.placeholder='Note (optional)'; sv.type='button'; cn.type='button';
         r.append(d2,a2,n2,sv,cn); c.replaceWith(r);
