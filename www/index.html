@@ -4819,14 +4819,18 @@ function renderSalDlg(){
       var y=doc.lastAutoTable.finalY+16; doc.setFontSize(10);
       if(m.paid){ doc.text('Salary paid'+(m.paid.at?' on '+new Date(m.paid.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):''), 36, y); y+=14; }
       if(m.carryOut>0){ doc.text('Rs. '+fmtN(m.carryOut)+' carried forward to next month as advance.', 36, y, {maxWidth:W-72}); y+=14; }
-      doc.setFontSize(8); doc.text('Until this month\'s salary is marked as paid, all advances are deducted in the old or previous month salary. Any excess advance paid is carried forward to next month as advance.', 36, y+6, {maxWidth:W-72});
+      var fn=doc.splitTextToSize?doc.splitTextToSize('Until this month\'s salary is marked as paid, all advances are deducted in the old or previous month salary. Any excess advance paid is carried forward to next month as advance.',W-72):['']; doc.setFontSize(8); doc.text(fn, 36, y+6); y+=6+fn.length*10;
       var advSrc=(m.paid&&m.paid.adv)?m.paid.adv:m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); });
       var advRows=advSrc.map(function(x,i){ return [i+1, x.d?fmtIso(x.d):'', x.note||'', x.at?fmtIso(keyOf(new Date(x.at))):'', R(Number(x.amt)||0)]; });
       var ciAmt=(m.paid&&m.paid.adv)?(Number(m.paid.ci)||0):(m.carryIn>0?m.carryIn:0);
       if(ciAmt>0) advRows.push(['','','Carried from earlier months','',R(ciAmt)]);
+      var PH=doc.internal.pageSize.getHeight?doc.internal.pageSize.getHeight():595;
+      if(y+90>PH){ doc.addPage(); y=40; }
+      doc.setFontSize(11); doc.text('Advance entries - '+mon+(m.paid?' (salary paid)':' (salary not yet paid)'), 36, y+14); doc.setFontSize(10); y+=18;
+      if(!advRows.length){ doc.text('No advance entries for this month.', 36, y+14); }
       if(advRows.length){
         var advTot=advSrc.reduce(function(s,x){ return s+(Number(x.amt)||0); },0)+ciAmt;
-        doc.autoTable({startY:y+30, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Entered on','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:4,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:30},4:{halign:'right',cellWidth:70}}, margin:{left:36,right:36}});
+        doc.autoTable({startY:y+4, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Advance date','Note','Entered on','Amount']], body:advRows, foot:[[{content:'Total advances',colSpan:4,styles:{halign:'right'}}, R(advTot)]], showFoot:'lastPage', headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20,fontStyle:'bold'}, columnStyles:{0:{cellWidth:30},4:{halign:'right',cellWidth:70}}, margin:{left:36,right:36}});
       }
       var buf=doc.output('arraybuffer');
       try{ await downloads.save({filename:'salary-slip-'+rec.n.replace(/[^A-Za-z0-9]+/g,'-')+'-'+salMonth+'.pdf', data:buf}); }
