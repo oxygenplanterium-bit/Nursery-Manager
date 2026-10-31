@@ -3155,7 +3155,7 @@ function invAddLine(){
   sel.setAttribute('aria-label','Stock item');
   var o0=mk('option',null,'Select item'); o0.value=''; sel.append(o0);
   rowsOf(nursery).forEach(function(it){
-    var o=mk('option',null,it[1].name+' (available '+fmtN(bal(it[1]))+')'); o.value=it[0]; sel.append(o);
+    var o=mk('option',null,it[1].name+' (qty '+fmtN(bal(it[1]))+')'); o.value=it[0]; sel.append(o);
   });
   q.type='number'; q.min='1'; q.step='1'; q.inputMode='numeric'; q.placeholder='Qty'; q.setAttribute('aria-label','Quantity');
   r.type='number'; r.min='0'; r.step='0.01'; r.inputMode='decimal'; r.placeholder='Rate ₹'; r.setAttribute('aria-label','Rate');
