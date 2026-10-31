@@ -5060,9 +5060,8 @@ function renderLow(){
     bo.addEventListener('click', function(){ var v=readV(); if(v) setAll(v,true); });
     bc.addEventListener('click', function(){ arm(bc,'minClr','Clear All',function(){ setAll(0,false); }); });
     var bh=mk('div','brow'); bh.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; bi.placeholder='Qty'; bi.style.cssText='width:72px;flex:none;padding-left:8px;padding-right:8px';
-    br.style.flexWrap='nowrap'; ba.style.flex='1 1 0'; bo.style.flex='1 1 0'; bh.append(mk('b',null,'Set For All'), bi); br.append(ba,bo);
-    var br2=mk('div','sline'); br2.style.justifyContent='flex-end'; br2.append(bc);
-    bk.append(bh, br, br2, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
+    br.style.flexWrap='nowrap'; ba.style.flex='1 1 0'; bo.style.flex='1 1 0'; bh.append(bc, bi); br.append(ba,bo);
+    bk.append(bh, br, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
     ['1','2'].forEach(function(n){
       var rs=rowsOf(n); if(!rs.length) return;
       body.append(mk('div','pmeta',NURS[n]));
