@@ -307,6 +307,17 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .asghead b{font-weight:600;font-size:.9rem}
 .asgbody{display:flex;flex-direction:column;gap:6px}
 .asgbody[hidden]{display:none}
+#chatConvView>.card{background:#0b141a;border:1px solid #1f2c34;padding:0;overflow:hidden;gap:0}
+#chatConvView .chhead{background:#202c33;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#chatConvView .chhead b{color:#e9edef}
+#chatConvView .chhead .btn{background:#2a3942;color:#e9edef;border-color:#2a3942}
+#chatConvView #chatWho{background:#202c33;color:#8696a0;margin:0;padding:0 12px 8px}
+#chatConvView .chbar{background:#202c33;padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+#chatConvView #chatIn{resize:none;background:#2a3942;color:#e9edef;border:0;border-radius:20px;padding:9px 14px;min-height:0}
+#chatConvView #chatIn::placeholder{color:#8696a0}
+#chatConvView .chbar .btn:not(.primary){background:#2a3942;color:#e9edef;border-color:#2a3942}
+#chatConvView #chatSend{background:#00a884;border-color:#00a884;color:#fff}
+#chatConvView #chatSend:disabled{background:#00a884;opacity:.45}
 </style>
 
 <div class="wrap">
@@ -578,12 +589,14 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     </div>
     <div id="chatConvView" hidden>
       <section class="card team">
-        <div class="sline" style="justify-content:space-between;align-items:center"><button class="btn small" type="button" id="chatBack">Back</button><b id="chatTitle" style="text-align:right"></b></div>
+        <div class="chhead"><button class="btn small" type="button" id="chatBack">Back</button><b id="chatTitle" style="text-align:right"></b></div>
         <p class="pmeta" id="chatWho"></p>
-        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow:auto;padding:12px 10px;background:#000;border:1px solid #222;border-radius:14px"></div>
-        <img id="chatPrev" alt="Photo to send" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)">
-        <textarea id="chatIn" rows="2" maxlength="1000" placeholder="Type a message" aria-label="Message"></textarea>
-        <div class="sline"><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="chatPh" accept="image/*" capture="environment" style="display:none"></label><button class="btn small" type="button" id="chatPhX" hidden>Remove photo</button><button class="btn primary" type="button" id="chatSend" style="margin-left:auto" disabled>Send</button></div>
+        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:4px;height:52vh;overflow:auto;padding:12px 10px;background:#0b141a"></div>
+        <div class="chbar">
+        <img id="chatPrev" alt="Photo to send" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid #2a3942">
+        <textarea id="chatIn" rows="1" maxlength="1000" placeholder="Type a message" aria-label="Message"></textarea>
+        <div class="sline"><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="chatPh" accept="image/*" capture="environment" style="display:none"></label><button class="btn small" type="button" id="chatPhX" hidden>Remove photo</button><button class="btn primary small" type="button" id="chatSend" style="margin-left:auto" disabled>Send</button></div>
+        </div>
       </section>
     </div>
   </section>
@@ -3633,30 +3646,34 @@ function renderChat(){
   $('#chatWho').textContent=(c.p||[]).length>1?('Shared chat: Owner, '+(c.p||[]).map(function(s){ return team.sup[s]&&!team.sup[s].x?team.sup[s].n:'Supervisor'; }).join(', ')):'Individual chat with the owner';
   var box=$('#chatMsgs'), near=box.scrollHeight-box.scrollTop-box.clientHeight<80||!box.children.length; box.textContent='';
   var me=chatMe(), ms=chatMsgs(c);
-  if(!ms.length){ var em=mk('p','pmeta','No messages yet. Say hello.'); em.style.color='#b9c4bd'; box.append(em); }
+  if(!ms.length){ var em=mk('p','pmeta','No messages yet. Say hello.'); em.style.color='#8696a0'; box.append(em); }
+  var lastDay='', prevS='', group=(c.p||[]).length>1;
   ms.forEach(function(it){
-    var id=it[0], m=it[1], mine=m.s===me, b=mk('div'), cl=chatColor(m.s);
-    b.style.cssText='width:fit-content;min-width:96px;max-width:74%;padding:7px 11px 6px;border:1px solid '+cl.line+';background:'+cl.bg+';color:#14201a;text-transform:none;box-shadow:0 1px 1px rgba(0,0,0,.06);align-self:'+(mine?'flex-end':'flex-start')+';border-radius:'+(mine?'14px 14px 4px 14px':'14px 14px 14px 4px');
-    var nm=mk('div',null,mine?'You':(m.n||'Someone')); nm.style.cssText='font-size:.74rem;font-weight:700;color:'+cl.ink+';margin-bottom:2px'; b.append(nm);
-    if(m.t){ var tx=mk('div',null,m.t); tx.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.35'; b.append(tx); }
+    var id=it[0], m=it[1], mine=m.s===me, b=mk('div');
+    var dk=keyOf(new Date(m.at));
+    if(dk!==lastDay){ lastDay=dk; prevS=''; var sp=mk('div',null,dk===todayKey()?'Today':fmtIso(dk)); sp.style.cssText='align-self:center;background:#182229;color:#8696a0;font-size:.72rem;padding:4px 12px;border-radius:8px;margin:6px 0;text-transform:none'; box.append(sp); }
+    var first=prevS!==m.s; prevS=m.s;
+    b.style.cssText='width:fit-content;min-width:84px;max-width:78%;padding:5px 9px 4px;background:'+(mine?'#005c4b':'#202c33')+';color:#e9edef;text-transform:none;box-shadow:0 1px .5px rgba(11,20,26,.4);align-self:'+(mine?'flex-end':'flex-start')+';margin-top:'+(first?'6px':'0')+';border-radius:'+(first?(mine?'8px 0 8px 8px':'0 8px 8px 8px'):'8px');
+    if(!mine&&(group||isOwner&&false)&&first||(!mine&&group)){ var nm=mk('div',null,m.n||'Someone'); nm.style.cssText='font-size:.78rem;font-weight:600;color:'+chatColor(m.s)+';margin-bottom:1px'; b.append(nm); }
+    if(m.t){ var tx=mk('div',null,m.t); tx.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:.93rem;line-height:1.3'; b.append(tx); }
     if(m.ph){
-      var pb=mk('button','btn small','Show photo'); pb.type='button';
+      var pb=mk('button','btn small','Show photo'); pb.type='button'; pb.style.cssText='background:#2a3942;color:#e9edef;border-color:#2a3942;margin-top:4px';
       var show=function(d){ var im=document.createElement('img'); im.src=d; im.alt='Photo'; im.style.cssText='max-width:100%;border-radius:8px;margin-top:6px;display:block'; pb.replaceWith(im); };
       if(chatPhCache[id]) show(chatPhCache[id]);
       else pb.addEventListener('click', async function(){ pb.textContent='Loading...'; try{ var s=await db.doc('chatph/'+id).get(), d=s.exists&&s.data()&&s.data().d; if(d){ chatPhCache[id]=d; show(d); } else pb.textContent='Photo not available'; }catch(e){ pb.textContent='Show photo'; toast('The photo could not be loaded.'); } });
       b.append(pb);
     }
-    var ft=mk('div'); ft.style.cssText='display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:3px'; var tm=mk('span',null,fmtTime(m.at)); tm.style.cssText='font-size:.68rem;color:#5c6b62'; ft.append(tm);
-    if(mine||isOwner){ var dl=mk('button','edit','Delete'); dl.type='button'; dl.style.cssText='font-size:.68rem;padding:0;color:#7a5a5a'; dl.addEventListener('click', function(){ arm(dl,'chm'+id,'Delete', async function(){ var p={m:{}}; p.m[id]=null; try{ await db.doc('chat/'+chatOpen).update(p); if(m.ph) db.doc('chatph/'+id).delete().catch(function(){}); }catch(e){ toast('The message could not be deleted.'); } }); }); ft.append(dl); }
+    var ft=mk('div'); ft.style.cssText='display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:3px'; var tm=mk('span',null,fmtTime(m.at)); tm.style.cssText='font-size:.66rem;color:#8696a0'; ft.append(tm);
+    if(mine||isOwner){ var dl=mk('button','edit','Delete'); dl.type='button'; dl.style.cssText='font-size:.66rem;padding:0;color:#8696a0'; dl.addEventListener('click', function(){ arm(dl,'chm'+id,'Delete', async function(){ var p={m:{}}; p.m[id]=null; try{ await db.doc('chat/'+chatOpen).update(p); if(m.ph) db.doc('chatph/'+id).delete().catch(function(){}); }catch(e){ toast('The message could not be deleted.'); } }); }); ft.append(dl); }
     b.append(ft);
     box.append(b);
   });
   if(near) box.scrollTop=box.scrollHeight;
   chatMarkSeen(chatOpen); chatBadge(); chatSendState();
 }
-var CHAT_PAL=[{bg:'#dbe9fb',line:'#b7d0f2',ink:'#1b4f8f'},{bg:'#fde7d3',line:'#f4c9a0',ink:'#9a4b0c'},{bg:'#efe0f7',line:'#d8bdea',ink:'#6a2c8c'},{bg:'#fbf0c4',line:'#ecd98a',ink:'#7a5f05'},{bg:'#d9f0f0',line:'#aedada',ink:'#0f6464'},{bg:'#fbdfe3',line:'#f0b9c2',ink:'#a02a3e'}];
+var CHAT_PAL=['#53bdeb','#ffa97c','#e7a1d3','#fcd04c','#7dd3c0','#ff8f8f','#b6a4ff','#a4d96c'];
 function chatColor(s){
-  if(s==='owner') return {bg:'#d4ecd9',line:'#a9d4b3',ink:'#1d6b3a'};
+  if(s==='owner') return '#06cf9c';
   var i=0, k; if(s){ for(k=0;k<s.length;k++) i=(i*31+s.charCodeAt(k))>>>0; }
   return CHAT_PAL[i%CHAT_PAL.length];
 }
