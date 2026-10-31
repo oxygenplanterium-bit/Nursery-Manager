@@ -1796,7 +1796,7 @@ function updateTd(el,x,ed){
   el.classList.toggle('tdrun',!x.en); el.classList.toggle('tdend',!!x.en);
   var collapsed=!!x.en && !tdOpen[el._id] && !tdEditing[el._id];
   R.bd.hidden=collapsed; R.arr.hidden=!x.en; R.arr.textContent=collapsed?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!collapsed);
-  R.t.textContent=x.title+(x.en?'':' (in progress)');
+  R.t.textContent=(el._n?el._n+'. ':'')+x.title+(x.en?'':' (in progress)');
   R.phL.hidden=!(ed&&!x.en); R.phV.hidden=!(x.pb||x.pa); if(x.en) R.phM.hidden=true;
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
@@ -1863,7 +1863,7 @@ function renderTd(){
   items.forEach(function(it){
     var id=it[0]; seen.add(id);
     var el=tdEls.get(id); if(!el){ el=makeTd(id); el._id=id; tdEls.set(id,el); }
-    updateTd(el,it[1],ed);
+    el._n=pos+1; updateTd(el,it[1],ed);
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
