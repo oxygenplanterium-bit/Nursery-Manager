@@ -352,7 +352,10 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .fdpick .fdnl{padding:4px 6px}
 .fdpick .dayTog{flex:1 1 0; min-width:0; padding:6px 10px; min-height:44px}
 .fdpick .attdate{flex:1 1 0; min-width:0; min-height:44px; text-align:center; padding:6px 8px; font-size:15px}
-#weekBox .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px}
+#weekBox .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px; padding:6px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+#weekBtn,#attPdfBtn{border-radius:12px}
+#weekBtn{background:var(--accent)!important; color:var(--accent-ink)!important; border-color:var(--accent)!important}
+#attPdfBtn{background:transparent!important; border-color:transparent!important}
 #weekBtn,#attPdfBtn{font-size:14px; padding:8px 2px; white-space:nowrap; min-height:44px}
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 .dayTog{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; font-weight:600}
