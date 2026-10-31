@@ -343,6 +343,12 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tdhead .tdarr{flex:none; padding:2px 10px; min-height:0; font-size:1rem; line-height:1.2}
 .tdbd{display:flex; flex-direction:column; gap:8px}
 .tdbd[hidden]{display:none}
+.pickbtn{display:block; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card,var(--bg)); color:inherit; font:inherit; min-height:44px}
+.pickbtn::after{content:'\25BE'; float:right}
+dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh}
+#pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0}
+.pickopt{display:block; width:100%; text-align:left; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:inherit; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pickopt[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .tdasg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:4px 0}
 #tdList.hideasg .tdasg{display:none}
 </style>
@@ -687,6 +693,13 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
   </div>
 </div>
 
+<dialog id="dlgPick" class="pickdlg">
+  <div class="dbody">
+    <h2 id="pickHead">Choose</h2>
+    <div id="pickList"></div>
+    <div class="actions"><button type="button" class="btn" id="pickCancel">Cancel</button></div>
+  </div>
+</dialog>
 <dialog id="dlgNote">
   <form id="fNote">
     <h2 id="noteTitle"></h2>
@@ -3504,8 +3517,18 @@ function openAcc(k,eid){
     if(vch){ var sel=$('#accInv'); if(ex.inv && !Array.prototype.some.call(sel.options,function(o){ return o.value===ex.inv; })){ var li=(invData.i||{})[ex.inv]; if(li){ var o=mk('option',null,invLabel(li)+' · '+li.party+' · due ₹'+fmtMoney(accDue(ex.inv,eid))); o.value=ex.inv; sel.append(o); } } sel.value=ex.inv||''; }
     else{ var c=$('#accCat'); if(ex.cat && !Array.prototype.some.call(c.options,function(o){ return o.value===ex.cat; })){ var oc=mk('option',null,ex.cat); oc.value=ex.cat; c.append(oc); } c.value=ex.cat||''; }
   }
+  pickSync();
   var d=$('#dlgAcc'); if(!d.open) d.showModal();
 }
+var pickBtn=mk('button','pickbtn',''); pickBtn.type='button'; pickBtn.setAttribute('aria-haspopup','dialog'); $('#accCat').style.display='none'; $('#accCatL').append(pickBtn);
+function pickSync(){ var c=$('#accCat'), o=c.options[c.selectedIndex]; pickBtn.textContent=o?o.textContent:'Select a category'; }
+pickBtn.addEventListener('click', function(){
+  var c=$('#accCat'), box=$('#pickList'); box.textContent=''; $('#pickHead').textContent='Choose a category';
+  Array.prototype.forEach.call(c.options,function(o){ var b=mk('button','pickopt',o.textContent); b.type='button'; if(o.value===c.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ c.value=o.value; pickSync(); $('#dlgPick').close(); }); box.append(b); });
+  if(!box.children.length) box.append(mk('p','pmeta','No categories yet. Add them from Manage categories.'));
+  var d=$('#dlgPick'); if(!d.open) d.showModal();
+});
+$('#pickCancel').addEventListener('click', function(){ $('#dlgPick').close(); });
 $('#accNewRc').addEventListener('click', function(){ openAcc('rc'); });
 $('#accNewPy').addEventListener('click', function(){ openAcc('py'); });
 $('#accNewIn').addEventListener('click', function(){ openAcc('in'); });
