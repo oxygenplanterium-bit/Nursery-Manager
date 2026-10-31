@@ -634,6 +634,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
     </label>
     <label class="f card" style="padding:10px 14px"><span>Full-attendance bonus (₹, added automatically when present all days of the month)</span><input type="number" id="salBonusCfg" min="0" step="1" inputmode="numeric" placeholder="₹ 0 = no automatic bonus"></label>
     <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="salPrev" aria-label="Previous month">Prev</button><b id="salMonthLbl"></b><button class="btn" type="button" id="salNext" aria-label="Next month">Next</button></div>
+    <button class="btn" type="button" id="salAdvAll">Show all advance entries (all team, until salary is paid)</button>
     <div id="salBody" class="pane"></div>
   </section>
 
@@ -758,6 +759,15 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 </dialog>
 
 <dialog id="dlgSalP"><div class="dbody" id="salPBody"></div></dialog>
+
+<dialog id="dlgSalAdv">
+  <div class="dbody">
+    <h2>All unpaid advances</h2>
+    <p class="pmeta" id="salAdvNote"></p>
+    <div id="salAdvBody" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="actions"><button type="button" class="btn primary" id="salAdvClose">Close</button></div>
+  </div>
+</dialog>
 
 <dialog id="dlgSent">
   <div class="dbody">
@@ -4571,6 +4581,28 @@ function salMonthInfo(sid,kind){
   o.advAll=o.adv+o.carryIn; o.net=o.balance; o.mthAdvGiven=salSum('adv',sid);
   return o;
 }
+function renderSalAdvAll(){
+  var body=$('#salAdvBody'); body.textContent=''; var grand=0, any=false;
+  [['sup','Supervisors'],['staff','Staff']].forEach(function(g){
+    var list=teamList(g[0]), blocks=[];
+    list.forEach(function(it){
+      var sid=it[0], M=salCalc(sid,g[0]), items=[], tot=0, carry=0;
+      Object.keys(M).sort().forEach(function(m){ var o=M[m]; if(o.paid) return; o.advItems.forEach(function(x){ items.push(x); tot+=Number(x.amt)||0; }); });
+      var last=Object.keys(M).sort().filter(function(m){ return !M[m].paid; })[0]; if(last&&M[last].carryIn>0){ carry=M[last].carryIn; tot+=carry; }
+      if(!items.length&&!carry) return;
+      items.sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); });
+      var c=mk('div','card salp'), top=mk('div','sline'); top.append(mk('b','grow',it[1].n+' ('+(NURS[it[1].nid||'1']||'')+')'), mk('b',null,'₹'+fmtN(tot)));
+      c.append(top);
+      items.forEach(function(x){ c.append(mk('div','pmeta',(x.d?fmtIso(x.d):'')+' · ₹'+fmtN(Number(x.amt)||0)+(x.note?' · '+x.note:''))); });
+      if(carry>0) c.append(mk('div','pmeta','Carried forward from earlier months · ₹'+fmtN(carry)));
+      blocks.push(c); grand+=tot; any=true;
+    });
+    if(blocks.length){ body.append(mk('h2','salh',g[1])); blocks.forEach(function(c){ body.append(c); }); }
+  });
+  $('#salAdvNote').textContent=any?('Both nurseries · Every advance entry that is not yet settled by a paid salary. Total ₹'+fmtN(grand)+'.'):('Both nurseries · No unpaid advances.');
+}
+$('#salAdvAll').addEventListener('click', function(){ renderSalAdvAll(); var d=$('#dlgSalAdv'); if(!d.open) d.showModal(); });
+$('#salAdvClose').addEventListener('click', function(){ $('#dlgSalAdv').close(); });
 function renderSal(){
   if(tab!=='sal'||!db) return;
   salSubscribe(); loadSalAtt();
