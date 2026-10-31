@@ -1698,7 +1698,7 @@ function renderTasks(){
 }
 
 /* ---------- tasks done: start, finish, time taken and report ---------- */
-var taskSub='allot', tdEls=new Map(), tdEditing={};
+var taskSub='done', tdEls=new Map(), tdEditing={};
 function fmtDur(ms){
   var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
   return h ? h+' h '+('0'+m).slice(-2)+' min' : (m ? m+' min '+('0'+sec).slice(-2)+' s' : sec+' s');
