@@ -4086,7 +4086,7 @@ async function weekInfo(){
   var key=$('#weekSel').value; el.textContent='Checking saved data…';
   var w=await loadWeek(key);
   if($('#weekSel').value!==key) return;
-  el.textContent = w.marked.length ? 'Saved attendance found for '+w.marked.length+' of 7 days.' : 'No saved data is available for this week.';
+  el.textContent = w.marked.length ? 'Saved attendance found for '+w.marked.length+' of 7 days.' : 'No saved data for this week.';
   el.style.color = w.marked.length ? '' : 'var(--warn)';
 }
 async function weeklyPdf(startKey,W){
