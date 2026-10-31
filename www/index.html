@@ -5014,7 +5014,7 @@ $('#salNext').addEventListener('click', function(){ salShift(1); });
 
 
 /* ---------- money owed, batches and losses, low stock ---------- */
-var minMap={}, dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
+var lowOpen={}, minMap={}, dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
 var RC_BG=['color-mix(in srgb,var(--loss) 16%,var(--card))','color-mix(in srgb,var(--accent) 14%,var(--card))'];
 function dayDiff(a,b){ var x=new Date(a+'T00:00:00'), y=new Date(b+'T00:00:00'); return Math.round((y-x)/864e5); }
 function mkSelect(opts,val){ var sl=document.createElement('select'); opts.forEach(function(o){ var op=mk('option',null,o[1]); op.value=o[0]; sl.append(op); }); if(val!==undefined) sl.value=val; return sl; }
@@ -5037,14 +5037,20 @@ function renderLow(){
   var body=$('#lowBody'); body.textContent='';
   var l=lowItems();
   $('#lowNote').textContent=isOwner?'Set a minimum quantity for each item. When the balance is at or below it, the item shows here and on the home page.':'Items at or below their minimum quantity. The owner sets the minimum.';
-  body.append(mk('b',null,'Needs Reordering ('+l.length+')'));
-  if(!l.length) body.append(mk('p','pmeta','Nothing is low on stock right now.'));
+  var lw=mk('div','bcard'); lw.style.cssText='border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px';
+  lw.append(mk('b',null,'Needs Reordering ('+l.length+')'));
+  if(!l.length) lw.append(mk('p','pmeta','Nothing is low on stock right now.'));
   l.forEach(function(x,i){
-    var c=mk('div','bcard'), r=mk('div','brow'); c.style.background=RC_BG[i%2];
-    r.append(mk('b',null,x.name), mk('b',null,'Qty '+fmtN(x.bal)+' / Min '+fmtN(x.min)));
-    c.append(r, mk('div','pmeta',NURS[x.nid]+(x.bal<=0?' · Out of stock':' · Short by '+fmtN(x.min-x.bal))));
-    body.append(c);
+    var c=mk('div','bcard'), r=mk('div','brow'), ar=mk('button','btn tdarr',lowOpen[x.id]?'\u25B4':'\u25BE'), dt=mk('div'); c.style.background=RC_BG[i%2];
+    r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; ar.type='button'; ar.setAttribute('aria-expanded',!!lowOpen[x.id]); ar.setAttribute('aria-label','Show or hide details of '+x.name);
+    dt.style.cssText='display:flex;flex-direction:column;gap:4px'; dt.hidden=!lowOpen[x.id];
+    dt.append(mk('b',null,'Qty '+fmtN(x.bal)+' / Min '+fmtN(x.min)), mk('div','pmeta',NURS[x.nid]+(x.bal<=0?' · Out of stock':' · Short by '+fmtN(x.min-x.bal))));
+    var tg=function(){ lowOpen[x.id]=!lowOpen[x.id]; dt.hidden=!lowOpen[x.id]; ar.textContent=lowOpen[x.id]?'\u25B4':'\u25BE'; ar.setAttribute('aria-expanded',!!lowOpen[x.id]); };
+    ar.addEventListener('click', tg);
+    var nm=mk('b',null,x.name); nm.style.cssText='flex:1;min-width:0;cursor:pointer'; nm.addEventListener('click', tg);
+    r.append(nm, ar); c.append(r, dt); lw.append(c);
   });
+  body.append(lw);
   if(isOwner){
     var h=mk('b',null,'Set Minimum Quantity'); h.style.marginTop='10px'; body.append(h);
     var bk=mk('div','bcard'), bi=mkIn('number','Same minimum for all items'), br=mk('div','sline'), ba=mk('button','btn small primary','Apply To All Items'), bo=mk('button','btn small','Only Without Minimum'), bc=mk('button','btn small danger','Clear All');
