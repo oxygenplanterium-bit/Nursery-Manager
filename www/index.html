@@ -580,7 +580,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
       <section class="card team">
         <div class="sline" style="justify-content:space-between;align-items:center"><button class="btn small" type="button" id="chatBack">Back</button><b id="chatTitle" style="text-align:right"></b></div>
         <p class="pmeta" id="chatWho"></p>
-        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow:auto;padding:12px 10px;background:#eef2ef;border:1px solid var(--line);border-radius:14px"></div>
+        <div id="chatMsgs" style="display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow:auto;padding:12px 10px;background:#000;border:1px solid #222;border-radius:14px"></div>
         <img id="chatPrev" alt="Photo to send" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)">
         <textarea id="chatIn" rows="2" maxlength="1000" placeholder="Type a message" aria-label="Message"></textarea>
         <div class="sline"><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="chatPh" accept="image/*" capture="environment" style="display:none"></label><button class="btn small" type="button" id="chatPhX" hidden>Remove photo</button><button class="btn primary" type="button" id="chatSend" style="margin-left:auto" disabled>Send</button></div>
@@ -3633,7 +3633,7 @@ function renderChat(){
   $('#chatWho').textContent=(c.p||[]).length>1?('Shared chat: Owner, '+(c.p||[]).map(function(s){ return team.sup[s]&&!team.sup[s].x?team.sup[s].n:'Supervisor'; }).join(', ')):'Individual chat with the owner';
   var box=$('#chatMsgs'), near=box.scrollHeight-box.scrollTop-box.clientHeight<80||!box.children.length; box.textContent='';
   var me=chatMe(), ms=chatMsgs(c);
-  if(!ms.length) box.append(mk('p','pmeta','No messages yet. Say hello.'));
+  if(!ms.length){ var em=mk('p','pmeta','No messages yet. Say hello.'); em.style.color='#b9c4bd'; box.append(em); }
   ms.forEach(function(it){
     var id=it[0], m=it[1], mine=m.s===me, b=mk('div'), cl=chatColor(m.s);
     b.style.cssText='width:fit-content;min-width:96px;max-width:74%;padding:7px 11px 6px;border:1px solid '+cl.line+';background:'+cl.bg+';color:#14201a;text-transform:none;box-shadow:0 1px 1px rgba(0,0,0,.06);align-self:'+(mine?'flex-end':'flex-start')+';border-radius:'+(mine?'14px 14px 4px 14px':'14px 14px 14px 4px');
