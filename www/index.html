@@ -353,7 +353,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .fdpick .dayTog{flex:1 1 0; min-width:0; padding:6px 10px; min-height:44px}
 .fdpick .attdate{flex:1 1 0; min-width:0; min-height:44px; text-align:center; padding:6px 8px; font-size:15px}
 #weekBox .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px}
-#weekBtn,#attPdfBtn{font-size:11.5px; padding:8px 2px; white-space:nowrap; min-height:44px}
+#weekBtn,#attPdfBtn{font-size:14px; padding:8px 2px; white-space:nowrap; min-height:44px}
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 .dayTog{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; font-weight:600}
 .dayTog span{flex:1; min-width:0}
@@ -565,8 +565,8 @@ select:not([multiple]){pointer-events:none}
       <label class="f"><span>Week (Sunday to Saturday)</span><select id="weekSel"></select></label>
       <p class="pmeta" id="weekInfo" role="status"></p>
       <div class="two">
-        <button class="btn" id="weekBtn">Weekly Attendance Report</button>
-        <button class="btn" id="attPdfBtn">Daily Attendance Report</button>
+        <button class="btn" id="weekBtn">Weekly Report</button>
+        <button class="btn" id="attPdfBtn">Daily Report</button>
       </div>
       <p class="pmeta" id="attPdfHelp">Attendance for the selected date only. It does not need tasks, resources or other sections to be finished.</p>
     </section>
