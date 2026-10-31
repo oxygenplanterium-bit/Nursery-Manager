@@ -266,7 +266,7 @@ dialog:not(#dlgInv):not(.pickdlg) form,dialog:not(#dlgInv):not(.pickdlg) .dbody{
 dialog:not(#dlgInv):not(.pickdlg) .actions{position:sticky; bottom:-18px; background:var(--card); padding:10px 0 6px; margin-top:4px; z-index:2}
 dialog form,dialog .dbody{padding:18px; display:flex; flex-direction:column; gap:12px}
 dialog label{display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.92rem}
-dialog input[type=date]{display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box; -webkit-appearance:none; appearance:none; height:48px; text-align:left}
+input[type=date]{display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box; -webkit-appearance:none; appearance:none; height:48px; text-align:left}
 dialog p{margin:0; color:var(--muted); font-size:.9rem}
 .actions{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; font-size:.92rem; max-width:calc(100vw - 32px); z-index:50}
@@ -387,7 +387,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .homeadm .btn[hidden]{display:none}
 .pickbtn{display:block; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card,var(--bg)); color:inherit; font:inherit; min-height:44px}
 .pickbtn::after{content:'\25BE'; float:right}
-dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh}
+dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
 #pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0; overflow-y:auto; max-height:52vh}
 .pickopt[hidden]{display:none !important}
 .pickopt:nth-child(odd){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
