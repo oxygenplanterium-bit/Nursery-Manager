@@ -1217,7 +1217,7 @@ function renderTop(){
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
   var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
-  $('#tabChat').hidden=!chatAllowed(); chatSubscribe(); if(tab==='chat'&&!chatAllowed()) tab='';
+  $('#tabChat').hidden=false; chatSubscribe();
   $('#tabTeam').hidden=!isOwner; $('#invRstBtn').hidden=!isOwner; $('#accRstBtn').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
   if(tab==='acc' && !isOwner) tab='';
@@ -3587,6 +3587,13 @@ $('#chatNotifBtn').addEventListener('click', function(){ if(chatNotifOn()) chatN
 function renderChat(){
   if(tab!=='chat') return;
   chatNotifBtn();
+  var okc=chatAllowed();
+  $('#chatNotifBtn').hidden=!okc;
+  if(!okc){
+    $('#chatListView').hidden=false; $('#chatConvView').hidden=true; $('#chatNew').hidden=true; $('#chatList').textContent=''; $('#chatEmpty').hidden=true;
+    $('#chatNote').textContent=needSup()?'Choose your name at the top of the main screen first, then chat will open here.':'Chat is not turned on for you yet. Ask the owner to tap Add chat next to your name in the Team tab.';
+    return;
+  }
   var ids=chatIds(), inConv=chatOpen&&chatData[chatOpen]&&chatVisible(chatData[chatOpen]);
   if(chatOpen&&!inConv) chatOpen='';
   $('#chatListView').hidden=!!chatOpen; $('#chatConvView').hidden=!chatOpen;
@@ -3907,7 +3914,7 @@ $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
 $('#tabInv').addEventListener('click', function(){ tab='inv'; renderAll(); });
 $('#tabAcc').addEventListener('click', function(){ if(isOwner){ tab='acc'; renderAll(); } });
-$('#tabChat').addEventListener('click', function(){ if(chatAllowed()){ tab='chat'; chatOpen=''; renderAll(); } });
+$('#tabChat').addEventListener('click', function(){ tab='chat'; chatOpen=''; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
 function setMode(m){
