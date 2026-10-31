@@ -346,7 +346,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .pickbtn{display:block; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card,var(--bg)); color:inherit; font:inherit; min-height:44px}
 .pickbtn::after{content:'\25BE'; float:right}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh}
-#pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0}
+#pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0; overflow-y:auto; max-height:52vh}
+.pickopt[hidden]{display:none !important}
 .pickopt:nth-child(odd){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
 .pickopt:nth-child(even){background:color-mix(in srgb,var(--accent) 14%,var(--card))}
 select:not([multiple]){pointer-events:none}
@@ -700,6 +701,7 @@ select:not([multiple]){pointer-events:none}
 <dialog id="dlgPick" class="pickdlg">
   <div class="dbody">
     <h2 id="pickHead">Choose</h2>
+    <input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden>
     <div id="pickList"></div>
     <div class="actions"><button type="button" class="btn" id="pickCancel">Cancel</button></div>
   </div>
@@ -3535,6 +3537,8 @@ function openPick(sel,title,done){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title;
   Array.prototype.forEach.call(sel.options,function(o){ var b=mk('button','pickopt',o.textContent); b.type='button'; if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); }); box.append(b); });
   if(!box.children.length) box.append(mk('p','pmeta','Nothing to choose from yet.'));
+  var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6;
+  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.textContent.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); var nm=box.querySelector('.pnone'); if(!n&&!nm){ box.append(mk('p','pmeta pnone','No match.')); } else if(n&&nm) nm.remove(); };
   var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
 document.addEventListener('click', function(e){
