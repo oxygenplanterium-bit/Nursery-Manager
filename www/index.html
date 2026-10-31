@@ -4863,7 +4863,7 @@ function renderSalDlg(){
     }
     b.append(mk('p',null,items.length+(k==='ded'||(k==='bon'&&m.autoBon>0)?' manual entr':' entr')+(items.length===1?'y':'ies')+' · Total ₹'+fmtN(k==='ded'?m.dedAll:(k==='adv'?(snapAdv?snapAdv.reduce(function(t,it){ return t+(Number(it[1].amt)||0); },0)+(Number(m.paid.ci)||0):m.advAll):(k==='bon'?m.bon:salSum(k,sid))))));
     items.forEach(function(it,ix){
-      var e=it[1], c=mk('div','sline'), bgc=ix%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'var(--card)';
+      var e=it[1], c=mk('div','sline'), bgc=ix%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))';
       c.style.cssText='flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:'+bgc;
       c.append(mk('span','grow',(e.note||'—')+(e.m&&e.m!==salMonth?' (given in '+new Date(+e.m.slice(0,4),+e.m.slice(5)-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})+')':'')), mk('span',null,e.d.slice(8)+'/'+e.d.slice(5,7)+'/'+e.d.slice(0,4)), mk('b',null,'₹'+fmtN(e.amt)));
       if(e.at){ var em=mk('div','pmeta','Entered on '+new Date(e.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(e.at)+(e.edAt?' · Edited on '+new Date(e.edAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' at '+fmtTime(e.edAt):'')); em.style.flexBasis='100%'; c.append(em); }
