@@ -34,7 +34,9 @@ body{
   padding-right:max(16px, env(safe-area-inset-right, 0px));
 }
 .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
-.brand{display:flex; align-items:center; gap:12px}
+.brand{display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center}
+.brand .logo{width:96px; height:96px; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.brand h1{margin:0}
 .logo{width:64px; height:64px; border-radius:50%; flex:0 0 auto; background:#fff}
 h1{margin:0; font-size:1.6rem; line-height:1.15; font-weight:700; text-wrap:balance}
 h2{margin:0; font-size:1.15rem; font-weight:700}
@@ -2125,10 +2127,11 @@ function renderFull(){
   if(!mod.length) ml.append(mk('p','fdempty','No existing items were changed on this day.'));
   mod.forEach(function(m){ line(ml, m[1].name, m[2].join(' · ')+(sel==='all'?' · '+NURS[m[1].nid||'1']:'')); });
 }
-$('#fdBtn').addEventListener('click', function(){ if(!isOwner) return; fdOpen=true; $('#fdNurs').value=nursery; renderFull(); $('#fdash').scrollTop=0; $('#fdClose').focus(); });
-$('#fdClose').addEventListener('click', function(){ fdOpen=false; renderFull(); $('#fdBtn').focus(); });
+$('#fdBtn').addEventListener('click', function(){ if(!isOwner) return; document.querySelectorAll('#fdash details').forEach(function(d){ d.open=false; }); fdOpen=true; $('#fdNurs').value=nursery; renderFull(); dockUpdate(); $('#fdash').scrollTop=0; $('#fdClose').focus(); });
+$('.brand .logo').addEventListener('click', function(){ if(isOwner) $('#fdBtn').click(); });
+$('#fdClose').addEventListener('click', function(){ fdOpen=false; renderFull(); dockUpdate(); $('#fdBtn').focus(); });
 $('#fdNurs').addEventListener('change', renderFull);
-document.addEventListener('keydown', function(e){ if(e.key==='Escape' && fdOpen){ fdOpen=false; renderFull(); } });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && fdOpen){ fdOpen=false; renderFull(); dockUpdate(); } });
 
 /* ---------- stock entry ---------- */
 async function commit(id,f,inp){
