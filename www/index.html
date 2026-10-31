@@ -345,6 +345,9 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tdbd[hidden]{display:none}
 .dayTog{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; font-weight:600}
 .dayTog span{flex:1; min-width:0}
+.homeadm{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.homeadm .btn{width:100%; margin:0}
+.homeadm .btn[hidden]{display:none}
 .pickbtn{display:block; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card,var(--bg)); color:inherit; font:inherit; min-height:44px}
 .pickbtn::after{content:'\25BE'; float:right}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; background:var(--card); max-height:85vh}
@@ -369,6 +372,11 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="modeOwner" aria-pressed="false">Owner Mode</button>
     <button class="btn" id="modeSup" aria-pressed="false">Supervisor Mode</button>
   </nav>
+  <div class="homeadm">
+    <button class="btn small" id="coBtn" hidden>Company Profile</button>
+    <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
+    <button class="btn small" id="waSetBtn" hidden style="grid-column:1/-1">Owner WhatsApp number</button>
+  </div>
 
   <section class="card alertcard" id="alertBox" hidden>
     <div id="alertText"></div>
@@ -386,7 +394,7 @@ select:not([multiple]){pointer-events:none}
       <label class="f"><span>Date (automatic)</span><input id="todayField" readonly></label>
       <label class="f"><span>Supervisor</span><input id="supName" type="text" placeholder="Supervisor name" maxlength="40" autocomplete="name"><select id="supSel" hidden aria-label="Choose your name"></select></label>
     </div>
-    <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap"><span>Pick a date for previous days reports and entries</span><b id="dayArr">\u25BE</b></button>
+    <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap"><span>Pick a date for previous days reports and entries</span><b id="dayArr">▾</b></button>
     <div id="dayWrap" hidden><label class="f"><span>Open a previous day</span><select id="daySel"></select></label></div>
     <div class="statusline" id="statusline"><span id="dstat"></span></div>
     <div class="statusline" id="actrow" style="flex-wrap:nowrap;align-items:center"><button class="btn small" id="closeBtn" hidden>Close day</button><span id="homeMsg" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
@@ -432,9 +440,6 @@ select:not([multiple]){pointer-events:none}
       </select>
       <button class="btn small" id="mvAllStock" hidden></button>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
-      <button class="btn small" id="waSetBtn" hidden>Owner WhatsApp number</button>
-      <button class="btn small" id="coBtn" hidden>Company Profile</button>
-      <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
     <section class="card" id="ledger" hidden>
