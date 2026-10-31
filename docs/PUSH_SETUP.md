@@ -5,6 +5,7 @@ Chat already shows notifications while the app is open or recently used. To get 
 ## 1. Create the function
 1. Supabase dashboard > Edge Functions > Create a new function > "Via Editor". Name it `chat-push`.
 2. Paste the whole content of `supabase/functions/chat-push/index.ts` and Deploy.
+3. Open the function's Settings and switch OFF "Verify JWT" (the database trigger calls it without a login token).
 
 ## 2. Add the secrets
 Edge Functions > Secrets > add:
@@ -13,7 +14,7 @@ Edge Functions > Secrets > add:
 - `VAPID_SUBJECT`     = `mailto:oxygenplanterium@gmail.com`
 
 ## 3. Connect it to chat messages
-SQL Editor > New query > paste, replace `ANON_KEY` with your project's public anon key (Project Settings > API), then Run:
+SQL Editor > New query > paste, you can leave `ANON_KEY` as it is or put your project's public key there, then Run:
 
 ```sql
 create extension if not exists pg_net with schema extensions;
