@@ -346,6 +346,10 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .dayTog span{flex:1; min-width:0}
 #fTask,#tmrBox,#tstate,#tAsgBar,#tabChat{display:none !important}
 .asgbody:has(#tdPhBImg[hidden]){display:none}
+#dlgLow,#dlgBat,#dlgDue{width:calc(100vw - 16px); max-width:520px; max-height:92vh; overflow:hidden; margin:auto}
+#dlgLow .dbody,#dlgBat .dbody,#dlgDue .dbody{padding:12px; max-height:92vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; -webkit-overflow-scrolling:touch}
+#dlgLow .dbody>.actions,#dlgBat .dbody>.actions,#dlgDue .dbody>.actions{position:sticky; bottom:-12px; background:var(--card); padding:8px 0 4px; margin-top:4px}
+#dlgLow .bcard,#dlgBat .bcard,#dlgDue .bcard{min-width:0}
 .seg2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .seg2 .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .bcard{display:flex; flex-direction:column; gap:6px; border:1px solid var(--line); border-radius:12px; padding:10px}
