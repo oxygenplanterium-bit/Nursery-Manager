@@ -362,9 +362,12 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .thumbs figure{margin:0; display:flex; flex-direction:column; gap:3px; align-items:flex-start}
 .thumbs figcaption{font-size:.75rem; color:var(--muted)}
 .thumbs img{width:84px; height:84px; object-fit:cover; border-radius:10px; border:1px solid var(--line); cursor:pointer; display:block}
-#dlgZoom{position:fixed!important; inset:0!important; width:100vw!important; max-width:100vw!important; height:100dvh!important; max-height:100dvh!important; margin:0!important; border:0; border-radius:0; padding:0; background:#000; overflow:auto!important; touch-action:pan-x pan-y pinch-zoom}
-#dlgZoom img{display:block; width:100%; height:100%; object-fit:contain}
-#dlgZoom .btn{position:fixed; top:max(env(safe-area-inset-top,0px),16px); right:16px; z-index:3}
+#dlgZoom{position:fixed!important; inset:0!important; width:100vw!important; max-width:100vw!important; height:100dvh!important; max-height:100dvh!important; margin:0!important; border:0; border-radius:0; padding:0; background:#000; overflow:hidden!important}
+#dlgZoom[open]{display:flex; flex-direction:column}
+#zoomBox{flex:1 1 auto; min-height:0; overflow:auto; display:flex; align-items:center; justify-content:center; padding-top:env(safe-area-inset-top,0px); touch-action:pan-x pan-y pinch-zoom}
+#zoomBox img{display:block; width:100%; height:100%; object-fit:contain}
+#zoomBar{flex:0 0 auto; padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px)); background:#000; display:flex; justify-content:center}
+#zoomBar .btn{min-width:160px}
 .fdpick{display:flex; gap:8px; align-items:stretch}
 .fdpick .fdnl{flex:1.5 1 0; min-width:0; padding:4px 10px; margin:0; display:flex; align-items:center}
 .fdpick .fdnl select{min-height:36px; padding:4px 24px 4px 8px; font-size:15px}
@@ -1040,8 +1043,8 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 <dialog id="dlgZoom">
-  <img id="zoomImg" alt="Photo">
-  <button type="button" class="btn" id="zoomClose">Close</button>
+  <div id="zoomBox"><img id="zoomImg" alt="Photo"></div>
+  <div id="zoomBar"><button type="button" class="btn primary" id="zoomClose">Close</button></div>
 </dialog>
 <dialog id="dlgPh">
   <div class="dbody">
@@ -2052,7 +2055,7 @@ $('#sopSample').addEventListener('click', async function(){
 var phCache={};
 function zoomOpen(src,alt){ var d=$('#dlgZoom'); $('#zoomImg').src=src; $('#zoomImg').alt=alt||'Photo'; if(!d.open) d.showModal(); }
 $('#zoomClose').addEventListener('click', function(){ $('#dlgZoom').close(); });
-$('#dlgZoom').addEventListener('click', function(e){ if(e.target===this||e.target.id==='zoomImg') this.close(); });
+$('#dlgZoom').addEventListener('click', function(e){ if(e.target===this||e.target.id==='zoomImg'||e.target.id==='zoomBox') this.close(); });
 function phThumbs(box,id,x){
   var key=id+':'+(x.pb?1:0)+(x.pa?1:0);
   if(!(x.pb||x.pa)){ box.textContent=''; box._k=''; return; }
