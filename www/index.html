@@ -1041,6 +1041,7 @@ select:not([multiple]){pointer-events:none}
   <div class="dbody">
     <h2>SOP Checklists</h2>
     <p class="pmeta">A checklist is a list of steps for a repeat job. When a task is started with a checklist, every step must be ticked before the task can be marked done.</p>
+    <input type="search" id="sopSearch" placeholder="Search checklists" aria-label="Search checklists" autocomplete="off" style="min-height:44px">
     <div id="sopList" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="bcard" id="sopForm" style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px">
       <b id="sopFormHead">Create New Checklist</b>
@@ -2031,8 +2032,9 @@ function sopRender(box,id,x,ed){
 }
 var sopEdit='', sopOpen={};
 function renderSopList(){
-  var b=$('#sopList'); b.textContent=''; var l=sopList();
-  if(!l.length) b.append(mk('p','pmeta','No checklists yet.'));
+  var b=$('#sopList'); b.textContent=''; var all=sopList(), q=$('#sopSearch').value.trim().toLowerCase(), l=q?all.filter(function(it){ return it[1].n.toLowerCase().indexOf(q)>=0||it[1].st.some(function(x){ return x.toLowerCase().indexOf(q)>=0; }); }):all;
+  $('#sopSearch').hidden=!all.length;
+  if(!all.length) b.append(mk('p','pmeta','No checklists yet.')); else if(!l.length) b.append(mk('p','pmeta','No checklists match your search.'));
   var TRASH='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
   l.forEach(function(it){
     var id=it[0], r=mk('div','pitem'), top=mk('div'), info=mk('div'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger'), det=mk('div'), armedD=false;
@@ -2062,8 +2064,9 @@ function renderSopList(){
     });
     top.append(info,ed,del); r.append(top,det); b.append(r);
   });
-  $('#sopSample').hidden=l.length>0;
+  $('#sopSample').hidden=all.length>0;
 }
+$('#sopSearch').addEventListener('input', renderSopList);
 function sopClear(){ sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopFormHead').textContent='Create New Checklist'; $('#sopErr').textContent=''; }
 $('#sopMng').addEventListener('click', function(){ if(!isOwner) return; sopClear(); renderSopList(); var d=$('#dlgSop'); if(!d.open) d.showModal(); });
 $('#sopClose').addEventListener('click', function(){ $('#dlgSop').close(); });
