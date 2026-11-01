@@ -2033,12 +2033,17 @@ var sopEdit='';
 function renderSopList(){
   var b=$('#sopList'); b.textContent=''; var l=sopList();
   if(!l.length) b.append(mk('p','pmeta','No checklists yet.'));
+  var TRASH='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
   l.forEach(function(it){
-    var r=mk('div','pitem'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), row=mk('div','sline'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger','Delete');
-    ed.type='button'; del.type='button'; row.append(ed,del); r.append(t,m,row);
+    var r=mk('div','pitem'), info=mk('div'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger'); 
+    r.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; info.style.cssText='flex:1 1 auto;min-width:0'; info.append(t,m);
+    ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto'; var armedD=false;
     ed.addEventListener('click', function(){ sopEdit=it[0]; $('#sopName').value=it[1].n; $('#sopSteps').value=it[1].st.join('\n'); $('#sopFormHead').textContent='Edit Checklist'; $('#sopErr').textContent=''; });
-    del.addEventListener('click', function(){ arm(del,'sop'+it[0],'Delete', function(){ var pt={sop:{}}; pt.sop[it[0]]={x:true}; saveSettings(pt); if(sopEdit===it[0]) sopClear(); }); });
-    b.append(r);
+    del.addEventListener('click', function(){
+      if(!armedD){ armedD=true; del.textContent='Confirm'; setTimeout(function(){ armedD=false; del.innerHTML=TRASH; },4000); return; }
+      var pt={sop:{}}; pt.sop[it[0]]={x:true}; saveSettings(pt); if(sopEdit===it[0]) sopClear();
+    });
+    r.append(info,ed,del); b.append(r);
   });
   $('#sopSample').hidden=l.length>0;
 }
