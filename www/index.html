@@ -3657,13 +3657,14 @@ function invNext(ty){
 function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
 function makeInv(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), row=mk('div','sline');
-  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice'), more=mk('button','btn small','Rhodium / Iridium'), svc=mk('button','btn small','Services');
-  pdf.type='button'; vd.type='button'; more.type='button'; more.hidden=true; svc.type='button'; svc.hidden=true; row.append(pdf,svc,more,vd);
+  var pdf=mk('button','btn small','PDF / Share'), vd=mk('button','btn small danger','Cancel invoice'), more=mk('button','btn small','Rhodium / Iridium'), svc=mk('button','btn small','Services'), ed=mk('button','btn small','Edit');
+  ed.type='button'; ed.hidden=true; ed.addEventListener('click', function(){ openInvEdit(id); });
+  pdf.type='button'; vd.type='button'; more.type='button'; more.hidden=true; svc.type='button'; svc.hidden=true; row.append(pdf,ed,svc,more,vd);
   svc.addEventListener('click', function(){ openSvc(id); });
   more.addEventListener('click', function(){ var x=(invData.i||{})[id]; if(x) openEst(x.grp||id); });
   pdf.addEventListener('click', function(){ invPdf(id); });
   vd.addEventListener('click', function(){ var lb=((invData.i||{})[id]||{}).ty==='E'?'Cancel estimate':'Cancel invoice'; arm(vd,'inv'+id,lb, function(){ invVoid(id); }); });
-  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd,more:more,svc:svc}; el._id=id;
+  el.append(t,meta,row); el._r={t:t,meta:meta,vd:vd,more:more,svc:svc,ed:ed}; el._id=id;
   return el;
 }
 function updateInv(el,x){
@@ -3673,6 +3674,7 @@ function updateInv(el,x){
   R.more.hidden=!miss; R.svc.hidden=!(x.ty==='E'&&!x.void);
   R.meta.textContent=[fmtIso(x.d), x.inc?'Price +'+(x.inc.m==='p'?x.inc.k+'%':'\u20b9'+x.inc.k):'', (x.l||[]).length+((x.l||[]).length===1?' item':' items'), 'Total ₹'+fmtMoney(c.total), x.by?'By '+x.by:''].filter(Boolean).join(' · ');
   if(isOwner && (x.ty==='S'||x.ty==='P') && !x.void){ var pd=accPaid(el._id); R.meta.textContent+=' · Paid ₹'+fmtMoney(pd)+' · Due ₹'+fmtMoney(Math.max(c.total-pd,0)); }
+  R.ed.hidden=!(isOwner&&!x.void); if(x.edited) R.meta.textContent+=' · Edited';
   R.vd.hidden=!!x.void; if(x.ty==='E') if(!armed['inv'+el._id]) R.vd.textContent='Cancel estimate';
   el.style.opacity=x.void?'.6':'';
 }
@@ -3792,11 +3794,39 @@ $('#invPhone').addEventListener('input', function(){ var v=this.value.replace(/\
 $('#invCancel').addEventListener('click', function(){ $('#dlgInv').close(); });
 $('#invClose').addEventListener('click', function(){ $('#dlgInv').close(); });
 $('#dlgInv').addEventListener('close', function(){ document.body.style.overflow=(tab||fdOpen)?'hidden':''; });
+var invEdit='';
+function openInvEdit(id){
+  var x=(invData.i||{})[id]; if(!x||x.void) return;
+  if(!isOwner){ toast('Only the owner can edit invoices.'); return; }
+  var ty=x.ty, stockOk=ty!=='E'&&editable()&&x.day===selDate;
+  invType=ty; invEdit=id;
+  $('#invHead').textContent='Edit '+(ty==='S'?'Sales Invoice':ty==='E'?'Estimate - '+(x.tier||'Gold'):'Purchase Invoice');
+  $('#invPartyL').textContent=ty==='P'?'Supplier name':'Customer name';
+  $('#invNo').textContent=NURS[x.nid||nursery]+' · '+invLabel(x)+(ty!=='E'&&!stockOk?' · Items and quantities are locked (stock already closed)':'');
+  $('#invSvcL').hidden=ty!=='E'; $('#invSvc').value=x.sv||'';
+  $('#invParty').value=x.party||''; $('#invPhone').value=x.phone||''; $('#invAddr').value=x.addr||''; $('#invGst').value=x.g||''; $('#invShip').value=x.sh||''; $('#invDt').value=x.dt||''; $('#invDv').value=x.dv||''; $('#invDate').value=x.d||todayKey(); $('#invErr').textContent='';
+  $('#invLines').textContent='';
+  (x.l||[]).forEach(function(L){
+    invAddLine();
+    var el=document.querySelector('#invLines .invl:last-child'), sel=el.querySelector('select');
+    if(!Array.prototype.some.call(sel.options,function(o){ return o.value===L.id; })){ var o=mk('option',null,(L.n||'Item')); o.value=L.id; sel.append(o); }
+    sel.value=L.id; sel.dispatchEvent(new Event('change'));
+    var q=el.querySelector('.iq'), r=el.querySelector('.ir'), ds=el.querySelector('.ldt'), dv=el.querySelector('.ldv');
+    q.value=L.q; r.value=L.r; r.dataset.auto=''; ds.value=L.dt||''; dv.value=L.dt?L.dv:''; dv.hidden=!L.dt;
+    if(ty!=='E'&&!stockOk){ el.querySelector('.pickbtn').disabled=true; q.disabled=true; el.querySelectorAll('button').forEach(function(b){ if(b.textContent==='Remove') b.hidden=true; }); }
+  });
+  $('#invAddLine').hidden=ty!=='E'&&!stockOk;
+  $('#invSave').textContent='Save changes';
+  tcOff={}; $('#invTcNew').value=''; renderTc();
+  var have=x.tc||[]; tcList().forEach(function(it){ if(have.indexOf(it[1].t)<0) tcOff[it[0]]=1; }); renderTc();
+  invTotals();
+  document.body.style.overflow='hidden'; var d=$('#dlgInv'); if(!d.open) d.showModal(); d.scrollTop=0;
+}
 function openInv(ty){
   if(ty==='E'){ if(!(day&&canWrite)){ toast('Estimates cannot be created right now.'); return; } }
   else if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
-  invType=ty;
+  invType=ty; invEdit=''; $('#invSave').textContent='Save invoice'; $('#invAddLine').hidden=false;
   $('#invHead').textContent=ty==='S'?'New Sales Invoice':ty==='E'?'New Estimate - Gold':'New Purchase Invoice';
   $('#invPartyL').textContent=ty==='P'?'Supplier name':'Customer name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
@@ -3810,8 +3840,9 @@ $('#invNewP').addEventListener('click', function(){ openInv('P'); });
 $('#invNewE').addEventListener('click', function(){ openInv('E'); });
 $('#fInv').addEventListener('submit', async function(e){
   e.preventDefault();
-  var err=$('#invErr'), ty=invType, f=ty==='S'?'sales':'purchase';
-  if(ty==='E' ? !(day&&canWrite) : !editable()){ err.textContent=ty==='E'?'Estimates cannot be created right now.':'Invoices can be created only on the open (latest) day.'; return; }
+  var err=$('#invErr'), ty=invType, f=ty==='S'?'sales':'purchase', ed=invEdit?(invData.i||{})[invEdit]:null;
+  if(invEdit&&(!ed||ed.void||!isOwner)){ err.textContent='This invoice can no longer be edited.'; return; }
+  if(ed) ; else if(ty==='E' ? !(day&&canWrite) : !editable()){ err.textContent=ty==='E'?'Estimates cannot be created right now.':'Invoices can be created only on the open (latest) day.'; return; }
   var party=cleanName($('#invParty').value), digits=$('#invPhone').value.replace(/\D/g,''), addr=$('#invAddr').value.split(/\r?\n/).map(function(l){ return l.trim().replace(/\s+/g,' '); }).filter(Boolean).join('\n').slice(0,300), gst=parseFloat($('#invGst').value)||0, dt=$('#invDate').value||todayKey();
   if(!party){ err.textContent='Enter the '+(ty==='P'?'supplier':'customer')+' name.'; return; }
   if(digits.length!==10){ err.textContent='Enter the phone number: exactly 10 digits, no more and no less.'; return; }
@@ -3829,6 +3860,36 @@ $('#fInv').addEventListener('submit', async function(e){
     if(L.dt && !(L.dv>0)){ err.textContent='Enter the discount value on every line that has a discount type, or choose No discount.'; return; }
     if(L.dt==='p' && L.dv>100){ err.textContent='Discount percentage cannot be more than 100.'; return; }
     need[L.id]=(need[L.id]||0)+L.q;
+  }
+  if(ed){
+    var stockOk=ty!=='E'&&editable()&&ed.day===selDate, oldN={}, ep={rows:{}}, k;
+    (ed.l||[]).forEach(function(L){ oldN[L.id]=(oldN[L.id]||0)+L.q; });
+    if(ty!=='E'&&!stockOk){
+      var same=Object.keys(need).length===Object.keys(oldN).length&&Object.keys(need).every(function(k2){ return need[k2]===oldN[k2]; });
+      if(!same){ err.textContent='Items and quantities cannot be changed after the stock day is closed.'; return; }
+    } else if(ty!=='E'){
+      var all=Object.keys(need).concat(Object.keys(oldN).filter(function(k2){ return !(k2 in need); }));
+      for(i=0;i<all.length;i++){
+        k=all[i]; var dl=(need[k]||0)-(oldN[k]||0), rr=day.rows&&day.rows[k];
+        if(!dl) continue;
+        if(!rr){ if(dl>0){ err.textContent='An item is no longer in stock.'; return; } continue; }
+        var nx=Object.assign({},rr); nx[f]=(rr[f]||0)+dl;
+        if(nx[f]<0||bal(nx)<0){ err.textContent=ty==='S'?'Only '+fmtN(bal(rr))+' available for '+rr.name+'.':'Cannot reduce: stock for '+rr.name+' has already been used.'; return; }
+        ep.rows[k]={}; ep.rows[k][f]=nx[f];
+      }
+    }
+    var eb=$('#invSave'); eb.disabled=true;
+    var p2={i:{}}; p2.i[invEdit]={party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, dt:gdt, dv:gdt?gdv:0,
+      tc:tcList().filter(function(it){ return !tcOff[it[0]]; }).map(function(it){ return it[1].t; }),
+      sv:ty==='E'?$('#invSvc').value.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800):(ed.sv||''),
+      l:lines.map(function(L){ var rr=day&&day.rows&&day.rows[L.id], o={id:L.id, n:(rr&&rr.name)||(ed.l.filter(function(z){ return z.id===L.id; })[0]||{}).n||'Item', q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; }),
+      edited:{at:Date.now(), by:nameNow()||'Owner'}};
+    var ok2=true;
+    if(Object.keys(ep.rows).length) ok2=await save(ep);
+    if(ok2) ok2=await invSave(p2);
+    eb.disabled=false;
+    if(ok2){ $('#dlgInv').close(); toast(invLabel(ed)+' updated'); } else err.textContent='Could not save the changes. Please try again.';
+    return;
   }
   var ids=Object.keys(need), patch={rows:{}}, no=invNext(ty), label=invLabel({ty:ty,nid:nursery,no:no});
   for(i=0;i<ids.length;i++){
