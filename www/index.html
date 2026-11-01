@@ -543,9 +543,11 @@ select:not([multiple]){pointer-events:none}
     <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
       <section class="card team" id="tdBox">
         <h2>Tasks start</h2>
+        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
         <form class="team" id="fTd" hidden novalidate>
           <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
+          <label class="f" id="tdSopL" hidden><span>SOP checklist (optional)</span><select id="tdSop" aria-label="SOP checklist"></select></label>
           <div class="asgwrap"><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
@@ -1014,6 +1016,22 @@ select:not([multiple]){pointer-events:none}
   </form>
 </dialog>
 
+<dialog id="dlgSop">
+  <div class="dbody">
+    <h2>SOP Checklists</h2>
+    <p class="pmeta">A checklist is a list of steps for a repeat job. When a task is started with a checklist, every step must be ticked before the task can be marked done.</p>
+    <div id="sopList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="bcard" id="sopForm" style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px">
+      <b id="sopFormHead">New Checklist</b>
+      <label class="f"><span>Name</span><input type="text" id="sopName" maxlength="60" autocomplete="off" placeholder="For example, Morning watering"></label>
+      <label class="f"><span>Steps (one per line)</span><textarea id="sopSteps" rows="7" maxlength="3000" placeholder="Check water tank&#10;Water section A&#10;Water section B"></textarea></label>
+      <p class="pmeta" id="sopErr" style="color:var(--warn)"></p>
+      <div class="two"><button type="button" class="btn primary" id="sopSave">Save Checklist</button><button type="button" class="btn" id="sopCancel">Clear</button></div>
+    </div>
+    <button type="button" class="btn small" id="sopSample" hidden>Add Sample Checklists</button>
+    <div class="actions"><button type="button" class="btn primary" id="sopClose">Close</button></div>
+  </div>
+</dialog>
 <dialog id="dlgPh">
   <div class="dbody">
     <h2 id="phHead">Task photos</h2>
@@ -1893,6 +1911,7 @@ function makeTd(id){
   });
   fin.addEventListener('click', async function(){
     var x=el._x; if(!x||x.en||!editable()) return;
+    if(x.ss&&x.ss.length&&sopDone(x)<x.ss.length){ toast('Tick every step of the checklist before marking the task done.'); return; }
     if(!ta.value.trim()){ toast('Fill the report in the notes box before marking the task done.'); return; }
     if(!phA){ toast('Take the photo after finishing before marking the task done.'); return; }
     if(needSup()){ toast('Choose your name at the top first.'); return; }
@@ -1932,12 +1951,13 @@ function makeTd(id){
   });
   var head=mk('div','tdhead'), arr=mk('button','btn tdarr','\u25BE'), bd=mk('div','tdbd'); arr.type='button'; arr.setAttribute('aria-label','Show or hide task details');
   arr.addEventListener('click', function(){ var x=el._x; if(!x||!x.en) return; tdOpen[id]=!tdOpen[id]; updateTd(el,x,editable()); });
-  head.append(t,arr); bd.append(meta,asB,phL,phM,phV,ta,row); el.append(head,bd);
-  el._r={arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
+  var sb=mk('div'); sb.hidden=true; sb.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0;padding:8px;border:1px solid var(--line);border-radius:10px';
+  head.append(t,arr); bd.append(meta,sb,asB,phL,phM,phV,ta,row); el.append(head,bd);
+  el._r={sb:sb,arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
-  return [x.by?'Started by '+x.by:'', 'Started '+fmtTime(x.st), run?'Running · '+fmtDur(Date.now()-(x.st||Date.now())):'Ended '+fmtTime(x.en)+' · Time taken '+fmtDur(x.en-(x.st||x.en)), (!run&&x.doneBy&&x.doneBy!==x.by)?'Done by '+x.doneBy:''].filter(Boolean).join(' · ');
+  return [x.by?'Started by '+x.by:'', (x.ss&&x.ss.length)?'SOP '+x.sn+' '+sopDone(x)+'/'+x.ss.length:'', 'Started '+fmtTime(x.st), run?'Running · '+fmtDur(Date.now()-(x.st||Date.now())):'Ended '+fmtTime(x.en)+' · Time taken '+fmtDur(x.en-(x.st||x.en)), (!run&&x.doneBy&&x.doneBy!==x.by)?'Done by '+x.doneBy:''].filter(Boolean).join(' · ');
 }
 var tdOpen={};
 function updateTd(el,x,ed){
@@ -1946,6 +1966,7 @@ function updateTd(el,x,ed){
   var collapsed=!!x.en && !tdOpen[el._id] && !tdEditing[el._id];
   R.bd.hidden=collapsed; R.arr.hidden=!x.en; R.arr.textContent=collapsed?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!collapsed);
   R.t.textContent=(el._n?el._n+'. ':'')+x.title+(x.en?'':' (in progress)');
+  sopRender(R.sb,el._id,x,ed);
   R.phL.hidden=!(ed&&!x.en); R.phV.hidden=!(x.pb||x.pa); if(x.en) R.phM.hidden=true;
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
@@ -1954,6 +1975,66 @@ function updateTd(el,x,ed){
   R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&R.phM.src&&!R.phM.hidden);
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
+
+/* ---------- SOP checklists ---------- */
+function sopList(){
+  return Object.keys(sopMap||{}).filter(function(id){ var x=sopMap[id]; return x&&!x.x&&x.n&&x.st&&x.st.length; }).map(function(id){ return [id,sopMap[id]]; }).sort(function(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); });
+}
+function sopDone(x){ var n=0; (x.ss||[]).forEach(function(t,i){ if(x.sd&&x.sd[i]) n++; }); return n; }
+function sopFill(){
+  var sl=$('#tdSop'), l=sopList(), cur=sl.value; sl.textContent='';
+  var o=mk('option',null,'No checklist'); o.value=''; sl.append(o);
+  l.forEach(function(it){ var op=mk('option',null,it[1].n+' ('+it[1].st.length+' steps)'); op.value=it[0]; sl.append(op); });
+  sl.value=cur&&sopMap[cur]&&!sopMap[cur].x?cur:''; $('#tdSopL').hidden=!l.length;
+}
+function sopRender(box,id,x,ed){
+  var ss=x.ss||[]; box.hidden=!ss.length; if(!ss.length) return;
+  var sig=JSON.stringify([ss,x.sd||{},ed,!!x.en]); if(box._sig===sig) return; box._sig=sig; box.textContent='';
+  box.append(mk('b',null,'Checklist: '+(x.sn||'')+' ('+sopDone(x)+' of '+ss.length+' done)'));
+  ss.forEach(function(t,i){
+    var l=mk('label'), c=document.createElement('input'), d=x.sd&&x.sd[i];
+    l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:500'; c.type='checkbox'; c.checked=!!d; c.disabled=!ed||!!x.en; c.style.cssText='width:22px;height:22px;flex:none';
+    l.append(c,mk('span',null,(i+1)+'. '+t+(d&&d.by?' ('+d.by+')':'')));
+    c.addEventListener('change', function(){
+      if(!editable()){ c.checked=!c.checked; return; }
+      if(needSup()){ toast('Choose your name at the top first.'); c.checked=!c.checked; return; }
+      var p={td:{}}; p.td[id]={sd:{}}; p.td[id].sd[i]=c.checked?{by:whoNow(),at:Date.now()}:null; save(p);
+    });
+    box.append(l);
+  });
+}
+var sopEdit='';
+function renderSopList(){
+  var b=$('#sopList'); b.textContent=''; var l=sopList();
+  if(!l.length) b.append(mk('p','pmeta','No checklists yet.'));
+  l.forEach(function(it){
+    var r=mk('div','pitem'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), row=mk('div','sline'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger','Delete');
+    ed.type='button'; del.type='button'; row.append(ed,del); r.append(t,m,row);
+    ed.addEventListener('click', function(){ sopEdit=it[0]; $('#sopName').value=it[1].n; $('#sopSteps').value=it[1].st.join('\n'); $('#sopFormHead').textContent='Edit Checklist'; $('#sopErr').textContent=''; });
+    del.addEventListener('click', function(){ arm(del,'sop'+it[0],'Delete', function(){ var pt={sop:{}}; pt.sop[it[0]]={x:true}; saveSettings(pt); if(sopEdit===it[0]) sopClear(); }); });
+    b.append(r);
+  });
+  $('#sopSample').hidden=l.length>0;
+}
+function sopClear(){ sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopFormHead').textContent='New Checklist'; $('#sopErr').textContent=''; }
+$('#sopMng').addEventListener('click', function(){ if(!isOwner) return; sopClear(); renderSopList(); var d=$('#dlgSop'); if(!d.open) d.showModal(); });
+$('#sopClose').addEventListener('click', function(){ $('#dlgSop').close(); });
+$('#sopCancel').addEventListener('click', sopClear);
+$('#sopSave').addEventListener('click', async function(){
+  var n=cleanName($('#sopName').value), st=$('#sopSteps').value.split(/\r?\n/).map(function(t){ return cleanName(t).slice(0,120); }).filter(Boolean).slice(0,30);
+  if(!n){ $('#sopErr').textContent='Enter a name for the checklist.'; return; }
+  if(!st.length){ $('#sopErr').textContent='Add at least one step.'; return; }
+  var id=sopEdit||'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), o=sopEdit&&sopMap[sopEdit]?sopMap[sopEdit].o:Object.keys(sopMap||{}).length+1, pt={sop:{}};
+  pt.sop[id]={n:n,st:st,o:o,x:null};
+  if(await saveSettings(pt)){ toast('Checklist saved'); sopClear(); }
+});
+$('#sopSample').addEventListener('click', async function(){
+  var S=[['Morning watering',['Check the water tank and pump','Water the seedling section','Water the potted plants','Water the shade house','Check for dry or wilted plants']],
+         ['Potting a batch',['Mix soil and manure in the right ratio','Fill the pots','Plant and press the soil','Water gently','Label with item name and date','Record the batch in the app']],
+         ['Dispatch an order',['Count the plants against the bill','Check plant health','Pack and cover safely','Load the vehicle','Take a photo of the loaded order']]], pt={sop:{}};
+  S.forEach(function(x,i){ pt.sop['s'+Date.now().toString(36)+i]={n:x[0],st:x[1],o:i+1}; });
+  if(await saveSettings(pt)) toast('Sample checklists added');
+});
 var tdAsgSel=[], tdPhotoB='';
 function phCompress(file){
   return new Promise(function(res,rej){
@@ -1997,7 +2078,7 @@ function renderTd(){
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
   $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
   var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
-  $('#fTd').hidden=!ed;
+  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner;
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
@@ -2040,8 +2121,9 @@ $('#fTd').addEventListener('submit', async function(e){
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
+  var sopV=$('#tdSop').value, sp=sopV&&sopMap[sopV]&&!sopMap[sopV].x?sopMap[sopV]:null; if(sp&&sp.st&&sp.st.length){ p.td[id].sop=sopV; p.td[id].sn=sp.n; p.td[id].ss=sp.st.slice(); }
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
-  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
+  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; $('#tdSop').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc){
   var y=secStart(doc,'7. Tasks started and time taken',false);
@@ -2053,7 +2135,7 @@ function pdfTd(doc){
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
       head:[['Sl.No.','Task','Assigned to','By','Started','Ended','Time taken','Report']],
-      body:items.map(function(it,i){ var x=it[1]; return [i+1,x.title||'',(tdWork(x).join('; ')||'Not assigned'),x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
+      body:items.map(function(it,i){ var x=it[1]; return [i+1,(x.title||'')+((x.ss&&x.ss.length)?' [SOP '+(x.sn||'')+' '+sopDone(x)+'/'+x.ss.length+']':''),(tdWork(x).join('; ')||'Not assigned'),x.by||'',fmtTime(x.st),x.en?fmtTime(x.en):'In progress',x.en?fmtDur(x.en-(x.st||x.en)):'',x.note||'']; }),
       headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:36}}
     });
     y=doc.lastAutoTable.finalY+16;
@@ -5213,7 +5295,7 @@ $('#salNext').addEventListener('click', function(){ salShift(1); });
 
 
 /* ---------- money owed, batches and losses, low stock ---------- */
-var lowOpen={}, minMap={}, kpiT={}, kpiMon=todayKey().slice(0,7), dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
+var lowOpen={}, minMap={}, kpiT={}, sopMap={}, kpiMon=todayKey().slice(0,7), dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
 var RC_BG=['color-mix(in srgb,var(--loss) 16%,var(--card))','color-mix(in srgb,var(--accent) 14%,var(--card))'];
 function dayDiff(a,b){ var x=new Date(a+'T00:00:00'), y=new Date(b+'T00:00:00'); return Math.round((y-x)/864e5); }
 function mkSelect(opts,val){ var sl=document.createElement('select'); opts.forEach(function(o){ var op=mk('option',null,o[1]); op.value=o[0]; sl.append(op); }); if(val!==undefined) sl.value=val; return sl; }
@@ -5478,7 +5560,7 @@ function applySettings(d){
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
-  minMap = d.min||{}; kpiT = d.kpi||{};
+  minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open) renderSopList(); 
 }
 function applyCachedMeta(){
   var m=cache.meta||{};
