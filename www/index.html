@@ -347,6 +347,17 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .tdhead .tdarr{flex:none; padding:2px 10px; min-height:0; font-size:1rem; line-height:1.2}
 .tdbd{display:flex; flex-direction:column; gap:8px}
 .tdbd[hidden]{display:none}
+.kpinav{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px}
+.kpigrid .fdc{padding:12px 12px}
+.kpigrid .fdc b{font-size:1.5rem}
+.kpigrid .fdc small{font-size:.78rem; color:var(--muted)}
+.kpigrid .fdc.good{background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+.kpigrid .fdc.bad{background:color-mix(in srgb,var(--loss) 16%,var(--card))}
+.kpit{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; align-items:end}
+.kpit>b{grid-column:1/-1}
+.kpit label{display:flex; flex-direction:column; gap:4px; font-size:.82rem; font-weight:600}
+.kpit input{min-height:40px; padding:6px 8px}
+.kpit .btn{grid-column:1/-1}
 .fdpick{display:flex; gap:8px; align-items:stretch}
 .fdpick .fdnl{flex:1.5 1 0; min-width:0; padding:4px 10px; margin:0; display:flex; align-items:center}
 .fdpick .fdnl select{min-height:36px; padding:4px 24px 4px 8px; font-size:15px}
@@ -1145,6 +1156,21 @@ select:not([multiple]){pointer-events:none}
       <div class="statusline" id="actrow" hidden style="flex-wrap:nowrap;align-items:center"><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
       <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name above to mark tasks and attendance.</p>
     </section>
+    <details class="card fddrop" id="fdxKpi" hidden>
+      <summary>KPIs</summary>
+      <div class="fdattin">
+        <div class="kpinav"><button type="button" class="btn small" id="kpiPrev">Prev</button><b id="kpiLbl"></b><button type="button" class="btn small" id="kpiNext">Next</button></div>
+        <div class="fdgrid kpigrid" id="fdgKpi"></div>
+        <p class="pmeta" id="fdnKpi"></p>
+        <div class="kpit">
+          <b>Targets</b>
+          <label><span>Margin at least %</span><input type="number" id="kpiTm" min="0" max="100" step="0.1" inputmode="decimal"></label>
+          <label><span>Loss rate at most %</span><input type="number" id="kpiTl" min="0" max="100" step="0.1" inputmode="decimal"></label>
+          <label><span>Attendance at least %</span><input type="number" id="kpiTa" min="0" max="100" step="0.1" inputmode="decimal"></label>
+          <button type="button" class="btn small primary" id="kpiSave">Save Targets</button>
+        </div>
+      </div>
+    </details>
     <details class="card fddrop" open>
       <summary>Stocks</summary>
       <section class="card fdlist"><h2>New stocks added <span class="chip" id="fdNewN"></span></h2><div id="fdNew"></div></section>
@@ -2111,9 +2137,60 @@ function fdStats(id,pairs,note){
   pairs.forEach(function(c){ var d=mk('div','card fdc'); d.append(mk('span',null,c[0]), mk('b',null,String(c[1]))); g.append(d); });
   $('#fdn'+id).textContent=note||'';
 }
+
+function kpiShift(m,n){ var q=m.split('-'), d=new Date(+q[0],+q[1]-1+n,1); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+function kpiName(m){ return new Date(m+'-01T00:00:00').toLocaleString('en-IN',{month:'long',year:'numeric'}); }
+function kpiCalc(mon,ns){
+  var inN=function(x){ return ns.indexOf((x&&x.nid)||'1')>=0; }, r={sales:0,cnt:0,rev:0,cost:0,lost:0,batq:0,attW:0,attN:0,cash:0};
+  var inv=invData.i||{}; Object.keys(inv).forEach(function(id){
+    var x=inv[id]; if(!x||x.void||x.ty!=='S'||!inN(x)||String(x.d||x.day||'').slice(0,7)!==mon) return;
+    var c=invCalc(x.l,x.g,x.dt,x.dv,x.sh); r.sales+=c.total; r.cnt++;
+    (x.l||[]).forEach(function(L){ var row=day&&day.rows&&day.rows[L.id], cs=row?Number(row.cost)||0:0; if(!cs) return; var q=Number(L.q)||0; r.rev+=q*(Number(L.r)||0); r.cost+=q*cs; });
+  });
+  Object.keys(batData.l||{}).forEach(function(id){ var x=batData.l[id]; if(x&&inN(x)&&String(x.d||'').slice(0,7)===mon) r.lost+=Number(x.qty)||0; });
+  Object.keys(batData.b||{}).forEach(function(id){ var x=batData.b[id]; if(x&&inN(x)&&String(x.d||'').slice(0,7)<=mon) r.batq+=Number(x.qty)||0; });
+  ['sup','staff'].forEach(function(k){ teamList(k).forEach(function(it){
+    if(ns.indexOf(it[1].nid||'1')<0) return; var a=salAtt[it[0]]||{};
+    Object.keys(a).forEach(function(d){ if(d.slice(0,7)!==mon) return; r.attN++; r.attW+= a[d]==='A'?0:a[d]==='H'?0.5:1; });
+  }); });
+  if(isOwner){ var ae=accData.e||{}; Object.keys(ae).forEach(function(id){ var x=ae[id]; if(!x||!inN(x)||String(x.d||'').slice(0,7)!==mon) return; var a=Number(x.amt)||0; if(x.k==='rc'||x.k==='in') r.cash+=a; else if(x.k==='py'||x.k==='ex') r.cash-=a; }); }
+  r.avg=r.cnt?r.sales/r.cnt:null;
+  r.mar=r.rev>0?(r.rev-r.cost)/r.rev*100:null;
+  r.loss=(r.batq+r.lost)>0?r.lost/(r.batq+r.lost)*100:null;
+  r.att=r.attN>0?r.attW/r.attN*100:null;
+  return r;
+}
+function kpiRender(ns){
+  var cur=kpiCalc(kpiMon,ns), prv=kpiCalc(kpiShift(kpiMon,-1),ns), pn=kpiName(kpiShift(kpiMon,-1)).split(' ')[0], g=$('#fdgKpi'); g.textContent='';
+  $('#kpiLbl').textContent=kpiName(kpiMon);
+  $('#kpiNext').disabled=kpiMon>=todayKey().slice(0,7);
+  var R='₹', pct=function(v){ return v==null?'-':(Math.round(v*10)/10)+'%'; }, money=function(v){ return v==null?'-':R+fmtMoney(v); };
+  var dl=function(a,b,isPct){ if(a==null||b==null) return 'No data for '+pn; if(isPct){ var d=Math.round((a-b)*10)/10; return (d>0?'+':'')+d+' pts vs '+pn; } if(!b) return 'Nothing in '+pn; var q=Math.round((a-b)/Math.abs(b)*100); return (q>0?'+':'')+q+'% vs '+pn; };
+  var tm=Number(kpiT.mar), tl=Number(kpiT.loss), ta=Number(kpiT.att);
+  var dg=isOwner?dueGroups():{tot:{S:0,P:0}};
+  var cards=[
+    ['Sales',money(cur.sales),dl(cur.sales,prv.sales),'',cur.cnt+(cur.cnt===1?' invoice':' invoices')],
+    ['Avg Sale',money(cur.avg),dl(cur.avg,prv.avg),'',''],
+    ['Margin',pct(cur.mar),dl(cur.mar,prv.mar,true),(tm>0&&cur.mar!=null)?(cur.mar>=tm?'good':'bad'):'',tm>0?'Target '+tm+'%+':'Approximate, uses current cost'],
+    ['Loss Rate',pct(cur.loss),dl(cur.loss,prv.loss,true),(tl>0&&cur.loss!=null)?(cur.loss<=tl?'good':'bad'):'',tl>0?'Target '+tl+'% or less':fmtN(cur.lost)+' plants lost'],
+    ['Attendance',pct(cur.att),dl(cur.att,prv.att,true),(ta>0&&cur.att!=null)?(cur.att>=ta?'good':'bad'):'',ta>0?'Target '+ta+'%+':'']
+  ];
+  if(isOwner){ cards.push(['Net Cash',money(cur.cash),dl(cur.cash,prv.cash),cur.cash<0?'bad':(cur.cash>0?'good':''),'Money in minus money out']); cards.push(['Money Owed',money(dg.tot.S),'To receive now','','You owe '+money(dg.tot.P)]); }
+  cards.forEach(function(c){ var d=mk('div','card fdc'+(c[3]?' '+c[3]:'')); d.append(mk('span',null,c[0]), mk('b',null,c[1]), mk('small',null,c[2])); if(c[4]) d.append(mk('small',null,c[4])); g.append(d); });
+  $('#fdnKpi').textContent='Sales and margin come from sales invoices. Attendance counts half days as half. Set targets below to colour the cards green or red.';
+  var ae=document.activeElement; [['kpiTm','mar'],['kpiTl','loss'],['kpiTa','att']].forEach(function(t){ var el=$('#'+t[0]); if(el!==ae) el.value=kpiT[t[1]]!=null&&kpiT[t[1]]!==''?kpiT[t[1]]:''; });
+}
+$('#kpiPrev').addEventListener('click', function(){ kpiMon=kpiShift(kpiMon,-1); renderFull(); });
+$('#kpiNext').addEventListener('click', function(){ if(kpiMon<todayKey().slice(0,7)){ kpiMon=kpiShift(kpiMon,1); renderFull(); } });
+$('#kpiSave').addEventListener('click', async function(){
+  var v=function(id){ var t=$('#'+id).value.trim(); if(t==='') return null; var n=Number(t); return isFinite(n)?Math.min(Math.max(n,0),100):null; };
+  var ok=await saveSettings({kpi:{mar:v('kpiTm'),loss:v('kpiTl'),att:v('kpiTa')}});
+  if(ok){ toast('Targets saved'); }
+});
 function fdExtra(sel){
   var ns=sel==='all'?['1','2']:[sel], mon=selDate.slice(0,7), inN=function(x){ return ns.indexOf((x&&x.nid)||'1')>=0; }, mrs='₹';
   var monName=new Date(mon+'-01T00:00:00').toLocaleString('en-IN',{month:'long',year:'numeric'});
+  $('#fdxKpi').hidden=!isOwner; if(isOwner) kpiRender(ns);
   /* customers */
   var cs=[], tot=0, modes={};
   ns.forEach(function(n){ csItems(n).forEach(function(it){ cs.push(it); tot+=Number(it[1].amt)||0; var m=(it[1].mode||'cash'); modes[m]=(modes[m]||0)+(Number(it[1].amt)||0); }); });
@@ -5136,7 +5213,7 @@ $('#salNext').addEventListener('click', function(){ salShift(1); });
 
 
 /* ---------- money owed, batches and losses, low stock ---------- */
-var lowOpen={}, minMap={}, dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
+var lowOpen={}, minMap={}, kpiT={}, kpiMon=todayKey().slice(0,7), dueKind='S', batTab='B', batN='1', batData={b:{},l:{}}, batSubbed=false;
 var RC_BG=['color-mix(in srgb,var(--loss) 16%,var(--card))','color-mix(in srgb,var(--accent) 14%,var(--card))'];
 function dayDiff(a,b){ var x=new Date(a+'T00:00:00'), y=new Date(b+'T00:00:00'); return Math.round((y-x)/864e5); }
 function mkSelect(opts,val){ var sl=document.createElement('select'); opts.forEach(function(o){ var op=mk('option',null,o[1]); op.value=o[0]; sl.append(op); }); if(val!==undefined) sl.value=val; return sl; }
@@ -5401,7 +5478,7 @@ function applySettings(d){
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
-  minMap = d.min||{};
+  minMap = d.min||{}; kpiT = d.kpi||{};
 }
 function applyCachedMeta(){
   var m=cache.meta||{};
