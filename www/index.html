@@ -2029,21 +2029,38 @@ function sopRender(box,id,x,ed){
     box.append(l);
   });
 }
-var sopEdit='';
+var sopEdit='', sopOpen={};
 function renderSopList(){
   var b=$('#sopList'); b.textContent=''; var l=sopList();
   if(!l.length) b.append(mk('p','pmeta','No checklists yet.'));
   var TRASH='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
   l.forEach(function(it){
-    var r=mk('div','pitem'), info=mk('div'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger'); 
-    r.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; info.style.cssText='flex:1 1 auto;min-width:0'; info.append(t,m);
-    ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto'; var armedD=false;
-    ed.addEventListener('click', function(){ sopEdit=it[0]; $('#sopName').value=it[1].n; $('#sopSteps').value=it[1].st.join('\n'); $('#sopFormHead').textContent='Edit Checklist'; $('#sopErr').textContent=''; });
+    var id=it[0], r=mk('div','pitem'), top=mk('div'), info=mk('div'), t=mk('div','pname',it[1].n), m=mk('div','pmeta',it[1].st.length+' steps'), ed=mk('button','btn small','Edit'), del=mk('button','btn small danger'), det=mk('div'), armedD=false;
+    top.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px'; info.style.cssText='flex:1 1 auto;min-width:0;cursor:pointer'; info.append(t,m);
+    ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto';
+    det.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px'; det.hidden=!sopOpen[id];
+    var mode=sopOpen[id];
+    if(mode==='view'){ it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); }
+    if(mode==='edit'){
+      var ni=mkIn('text','Name',it[1].n), ta=document.createElement('textarea'), er=mk('p','pmeta'), row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
+      ni.maxLength=60; ni.setAttribute('aria-label','Checklist name'); ta.rows=7; ta.maxLength=3000; ta.value=it[1].st.join('\n'); ta.setAttribute('aria-label','Steps, one per line'); er.style.color='var(--warn)'; sv.type='button'; cn.type='button'; row.append(sv,cn);
+      det.append(ni,ta,er,row);
+      cn.addEventListener('click', function(){ delete sopOpen[id]; renderSopList(); });
+      sv.addEventListener('click', async function(){
+        var n=cleanName(ni.value), st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x).slice(0,120); }).filter(Boolean).slice(0,30);
+        if(!n){ er.textContent='Enter a name for the checklist.'; return; }
+        if(!st.length){ er.textContent='Add at least one step.'; return; }
+        var pt={sop:{}}; pt.sop[id]={n:n,st:st,o:it[1].o||1,x:null};
+        if(await saveSettings(pt)){ toast('Checklist saved'); delete sopOpen[id]; renderSopList(); }
+      });
+    }
+    info.addEventListener('click', function(){ if(sopOpen[id]==='view') delete sopOpen[id]; else sopOpen[id]='view'; renderSopList(); });
+    ed.addEventListener('click', function(){ if(sopOpen[id]==='edit') delete sopOpen[id]; else sopOpen[id]='edit'; renderSopList(); });
     del.addEventListener('click', function(){
       if(!armedD){ armedD=true; del.textContent='Confirm'; setTimeout(function(){ armedD=false; del.innerHTML=TRASH; },4000); return; }
-      var pt={sop:{}}; pt.sop[it[0]]={x:true}; saveSettings(pt); if(sopEdit===it[0]) sopClear();
+      var pt={sop:{}}; pt.sop[id]={x:true}; delete sopOpen[id]; saveSettings(pt);
     });
-    r.append(info,ed,del); b.append(r);
+    top.append(info,ed,del); r.append(top,det); b.append(r);
   });
   $('#sopSample').hidden=l.length>0;
 }
@@ -5659,7 +5676,7 @@ function applySettings(d){
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
-  minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open) renderSopList(); 
+  minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
 }
 function applyCachedMeta(){
   var m=cache.meta||{};
