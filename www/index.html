@@ -515,7 +515,19 @@ select:not([multiple]){pointer-events:none}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Start</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Done</button></div>
+    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subSop" type="button" role="tab" aria-selected="false">SOP</button><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Start</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Done</button></div>
+    <div id="taskSop" style="display:flex;flex-direction:column;gap:14px" hidden>
+      <section class="card team" id="sopCard">
+        <h2>SOP checklists</h2>
+        <p class="pmeta">Choose a checklist, take the start photo, select who is assigned, then start it. Every step must be ticked before the task can be marked done.</p>
+        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
+        <p class="pmeta" id="sopEmpty" hidden>No SOP checklists yet. The owner can add them here.</p>
+        <label class="f" id="tdSopL" hidden><span>SOP checklist</span><select id="tdSop" aria-label="SOP checklist"></select></label>
+        <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="sopPhImg" alt="Start photo" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)"></div></div>
+        <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b></div><div id="sopAsg" class="asgbody"></div></div>
+        <button type="button" class="btn primary" id="sopStart" hidden>Start SOP</button>
+      </section>
+    </div>
     <div id="taskAllot" style="display:flex;flex-direction:column;gap:14px">
     <form class="card addtask" id="fTask" hidden>
       <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
@@ -551,14 +563,6 @@ select:not([multiple]){pointer-events:none}
     </section>
     </div>
     <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
-      <section class="card team" id="sopCard" hidden>
-        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
-        <label class="f" id="tdSopL" hidden><span>SOP checklist (optional)</span><select id="tdSop" aria-label="SOP checklist"></select></label>
-        <div class="two" id="sopAct" hidden>
-          <label class="btn" style="cursor:pointer;text-align:center">Take Photo<input type="file" id="tdPhB2" accept="image/*" capture="environment" style="display:none"></label>
-          <button type="button" class="btn primary" id="sopStart">Start SOP</button>
-        </div>
-      </section>
       <section class="card team" id="tdBox">
         <h2>Tasks start</h2>
         <form class="team" id="fTd" hidden novalidate>
@@ -2105,19 +2109,34 @@ async function phView(id,title){
   }catch(e){ body.textContent=''; body.append(mk('p','pmeta','The photos could not be loaded. Check your internet and try again.')); }
 }
 $('#phClose').addEventListener('click', function(){ $('#dlgPh').close(); });
-['#tdPhB','#tdPhB2'].forEach(function(sel){ $(sel).addEventListener('change', async function(){
+$('#tdPhB').addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f) return;
   try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
   tdStartState();
 });
+var sopPhotoB='', sopAsgSel=[], sopBusy=false;
+function sopUi(ed){
+  var l=sopList(), has=l.length>0;
+  $('#sopMng').hidden=!isOwner; $('#sopEmpty').hidden=has; $('#tdSopL').hidden=!(ed&&has);
+  var on=ed&&has; $('#sopWrap').hidden=!on; $('#sopAsgWrap').hidden=!on; $('#sopStart').hidden=!on;
+  var ab=$('#sopAsg'), k=nursery+'|'+labourNames(nursery).join(','); if(ab._k!==k){ ab._k=k; sopAsgSel=[]; buildAsg(ab,labourNames(nursery),[],function(v){ sopAsgSel=v; }); }
+}
+$('#sopPh').addEventListener('change', async function(){
+  var f=this.files&&this.files[0]; this.value=''; if(!f) return;
+  try{ sopPhotoB=await phCompress(f); var im=$('#sopPhImg'); im.src=sopPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
 });
-$('#sopStart').addEventListener('click', function(){
-  if(!editable()) return;
-  var sv=$('#tdSop').value; if(!sv||!sopMap[sv]||sopMap[sv].x){ toast('Choose an SOP checklist first.'); return; }
-  if(!tdPhotoB){ toast('Take the start photo first.'); return; }
-  if(labourNames(nursery).length>0&&!tdAsgSel.length){ toast('Select who the task is assigned to below.'); return; }
-  if(!cleanName($('#tdName').value)) $('#tdName').value=sopMap[sv].n;
-  tdStartState(); $('#fTd').requestSubmit();
+$('#sopStart').addEventListener('click', async function(){
+  if(!editable()||sopBusy) return;
+  var sv=$('#tdSop').value, sp=sv&&sopMap[sv]&&!sopMap[sv].x?sopMap[sv]:null; if(!sp){ toast('Choose an SOP checklist first.'); return; }
+  if(!sopPhotoB){ toast('Take the start photo first.'); return; }
+  if(labourNames(nursery).length>0&&!sopAsgSel.length){ toast('Select who the task is assigned to.'); return; }
+  if(needSup()){ toast('Choose your name at the top first.'); return; }
+  sopBusy=true;
+  var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}}, now=Date.now();
+  p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), pb:1, ast:now, sop:sv, sn:sp.n, ss:sp.st.slice()};
+  try{ await phSave(id,'b',sopPhotoB); }catch(e){ toast('The photo could not be saved. Check your internet and try again.'); sopBusy=false; return; }
+  if(await save(p)){ sopPhotoB=''; $('#sopPhImg').hidden=true; $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; taskSub='done'; renderTasks(); toast('SOP task started'); }
+  sopBusy=false;
 });
 function tdStartState(){
   var b=$('#tdStart'); if(!b) return;
@@ -2126,10 +2145,10 @@ function tdStartState(){
 }
 function renderTd(){
   var sub=taskSub;
-  $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
-  $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
+  $('#subSop').setAttribute('aria-selected', sub==='sop'); $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
+  $('#taskSop').hidden=sub!=='sop'; $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
   var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
-  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner; $('#tdSopL').hidden=!(ed&&sopList().length); $('#sopAct').hidden=$('#tdSopL').hidden; $('#sopCard').hidden=!(isOwner||!$('#tdSopL').hidden);
+  $('#fTd').hidden=!ed; sopFill(); sopUi(ed);
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
@@ -2161,6 +2180,7 @@ function renderTd(){
 setInterval(function(){ if(tab==='tasks'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
 $('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
 $('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
+$('#subSop').addEventListener('click', function(){ taskSub='sop'; renderTasks(); });
 $('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; tdStartState(); });
 $('#tdName').addEventListener('input', tdStartState);
 $('#fTd').addEventListener('submit', async function(e){
@@ -2172,9 +2192,8 @@ $('#fTd').addEventListener('submit', async function(e){
   err.textContent='';
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
-  var sopV=$('#tdSop').value, sp=sopV&&sopMap[sopV]&&!sopMap[sopV].x?sopMap[sopV]:null; if(sp&&sp.st&&sp.st.length){ p.td[id].sop=sopV; p.td[id].sn=sp.n; p.td[id].ss=sp.st.slice(); }
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
-  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; $('#tdSop').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
+  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc){
   var y=secStart(doc,'7. Tasks started and time taken',false);
