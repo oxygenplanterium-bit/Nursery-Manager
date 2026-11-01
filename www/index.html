@@ -418,7 +418,10 @@ select:not([multiple]){pointer-events:none}
 .pickopt[aria-pressed="true"],.pickopt[aria-pressed="true"]:nth-child(n){background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .tdasg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:4px 0}
 #tdList.hideasg .tdasg{display:none}
-#sopNote,#sopList textarea{text-transform:none}
+.sopx{display:flex; flex-direction:column; gap:6px; padding:10px; border:1.5px solid var(--accent); border-radius:12px; background:color-mix(in srgb,var(--accent) 7%,var(--card)); margin-top:6px}
+.sopxh{align-self:flex-start; padding:4px 12px; border:1.5px solid var(--accent); border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:.9rem}
+.sopxs{font-weight:700}
+.sopxt{font-weight:400}
 </style>
 
 <div class="wrap">
@@ -2022,7 +2025,7 @@ function sopRender(box,id,x,ed){
   var ss=x.ss||[]; box.hidden=!ss.length; if(!ss.length) return;
   var sig=JSON.stringify([ss,x.sd||{},ed,!!x.en,x.sx||'',!!box._xo]); if(box._sig===sig) return; box._sig=sig; box.textContent='';
   box.append(mk('b',null,'Checklist: '+(x.sn||'')+' ('+sopDone(x)+' of '+ss.length+' done)'));
-  if(x.sx){ var xb=mk('button','btn small',box._xo?'Hide explanation':'Show explanation'); xb.type='button'; xb.style.alignSelf='flex-start'; xb.addEventListener('click', function(){ box._xo=!box._xo; box._sig=''; sopRender(box,id,x,ed); }); box.append(xb); if(box._xo){ var xt=mk('div',null,x.sx); xt.style.cssText='text-transform:none;white-space:pre-wrap;padding:8px;border:1px solid var(--line);border-radius:10px'; box.append(xt); } }
+  if(x.sx){ var xb=mk('button','btn small',box._xo?'Hide explanation':'Show explanation'); xb.type='button'; xb.style.alignSelf='flex-start'; xb.addEventListener('click', function(){ box._xo=!box._xo; box._sig=''; sopRender(box,id,x,ed); }); box.append(xb); if(box._xo) box.append(sopExpl(x.sx)); }
   ss.forEach(function(t,i){
     var l=mk('label'), c=document.createElement('input'), d=x.sd&&x.sd[i];
     l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:500'; c.type='checkbox'; c.checked=!!d; c.disabled=!ed||!!x.en; c.style.cssText='width:22px;height:22px;flex:none';
@@ -2047,7 +2050,7 @@ function renderSopList(){
     ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto';
     det.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px'; det.hidden=!sopOpen[id];
     var mode=sopOpen[id];
-    if(mode==='view'){ it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); if(it[1].d){ det.append(mk('b',null,'Detailed explanation')); var ex=mk('div',null,it[1].d); ex.style.whiteSpace='pre-wrap'; ex.style.textTransform='none'; det.append(ex); } }
+    if(mode==='view'){ it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); if(it[1].d) det.append(sopExpl(it[1].d)); }
     if(mode==='edit'){
       var ni=mkIn('text','Name',it[1].n), nt=document.createElement('textarea'), ta=document.createElement('textarea'), er=mk('p','pmeta'), row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
       ni.maxLength=60; ni.setAttribute('aria-label','Checklist name'); ta.rows=7; ta.maxLength=3000; ta.value=it[1].st.join('\n'); ta.setAttribute('aria-label','Steps, one per line'); er.style.color='var(--warn)'; sv.type='button'; cn.type='button'; row.append(sv,cn);
@@ -2183,12 +2186,17 @@ $('#tdPhB').addEventListener('change', async function(){
   tdStartState();
 });
 var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
+function sopExpl(text){
+  var w=mk('div','sopx'); w.append(mk('div','sopxh','Detailed Explanation'));
+  String(text).split(/\r?\n/).forEach(function(l){ if(!l.trim()) return; w.append(mk('div',/^\d+\.\s/.test(l)?'sopxs':'sopxt',l)); });
+  return w;
+}
 function sopDetail(){
   var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
   b.hidden=!sp; b.textContent=''; if(!sp) return;
   b.append(mk('b',null,sp.n+' ('+sp.st.length+(sp.st.length===1?' step':' steps')+')'));
   sp.st.forEach(function(t,i){ b.append(mk('div',null,(i+1)+'. '+t)); });
-  if(sp.d){ b.append(mk('b',null,'Detailed explanation')); var ex=mk('div',null,sp.d); ex.style.whiteSpace='pre-wrap'; ex.style.textTransform='none'; b.append(ex); }
+  if(sp.d) b.append(sopExpl(sp.d));
 }
 $('#tdSop').addEventListener('change', sopDetail);
 function sopUi(ed){
