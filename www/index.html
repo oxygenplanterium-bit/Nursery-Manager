@@ -1048,12 +1048,13 @@ select:not([multiple]){pointer-events:none}
       <b id="sopFormHead">Create New Checklist</b>
       <label class="f"><span>Name</span><input type="text" id="sopName" maxlength="60" autocomplete="off" placeholder="For example, Morning watering"></label>
       <label class="f"><span>Steps (one per line)</span><textarea id="sopSteps" rows="7" maxlength="3000" placeholder="Check water tank&#10;Water section A&#10;Water section B"></textarea></label>
+      <button type="button" class="btn small" id="sopAuto">Auto-write explanation from steps</button>
       <label class="f"><span>Detailed explanation (optional)</span><textarea id="sopNote" rows="6" maxlength="4000" placeholder="Explain the procedure in detail: what to use, how much, how long, what to watch out for"></textarea></label>
       <p class="pmeta" id="sopErr" style="color:var(--warn)"></p>
       <div class="two"><button type="button" class="btn primary" id="sopSave">Save Checklist</button><button type="button" class="btn" id="sopCancel">Clear</button></div>
     </div>
     <button type="button" class="btn small" id="sopSample" hidden>Add Sample Checklists</button>
-    <button type="button" class="btn small" id="sopFillEx" hidden>Add Explanations To Sample Checklists</button>
+    <button type="button" class="btn small" id="sopFillEx" hidden>Auto-Write Missing Explanations</button>
     <div class="actions"><button type="button" class="btn primary" id="sopClose">Close</button></div>
   </div>
 </dialog>
@@ -2050,7 +2051,9 @@ function renderSopList(){
     if(mode==='edit'){
       var ni=mkIn('text','Name',it[1].n), nt=document.createElement('textarea'), ta=document.createElement('textarea'), er=mk('p','pmeta'), row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
       ni.maxLength=60; ni.setAttribute('aria-label','Checklist name'); ta.rows=7; ta.maxLength=3000; ta.value=it[1].st.join('\n'); ta.setAttribute('aria-label','Steps, one per line'); er.style.color='var(--warn)'; sv.type='button'; cn.type='button'; row.append(sv,cn);
-      nt.rows=6; nt.maxLength=4000; nt.value=it[1].d||''; nt.placeholder='Detailed explanation (optional)'; nt.setAttribute('aria-label','Detailed explanation'); det.append(ni,ta,nt,er,row);
+      nt.rows=6; nt.maxLength=4000; nt.value=it[1].d||''; nt.placeholder='Detailed explanation (optional)'; nt.setAttribute('aria-label','Detailed explanation');
+      var au=mk('button','btn small','Auto-write from steps'); au.type='button'; au.addEventListener('click', function(){ if(nt.value.trim()){ toast('Clear the explanation box first, then auto-write.'); return; } var st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x); }).filter(Boolean); if(!st.length){ toast('Add the steps first.'); return; } nt.value=sopAutoText(st); });
+      det.append(ni,ta,au,nt,er,row);
       cn.addEventListener('click', function(){ delete sopOpen[id]; renderSopList(); });
       sv.addEventListener('click', async function(){
         var n=cleanName(ni.value), st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x).slice(0,120); }).filter(Boolean).slice(0,30);
@@ -2083,6 +2086,29 @@ $('#sopSave').addEventListener('click', async function(){
   pt.sop[id]={n:n,st:st,o:o,x:null,d:$('#sopNote').value.trim().slice(0,4000)};
   if(await saveSettings(pt)){ toast('Checklist saved'); sopClear(); }
 });
+
+var SOP_RULES=[
+ [/attendance|roll call|present|absent/i,"Mark the attendance of every worker as they arrive: Present, Half Day or Absent. Do this before giving out work so the day's count is correct."],
+ [/gate|unlock|lock|shutter|open the (nursery|shop|office|store)/i,"Unlock and open the gate, office and store. Look around the entrance, boundary and store for anything broken, open or missing, and report it straight away."],
+ [/light|switch|power|electric|motor/i,"Switch on the lights, pump or motor that are needed. Check that they run normally, with no strange noise, sparks or leaks. Report any fault at once."],
+ [/water|tank|hose|pipe|sprinkl|irrigat/i,"Check the water supply: tank level, pump, pipes and sprinklers. Look for leaks and blockages and make sure there is enough water for the day's watering."],
+ [/pest|spray|disease|fung|insect/i,"Look at the leaves and stems for pests and disease. Note the affected rows, keep badly affected plants apart, and spray only as the owner has instructed."],
+ [/stock|count|inventory|quantity|balance/i,"Count the stock of the main items and compare it with the app. Note any difference and tell the owner. Quantities are changed only through purchases, sales and damages."],
+ [/clean|sweep|tidy|waste|garbage|dust/i,"Clean the area: sweep the paths, clear dry leaves and waste, remove empty pots and tools from walkways, and keep the entrance and sales area tidy."],
+ [/tool|equipment|cutter|spade|machine/i,"Check that tools and equipment are in their place, clean and in working condition. Report anything missing or broken."],
+ [/task|assign|allot|\bplan\b|brief|instruct/i,"Brief the workers on today's work. Assign each task to a named person in the app and make sure everyone knows what to do first and what must be finished today."],
+ [/walk|round|inspect|check|look|observe|review/i,"Walk through every section and row. Look for wilted, yellow or damaged plants, fallen pots, pests and anything unusual. Note the section and tell the owner."],
+ [/photo|picture|snap/i,"Take a clear photo in good light that shows the whole area or item, and keep it with the task as proof."],
+ [/customer|sale|bill|invoice|order|dispatch|display/i,"Make sure the sales area is ready: bills and invoice books are available, prices are visible, and display plants are watered and neatly arranged."],
+ [/record|enter|app|report|note|update|log/i,"Record it in the app so the day's records stay correct. Check the entry once after saving."],
+ [/bell|start|begin|ring/i,"Start the day on time. Make sure all workers have arrived and know the plan for the day."]
+];
+function sopAutoText(steps){
+  return steps.map(function(t,i){
+    var r=SOP_RULES.find(function(x){ return x[0].test(t); });
+    return (i+1)+'. '+t+'\n'+(r?r[1]:'Do this step carefully and completely before ticking it. If anything is wrong or unclear, tell the owner before moving on.');
+  }).join('\n\n');
+}
 var SOP_SAMPLES=[
  ['Morning watering',['Check the water tank and pump','Water the seedling section','Water the potted plants','Water the shade house','Check for dry or wilted plants'],
   "1. Check the water tank and pump\nLook at the tank level and make sure there is enough water for the whole nursery. Switch on the pump and check that it runs smoothly with normal pressure. Look over the pipes, hoses and sprinklers for leaks or blockages, and fix or report them before watering starts.\n\n2. Water the seedling section\nSeedlings are delicate, so use a fine rose or a gentle spray and never a strong jet. Water early in the morning, before the sun gets strong. Wet the soil until it is moist but not waterlogged. Keep the nozzle moving so no tray or bag gets flooded.\n\n3. Water the potted plants\nWater each pot slowly at the base until a little water comes out of the drain holes. If the soil is very dry, wait a minute and water again, because water runs straight through dry soil. Give more water to bigger pots and to rows that get full sun. Avoid wetting the leaves of plants that catch fungus easily.\n\n4. Water the shade house\nShade plants need regular but lighter watering. Push a finger into the soil: if the top 2 cm is still damp, water less. Sprinkle the floor and surroundings to keep humidity up, especially in hot weather.\n\n5. Check for dry or wilted plants\nWalk through every row after watering. Look for wilted, yellow or drooping plants and for signs of pests or disease. Give extra water to plants that are badly dry. Note the plant and row for anything unusual and tell the owner. Record any dead plants under Batches And Losses."],
@@ -2090,7 +2116,8 @@ var SOP_SAMPLES=[
   "1. Mix soil and manure in the right ratio\nPrepare the potting mix on a clean surface. A common mix is 2 parts garden or red soil, 1 part well-rotted cow dung manure or compost, and 1 part coco peat or sand. Change the ratio to suit the plant. Break all lumps and mix thoroughly. Use only well-decomposed manure, because fresh manure burns the roots. Prepare enough for the whole batch so the mix is the same throughout.\n\n2. Fill the pots\nUse clean pots or bags with drain holes. Cover the hole with a small piece of broken pot or a stone if needed. Fill the mix up to about 2 to 3 cm below the rim so there is space for watering. Do not press the mix down hard.\n\n3. Plant and press the soil\nMake a hole in the centre. Place the seedling or cutting at the same depth at which it was growing, with the roots straight and not folded. Fill around it with mix and press gently with your fingers so there are no air gaps. Keep the stem upright.\n\n4. Water gently\nWater straight away with a fine spray until water comes out of the bottom. Top up any soil that settles. Keep the pots in shade for 5 to 7 days before moving them to the sun.\n\n5. Label with item name and date\nWrite the plant name and the potting date on a label or tag. Place it in the pot or at the head of the row. This helps you find the batch later and know when it will be ready.\n\n6. Record the batch in the app\nOpen More, then Batches And Losses. Choose the item, enter the number of plants, the potting date and the expected ready date, then tap Add Batch. Check that the count matches what you potted."],
  ['Dispatch an order',['Count the plants against the bill','Check plant health','Pack and cover safely','Load the vehicle','Take a photo of the loaded order'],
   "1. Count the plants against the bill\nCount each type of plant by hand and match it with the quantities on the bill. If anything is short, tell the owner before loading.\n\n2. Check plant health\nCheck every plant for healthy leaves, no pests, no broken stems and no dry soil. Replace any unhealthy plant with a good one. Water lightly the day before so the soil is moist but not dripping.\n\n3. Pack and cover safely\nGroup plants by size and keep them upright. Tie tall plants loosely. Put small plants in crates. Cover the load with a net or sheet in transit to protect it from wind and sun. Keep heavier pots at the bottom and delicate ones on top without crushing the leaves.\n\n4. Load the vehicle\nLoad carefully and never throw pots. Load big plants first and small ones on top. Pack them tightly so they cannot tip or slide. Give the driver the bill and the customer's phone number.\n\n5. Take a photo of the loaded order\nTake a clear photo of the loaded vehicle showing all the plants before it leaves. Keep it with the task as proof. It helps settle any later question about quantity or condition."]];
-function sopFillable(){ return sopList().filter(function(it){ if(it[1].d) return false; var n=it[1].n.toLowerCase(); return SOP_SAMPLES.some(function(x){ return x[0].toLowerCase()===n&&x[1].length===it[1].st.length; }); }); }
+function sopFillable(){ return sopList().filter(function(it){ return !it[1].d; }); }
+$('#sopAuto').addEventListener('click', function(){ if($('#sopNote').value.trim()){ toast('Clear the explanation box first, then auto-write.'); return; } var st=$('#sopSteps').value.split(/\r?\n/).map(function(x){ return cleanName(x); }).filter(Boolean); if(!st.length){ toast('Add the steps first.'); return; } $('#sopNote').value=sopAutoText(st); });
 $('#sopSample').addEventListener('click', async function(){
   var pt={sop:{}};
   SOP_SAMPLES.forEach(function(x,i){ pt.sop['s'+Date.now().toString(36)+i]={n:x[0],st:x[1],o:i+1,d:x[2]}; });
@@ -2098,8 +2125,8 @@ $('#sopSample').addEventListener('click', async function(){
 });
 $('#sopFillEx').addEventListener('click', async function(){
   var pt={sop:{}}, n=0;
-  sopFillable().forEach(function(it){ var nm=it[1].n.toLowerCase(), x=SOP_SAMPLES.find(function(y){ return y[0].toLowerCase()===nm; }); pt.sop[it[0]]={d:x[2]}; n++; });
-  if(n&&await saveSettings(pt)) toast('Explanations added. You can edit them any time.');
+  sopFillable().forEach(function(it){ var nm=it[1].n.toLowerCase(), x=SOP_SAMPLES.find(function(y){ return y[0].toLowerCase()===nm&&y[1].length===it[1].st.length; }); pt.sop[it[0]]={d:x?x[2]:sopAutoText(it[1].st)}; n++; });
+  if(n&&await saveSettings(pt)) toast('Explanations written. Check them and edit if needed.');
 });
 
 /* ---------- task photo thumbnails and full screen view ---------- */
