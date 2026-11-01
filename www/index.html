@@ -421,6 +421,9 @@ select:not([multiple]){pointer-events:none}
 .sopx{display:flex; flex-direction:column; gap:6px; padding:10px; border:1.5px solid var(--accent); border-radius:12px; background:color-mix(in srgb,var(--accent) 7%,var(--card)); margin-top:6px}
 .sopxh{align-self:flex-start; padding:4px 12px; border:1.5px solid var(--accent); border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:.9rem}
 .sopxs{font-weight:700}
+.sopxf{display:flex; justify-content:flex-end}
+.spkbtn{display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border-radius:50%}
+.spkbtn.on{background:var(--accent); color:var(--accent-ink)}
 .sopxt{font-weight:400}
 </style>
 
@@ -1059,6 +1062,17 @@ select:not([multiple]){pointer-events:none}
     <button type="button" class="btn small" id="sopSample" hidden>Add Sample Checklists</button>
     <button type="button" class="btn small" id="sopFillEx" hidden>Auto-Write Missing Explanations</button>
     <div class="actions"><button type="button" class="btn primary" id="sopClose">Close</button></div>
+  </div>
+</dialog>
+<dialog id="dlgSpeak">
+  <div class="dbody">
+    <h2>Read Aloud</h2>
+    <p class="pmeta">Choose the language to listen in.</p>
+    <button type="button" class="btn primary" data-lg="en">English</button>
+    <button type="button" class="btn primary" data-lg="hi">Hindi (हिन्दी)</button>
+    <button type="button" class="btn primary" data-lg="kn">Kannada (ಕನ್ನಡ)</button>
+    <p class="pmeta" id="spkNote">Hindi and Kannada are translated from English first, which needs internet. The translation may not be perfect.</p>
+    <div class="actions"><button type="button" class="btn" id="spkClose">Cancel</button></div>
   </div>
 </dialog>
 <dialog id="dlgZoom">
@@ -2189,8 +2203,57 @@ var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
 function sopExpl(text){
   var w=mk('div','sopx'); w.append(mk('div','sopxh','Detailed Explanation'));
   String(text).split(/\r?\n/).forEach(function(l){ if(!l.trim()) return; w.append(mk('div',/^\d+\.\s/.test(l)?'sopxs':'sopxt',l)); });
+  var f=mk('div','sopxf'), sp=mk('button','btn spkbtn'); sp.type='button'; sp.setAttribute('aria-label','Read the explanation aloud');
+  sp.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+  sp.addEventListener('click', function(){ spkPress(text,sp); }); spkBtns.push(sp);
+  f.append(sp); w.append(f);
   return w;
 }
+/* ---------- read aloud (English, Hindi, Kannada) ---------- */
+var spkBtns=[], spkText='', spkBtn=null, spkId=0, spkTr={};
+function spkState(on){ spkBtns=spkBtns.filter(function(b){ return b.isConnected||b===spkBtn; }); spkBtns.forEach(function(b){ b.classList.toggle('on', on&&b===spkBtn); }); }
+function spkStop(){ spkId++; try{ window.speechSynthesis.cancel(); }catch(e){} spkState(false); }
+function spkPress(text,btn){
+  if(!('speechSynthesis' in window)){ toast('This device cannot read aloud.'); return; }
+  if(spkBtn===btn&&btn.classList.contains('on')){ spkStop(); return; }
+  spkStop(); spkText=text; spkBtn=btn; var d=$('#dlgSpeak'); if(!d.open) d.showModal();
+}
+function spkPlain(t){ return String(t).split(/\r?\n/).map(function(l){ return l.replace(/^(\d+)\.\s+/,'Step $1. ').trim(); }).filter(Boolean); }
+function spkChunks(lines,max){
+  var out=[]; lines.forEach(function(l){ var parts=l.match(/[^.!?\u0964]+[.!?\u0964]*/g)||[l], cur=''; parts.forEach(function(p){ if((cur+p).length>max&&cur){ out.push(cur.trim()); cur=''; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); });
+  return out;
+}
+async function spkTranslate(lines,lg){
+  var key=lg+'|'+lines.join('\n'); if(spkTr[key]) return spkTr[key];
+  var chunks=spkChunks(lines,400), out=[];
+  for(var i=0;i<chunks.length;i++){
+    var r=await fetch('https://api.mymemory.translated.net/get?langpair=en|'+lg+'&q='+encodeURIComponent(chunks[i]));
+    if(!r.ok) throw new Error('t'); var j=await r.json(); var t=j&&j.responseData&&j.responseData.translatedText; if(!t||/MYMEMORY WARNING/i.test(t)) throw new Error('t'); out.push(t);
+  }
+  spkTr[key]=out; return out;
+}
+function spkVoice(code){
+  var vs=window.speechSynthesis.getVoices()||[], pre=code.slice(0,2).toLowerCase();
+  return vs.find(function(v){ return v.lang.toLowerCase()===code.toLowerCase(); })||vs.find(function(v){ return v.lang.toLowerCase().slice(0,2)===pre; })||null;
+}
+async function spkGo(lg){
+  var id=++spkId, code=lg==='hi'?'hi-IN':lg==='kn'?'kn-IN':'en-IN', lines=spkPlain(spkText), parts;
+  $('#dlgSpeak').close(); spkState(true);
+  if(lg!=='en'){
+    toast('Translating...',2500);
+    try{ parts=await spkTranslate(lines,lg); }catch(e){ if(id===spkId){ toast('Could not translate. Check your internet and try again.',4000); spkState(false); } return; }
+    if(id!==spkId) return;
+  } else parts=spkChunks(lines,200);
+  var v=spkVoice(code); if(!v&&lg!=='en') toast('No '+(lg==='hi'?'Hindi':'Kannada')+' voice found on this device. Install it in the device voice settings.',5000);
+  var q=lg==='en'?parts:spkChunks(parts,200), n=0;
+  q.forEach(function(t,i){
+    var u=new SpeechSynthesisUtterance(t); u.lang=code; if(v) u.voice=v; u.rate=0.95;
+    u.onend=function(){ n++; if(id===spkId&&n>=q.length) spkState(false); }; u.onerror=function(){ if(id===spkId) spkState(false); };
+    window.speechSynthesis.speak(u);
+  });
+}
+$('#dlgSpeak').querySelectorAll('[data-lg]').forEach(function(b){ b.addEventListener('click', function(){ spkGo(b.dataset.lg); }); });
+$('#spkClose').addEventListener('click', function(){ $('#dlgSpeak').close(); spkState(false); });
 function sopDetail(){
   var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
   b.hidden=!sp; b.textContent=''; if(!sp) return;
