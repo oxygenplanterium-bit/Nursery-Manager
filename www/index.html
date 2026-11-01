@@ -983,6 +983,11 @@ select:not([multiple]){pointer-events:none}
       <label>GST % (optional)<input type="number" id="invGst" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0"></label>
       <label>Shipping ₹ (optional)<input type="number" id="invShip" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
     </div>
+    <div id="invPayBox" hidden style="display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px">
+      <label><span id="invPayL">Payment received</span><select id="invPay"><option value="">Not paid yet</option><option value="part">Part payment</option><option value="full">Fully paid</option></select></label>
+      <label id="invPayAmtL" hidden>Amount ₹<input type="number" id="invPayAmt" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+      <label id="invPayModeL" hidden>Mode of payment<select id="invPayMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select></label>
+    </div>
     <p id="invTot" style="font-weight:700;color:var(--ink)"></p>
     <div id="invTcBox" style="display:flex;flex-direction:column;gap:8px">
       <b>Terms and conditions</b>
@@ -3740,6 +3745,12 @@ $('#invTcAdd').addEventListener('click', function(){ addTerm($('#invTcNew')); })
 $('#tcAdd2').addEventListener('click', function(){ addTerm($('#tcNew2')); });
 $('#invTcBtn').addEventListener('click', function(){ var d=$('#dlgTc'); if(!d.open) d.showModal(); renderTcBox($('#tcList2'),false); });
 $('#tcDone2').addEventListener('click', function(){ $('#dlgTc').close(); });
+function invPayVis(){
+  var on=isOwner&&!invEdit&&(invType==='S'||invType==='P'), v=$('#invPay').value;
+  $('#invPayBox').hidden=!on; $('#invPayL').textContent=invType==='P'?'Payment paid':'Payment received';
+  $('#invPayAmtL').hidden=v!=='part'; $('#invPayModeL').hidden=!v;
+}
+$('#invPay').addEventListener('change', invPayVis);
 function invTotals(){
   invSyncGd();
   var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
@@ -3816,7 +3827,7 @@ function openInvEdit(id){
     if(ty!=='E'&&!stockOk){ el.querySelector('.pickbtn').disabled=true; q.disabled=true; el.querySelectorAll('button').forEach(function(b){ if(b.textContent==='Remove') b.hidden=true; }); }
   });
   $('#invAddLine').hidden=ty!=='E'&&!stockOk;
-  $('#invSave').textContent='Save changes';
+  $('#invSave').textContent='Save changes'; invPayVis();
   tcOff={}; $('#invTcNew').value=''; renderTc();
   var have=x.tc||[]; tcList().forEach(function(it){ if(have.indexOf(it[1].t)<0) tcOff[it[0]]=1; }); renderTc();
   invTotals();
@@ -3826,7 +3837,7 @@ function openInv(ty){
   if(ty==='E'){ if(!(day&&canWrite)){ toast('Estimates cannot be created right now.'); return; } }
   else if(!editable()) { toast('Invoices can be created only on the open (latest) day.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
-  invType=ty; invEdit=''; $('#invSave').textContent='Save invoice'; $('#invAddLine').hidden=false;
+  invType=ty; invEdit=''; $('#invPay').value=''; $('#invPayAmt').value=''; $('#invPayMode').value='cash'; invPayVis(); $('#invSave').textContent='Save invoice'; $('#invAddLine').hidden=false;
   $('#invHead').textContent=ty==='S'?'New Sales Invoice':ty==='E'?'New Estimate - Gold':'New Purchase Invoice';
   $('#invPartyL').textContent=ty==='P'?'Supplier name':'Customer name';
   $('#invNo').textContent=NURS[nursery]+' · '+invLabel({ty:ty,nid:nursery,no:invNext(ty)});
@@ -3902,12 +3913,24 @@ $('#fInv').addEventListener('submit', async function(e){
   }
   var inv={ty:ty, no:no, nid:nursery, party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, tc:tcList().filter(function(it){ return !tcOff[it[0]]; }).map(function(it){ return it[1].t; }), dt:gdt, dv:gdt?gdv:0, by:nameNow()||(isOwner?'Owner':''), at:Date.now(), day:selDate, tier:ty==='E'?'Gold':undefined, sv:ty==='E'?$('#invSvc').value.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).join('\n').slice(0,800):'',
     l:lines.map(function(L){ var r=day.rows[L.id], o={id:L.id, n:r.name, q:L.q, r:L.r, dt:L.dt, dv:L.dt?L.dv:0}; return o; })};
+  var payAmt=0, payMode=$('#invPayMode').value||'cash';
+  if(isOwner&&(ty==='S'||ty==='P')&&$('#invPay').value){
+    var tot=invCalc(lines.map(function(L){ return {id:L.id,q:L.q,r:L.r,dt:L.dt,dv:L.dt?L.dv:0}; }),gst,gdt,gdt?gdv:0,sh).total;
+    payAmt=$('#invPay').value==='full'?tot:Math.round((parseFloat($('#invPayAmt').value)||0)*100)/100;
+    if(!(payAmt>0)){ err.textContent='Enter the payment amount.'; return; }
+    if(payAmt>tot+0.004){ err.textContent='The payment is more than the invoice total ₹'+fmtMoney(tot)+'.'; return; }
+  }
   var btn=$('#invSave'); btn.disabled=true;
   var id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), p={i:{}}; p.i[id]=inv;
   if(ty==='E') p.i[id].grp=id;
   if(p.i[id].tier===undefined) delete p.i[id].tier;
   var ok=await invSave(p);
   if(ok && ty!=='E') ok=await save(patch);
+  if(ok && payAmt>0){
+    var ak=ty==='S'?'rc':'py', ap={e:{}}, aid='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    ap.e[aid]={k:ak, nid:nursery, d:dt, amt:payAmt, mode:payMode, note:'With '+label, by:nameNow()||'Owner', at:Date.now(), party:party, inv:id, no:accNext(ak,nursery)};
+    if(!(await accSave(ap))) toast('Invoice saved, but the payment could not be recorded. Add it in Accounts.',5000);
+  }
   btn.disabled=false;
   if(ok){ $('#dlgInv').close(); toast(ty==='E'?label+' - Gold saved':label+' saved'); if(ty==='E') openEst(id); }
   else err.textContent='Could not post to stock. Check that the invoice list does not show a duplicate, then try again.';
