@@ -5911,6 +5911,8 @@ function openMore(){
   var d=$('#dlgMore'); if(!d.open) d.showModal();
 }
 $('#moreClose').addEventListener('click', function(){ $('#dlgMore').close(); });
+$('#dlgMore').addEventListener('click', function(e){ if(!e.target.closest('.dbody')) this.close(); });
+$('#dlgMore .dbody').addEventListener('click', function(e){ if(e.target===this) $('#dlgMore').close(); });
 var dockSig='';
 function dockUpdate(){
   var d=$('#dock'); d.hidden=!!(tab||fdOpen);
