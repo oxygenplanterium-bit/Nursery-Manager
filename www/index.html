@@ -2280,7 +2280,7 @@ function sopToggle(label,on){
   b.addEventListener('click', function(){ st=!st; draw(); }); draw();
   return {el:b, get:function(){ return st; }, set:function(v){ st=!!v; draw(); }};
 }
-function sopStartPh(){ var v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null; return !(sp&&sp.ps===false); }
+function sopStartPh(){ var v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null; var show=!(sp&&sp.ps===false&&sp.pe===false); var l=$('#sopWrap .asghead b'); if(l) l.textContent=(sp&&sp.ps===false)?'Start photos (optional) :':'Start photos :'; return show; }
 function sopDetail(){
   var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
   b.hidden=!sp; b.textContent=''; if(!sp) return;
@@ -2318,7 +2318,7 @@ function phSaveMany(id,o){
 $('#sopStart').addEventListener('click', async function(){
   if(!editable()||sopBusy) return;
   var sv=$('#tdSop').value, sp=sv&&sopMap[sv]&&!sopMap[sv].x?sopMap[sv]:null; if(!sp){ toast('Choose an SOP checklist first.'); return; }
-  var usePh=sp.ps===false?[]:sopPhotos;
+  var usePh=(sp.ps===false&&sp.pe===false)?[]:sopPhotos;
   if(!usePh.length&&sp.ps!==false){ toast('Take at least one start photo first.'); return; }
   if(labourNames(nursery).length>0&&!sopAsgSel.length){ toast('Select who the task is assigned to.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
