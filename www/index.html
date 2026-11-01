@@ -1043,7 +1043,7 @@ select:not([multiple]){pointer-events:none}
     <p class="pmeta">A checklist is a list of steps for a repeat job. When a task is started with a checklist, every step must be ticked before the task can be marked done.</p>
     <div id="sopList" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="bcard" id="sopForm" style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px">
-      <b id="sopFormHead">New Checklist</b>
+      <b id="sopFormHead">Create New Checklist</b>
       <label class="f"><span>Name</span><input type="text" id="sopName" maxlength="60" autocomplete="off" placeholder="For example, Morning watering"></label>
       <label class="f"><span>Steps (one per line)</span><textarea id="sopSteps" rows="7" maxlength="3000" placeholder="Check water tank&#10;Water section A&#10;Water section B"></textarea></label>
       <p class="pmeta" id="sopErr" style="color:var(--warn)"></p>
@@ -2064,7 +2064,7 @@ function renderSopList(){
   });
   $('#sopSample').hidden=l.length>0;
 }
-function sopClear(){ sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopFormHead').textContent='New Checklist'; $('#sopErr').textContent=''; }
+function sopClear(){ sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopFormHead').textContent='Create New Checklist'; $('#sopErr').textContent=''; }
 $('#sopMng').addEventListener('click', function(){ if(!isOwner) return; sopClear(); renderSopList(); var d=$('#dlgSop'); if(!d.open) d.showModal(); });
 $('#sopClose').addEventListener('click', function(){ $('#dlgSop').close(); });
 $('#sopCancel').addEventListener('click', sopClear);
