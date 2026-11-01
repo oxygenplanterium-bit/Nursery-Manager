@@ -551,13 +551,15 @@ select:not([multiple]){pointer-events:none}
     </section>
     </div>
     <div id="taskDone" style="display:flex;flex-direction:column;gap:14px" hidden>
+      <section class="card team" id="sopCard" hidden>
+        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
+        <label class="f" id="tdSopL" hidden><span>SOP checklist (optional)</span><select id="tdSop" aria-label="SOP checklist"></select></label>
+      </section>
       <section class="card team" id="tdBox">
         <h2>Tasks start</h2>
-        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
         <form class="team" id="fTd" hidden novalidate>
           <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
-          <label class="f" id="tdSopL" hidden><span>SOP checklist (optional)</span><select id="tdSop" aria-label="SOP checklist"></select></label>
           <div class="asgwrap"><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
@@ -2114,7 +2116,7 @@ function renderTd(){
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
   $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
   var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
-  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner;
+  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner; $('#tdSopL').hidden=!(ed&&sopList().length); $('#sopCard').hidden=!(isOwner||!$('#tdSopL').hidden);
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
