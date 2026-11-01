@@ -554,6 +554,10 @@ select:not([multiple]){pointer-events:none}
       <section class="card team" id="sopCard" hidden>
         <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
         <label class="f" id="tdSopL" hidden><span>SOP checklist (optional)</span><select id="tdSop" aria-label="SOP checklist"></select></label>
+        <div class="two" id="sopAct" hidden>
+          <label class="btn" style="cursor:pointer;text-align:center">Take Photo<input type="file" id="tdPhB2" accept="image/*" capture="environment" style="display:none"></label>
+          <button type="button" class="btn primary" id="sopStart">Start SOP</button>
+        </div>
       </section>
       <section class="card team" id="tdBox">
         <h2>Tasks start</h2>
@@ -2101,10 +2105,19 @@ async function phView(id,title){
   }catch(e){ body.textContent=''; body.append(mk('p','pmeta','The photos could not be loaded. Check your internet and try again.')); }
 }
 $('#phClose').addEventListener('click', function(){ $('#dlgPh').close(); });
-$('#tdPhB').addEventListener('change', async function(){
+['#tdPhB','#tdPhB2'].forEach(function(sel){ $(sel).addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f) return;
   try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
   tdStartState();
+});
+});
+$('#sopStart').addEventListener('click', function(){
+  if(!editable()) return;
+  var sv=$('#tdSop').value; if(!sv||!sopMap[sv]||sopMap[sv].x){ toast('Choose an SOP checklist first.'); return; }
+  if(!tdPhotoB){ toast('Take the start photo first.'); return; }
+  if(labourNames(nursery).length>0&&!tdAsgSel.length){ toast('Select who the task is assigned to below.'); return; }
+  if(!cleanName($('#tdName').value)) $('#tdName').value=sopMap[sv].n;
+  tdStartState(); $('#fTd').requestSubmit();
 });
 function tdStartState(){
   var b=$('#tdStart'); if(!b) return;
@@ -2116,7 +2129,7 @@ function renderTd(){
   $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
   $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
   var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
-  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner; $('#tdSopL').hidden=!(ed&&sopList().length); $('#sopCard').hidden=!(isOwner||!$('#tdSopL').hidden);
+  $('#fTd').hidden=!ed; sopFill(); $('#sopMng').hidden=!isOwner; $('#tdSopL').hidden=!(ed&&sopList().length); $('#sopAct').hidden=$('#tdSopL').hidden; $('#sopCard').hidden=!(isOwner||!$('#tdSopL').hidden);
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
   (day?visibleTasks():[]).forEach(function(it){ var o=mk('option',null,it[1].title); o.value=it[0]; pk.append(o); });
