@@ -2049,7 +2049,7 @@ function sopRender(box,id,x,ed){
   var ss=x.ss||[]; box.hidden=!ss.length; if(!ss.length) return;
   var sig=JSON.stringify([ss,x.sd||{},ed,!!x.en,x.sx||'',!!box._xo]); if(box._sig===sig) return; box._sig=sig; box.textContent='';
   box.append(mk('b',null,'Checklist: '+(x.sn||'')+' ('+sopDone(x)+' of '+ss.length+' done)'));
-  if(x.sx){ var xb=mk('button','btn small',box._xo?'Hide explanation':'Show explanation'); xb.type='button'; xb.style.alignSelf='flex-start'; xb.addEventListener('click', function(){ box._xo=!box._xo; box._sig=''; sopRender(box,id,x,ed); }); box.append(xb); if(box._xo) box.append(sopExpl(x.sx)); }
+  if(x.sx){ var xb=mk('button','btn small',box._xo?'Hide explanation':'Show explanation'); xb.type='button'; xb.style.alignSelf='flex-start'; xb.addEventListener('click', function(){ box._xo=!box._xo; box._sig=''; sopRender(box,id,x,ed); }); box.append(xb); if(box._xo) box.append(sopExpl(x.sx,true)); }
   ss.forEach(function(t,i){
     var l=mk('label'), c=document.createElement('input'), d=x.sd&&x.sd[i];
     l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:500'; c.type='checkbox'; c.checked=!!d; c.disabled=!ed||!!x.en; c.style.cssText='width:22px;height:22px;flex:none';
@@ -2210,16 +2210,16 @@ $('#tdPhB').addEventListener('change', async function(){
   tdStartState();
 });
 var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
-function sopExpl(text){
+function sopExpl(text,open){
   var w=mk('div','sopx'), body=mk('div','sopxb'), cur=null, n=0;
-  var hd=mk('div','sopxh'), tg=mk('button','btn small sopxt2','Hide'); hd.append(mk('span',null,'Detailed Explanation'),tg); tg.type='button'; tg.setAttribute('aria-expanded','true'); w.append(hd);
+  var hd=mk('div','sopxh'), tg=mk('button','btn small sopxt2',open?'Hide':'Show'); hd.append(mk('span',null,'Detailed Explanation'),tg); tg.type='button'; tg.setAttribute('aria-expanded',open?'true':'false'); w.append(hd);
   tg.addEventListener('click', function(){ body.hidden=!body.hidden; tg.textContent=body.hidden?'Show':'Hide'; tg.setAttribute('aria-expanded',!body.hidden); });
   String(text).split(/\r?\n/).forEach(function(l){
     if(!l.trim()) return;
     if(/^\d+\.\s/.test(l)||!cur){ cur=mk('div','sopxi '+(n%2?'e':'o')); n++; body.append(cur); if(/^\d+\.\s/.test(l)){ cur.append(mk('div','sopxs',l)); return; } }
     cur.append(mk('div','sopxt',l));
   });
-  w.append(body);
+  w.append(body); body.hidden=!open;
   var f=mk('div','sopxf'), sp=mk('button','btn spkbtn'); sp.type='button'; sp.setAttribute('aria-label','Read the explanation aloud');
   sp.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
   sp.addEventListener('click', function(){ spkPress(text,sp); }); spkBtns.push(sp);
