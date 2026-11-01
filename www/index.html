@@ -984,6 +984,7 @@ select:not([multiple]){pointer-events:none}
       <label>Shipping ₹ (optional)<input type="number" id="invShip" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
     </div>
     <div id="invPayBox" hidden style="display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px">
+      <p id="invPayInfo" class="pmeta" hidden></p>
       <label><span id="invPayL">Payment received</span><select id="invPay"><option value="">Not paid yet</option><option value="part">Part payment</option><option value="full">Fully paid</option></select></label>
       <label id="invPayAmtL" hidden>Amount ₹<input type="number" id="invPayAmt" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
       <label id="invPayModeL" hidden>Mode of payment<select id="invPayMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select></label>
@@ -3746,13 +3747,16 @@ $('#tcAdd2').addEventListener('click', function(){ addTerm($('#tcNew2')); });
 $('#invTcBtn').addEventListener('click', function(){ var d=$('#dlgTc'); if(!d.open) d.showModal(); renderTcBox($('#tcList2'),false); });
 $('#tcDone2').addEventListener('click', function(){ $('#dlgTc').close(); });
 function invPayVis(){
-  var on=isOwner&&!invEdit&&(invType==='S'||invType==='P'), v=$('#invPay').value;
-  $('#invPayBox').hidden=!on; $('#invPayL').textContent=invType==='P'?'Payment paid':'Payment received';
+  var on=isOwner&&(invType==='S'||invType==='P'), v=$('#invPay').value, pi=$('#invPayInfo');
+  $('#invPayBox').hidden=!on; $('#invPayL').textContent=(invEdit?'Add ':'')+(invType==='P'?'payment paid':'payment received');
+  $('#invPay').options[0].textContent=invEdit?'No new payment':'Not paid yet';
+  pi.hidden=!invEdit;
+  if(invEdit){ var tt=invCalc(invReadLines(true),$('#invGst').value,$('#invDt').value,$('#invDv').value,$('#invShip').value).total, pd=accPaid(invEdit); pi.textContent='Already '+(invType==='P'?'paid':'received')+' ₹'+fmtMoney(pd)+' · Due ₹'+fmtMoney(Math.max(tt-pd,0)); }
   $('#invPayAmtL').hidden=v!=='part'; $('#invPayModeL').hidden=!v;
 }
 $('#invPay').addEventListener('change', invPayVis);
 function invTotals(){
-  invSyncGd();
+  invSyncGd(); if(invEdit&&!$('#invPayBox').hidden) invPayVis();
   var c=invCalc(invReadLines(true), $('#invGst').value, $('#invDt').value, $('#invDv').value, $('#invShip').value);
   $('#invTot').textContent='Subtotal ₹'+fmtMoney(c.sub)+(c.disc?' · Discount -₹'+fmtMoney(c.disc):'')+(c.gst?' · GST ₹'+fmtMoney(c.gst):'')+(c.ship?' · Shipping ₹'+fmtMoney(c.ship):'')+' · Total ₹'+fmtMoney(c.total);
 }
@@ -3827,7 +3831,7 @@ function openInvEdit(id){
     if(ty!=='E'&&!stockOk){ el.querySelector('.pickbtn').disabled=true; q.disabled=true; el.querySelectorAll('button').forEach(function(b){ if(b.textContent==='Remove') b.hidden=true; }); }
   });
   $('#invAddLine').hidden=ty!=='E'&&!stockOk;
-  $('#invSave').textContent='Save changes'; invPayVis();
+  $('#invSave').textContent='Save changes'; $('#invPay').value=''; $('#invPayAmt').value=''; $('#invPayMode').value='cash'; invPayVis();
   tcOff={}; $('#invTcNew').value=''; renderTc();
   var have=x.tc||[]; tcList().forEach(function(it){ if(have.indexOf(it[1].t)<0) tcOff[it[0]]=1; }); renderTc();
   invTotals();
@@ -3889,6 +3893,13 @@ $('#fInv').addEventListener('submit', async function(e){
         ep.rows[k]={}; ep.rows[k][f]=nx[f];
       }
     }
+    var epay=0;
+    if(isOwner&&(ty==='S'||ty==='P')&&$('#invPay').value){
+      var etot=invCalc(lines.map(function(L){ return {id:L.id,q:L.q,r:L.r,dt:L.dt,dv:L.dt?L.dv:0}; }),gst,gdt,gdt?gdv:0,sh).total, edue=Math.round((etot-accPaid(invEdit))*100)/100;
+      epay=$('#invPay').value==='full'?edue:Math.round((parseFloat($('#invPayAmt').value)||0)*100)/100;
+      if(!(epay>0)){ err.textContent=$('#invPay').value==='full'?'Nothing is due on this invoice.':'Enter the payment amount.'; return; }
+      if(epay>edue+0.004){ err.textContent='The payment is more than the due ₹'+fmtMoney(edue)+'.'; return; }
+    }
     var eb=$('#invSave'); eb.disabled=true;
     var p2={i:{}}; p2.i[invEdit]={party:party, phone:digits, addr:addr, d:dt, g:gst, sh:sh, dt:gdt, dv:gdt?gdv:0,
       tc:tcList().filter(function(it){ return !tcOff[it[0]]; }).map(function(it){ return it[1].t; }),
@@ -3898,6 +3909,11 @@ $('#fInv').addEventListener('submit', async function(e){
     var ok2=true;
     if(Object.keys(ep.rows).length) ok2=await save(ep);
     if(ok2) ok2=await invSave(p2);
+    if(ok2&&epay>0){
+      var ek=ty==='S'?'rc':'py', eap={e:{}}, eid='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), en=ed.nid||'1';
+      eap.e[eid]={k:ek, nid:en, d:todayKey(), amt:epay, mode:$('#invPayMode').value||'cash', note:'With '+invLabel(ed), by:nameNow()||'Owner', at:Date.now(), party:party, inv:invEdit, no:accNext(ek,en)};
+      if(!(await accSave(eap))) toast('Invoice updated, but the payment could not be recorded. Add it in Accounts.',5000);
+    }
     eb.disabled=false;
     if(ok2){ $('#dlgInv').close(); toast(invLabel(ed)+' updated'); } else err.textContent='Could not save the changes. Please try again.';
     return;
