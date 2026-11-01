@@ -525,7 +525,7 @@ select:not([multiple]){pointer-events:none}
         <label class="f" id="tdSopL" hidden><span>SOP checklist</span><select id="tdSop" aria-label="SOP checklist"></select></label>
         <div id="sopDet" class="bcard" hidden style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:6px"></div>
         <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="sopAsg" aria-expanded="true">Hide</button></div><div id="sopAsg" class="asgbody"></div></div>
-        <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="sopPhImg" alt="Start photo" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)"></div></div>
+        <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photos :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><div class="thumbs" id="sopThumbs"></div><p class="pmeta" id="sopPhCnt">No photos yet. You can add up to 5.</p></div></div>
         <button type="button" class="btn primary" id="sopStart" hidden>Start SOP</button>
       </section>
     </div>
@@ -2068,11 +2068,11 @@ function zoomOpen(src,alt){ var d=$('#dlgZoom'); $('#zoomImg').src=src; $('#zoom
 $('#zoomClose').addEventListener('click', function(){ $('#dlgZoom').close(); });
 $('#dlgZoom').addEventListener('click', function(e){ if(e.target===this||e.target.id==='zoomImg'||e.target.id==='zoomBox') this.close(); });
 function phThumbs(box,id,x){
-  var key=id+':'+(x.pb?1:0)+(x.pa?1:0);
+  var key=id+':'+(x.pb||0)+(x.pa?1:0);
   if(!(x.pb||x.pa)){ box.textContent=''; box._k=''; return; }
   var draw=function(d){
     box.textContent='';
-    [['b','Start photo'],['a','Finish photo']].forEach(function(q){
+    [['b','Start photo'],['b2','Start photo 2'],['b3','Start photo 3'],['b4','Start photo 4'],['b5','Start photo 5'],['a','Finish photo']].forEach(function(q){
       if(!d[q[0]]) return;
       var f=mk('figure'), im=document.createElement('img'); im.src=d[q[0]]; im.alt=q[1]; im.addEventListener('click', function(){ zoomOpen(d[q[0]],q[1]); });
       f.append(im, mk('figcaption',null,q[1])); box.append(f);
@@ -2115,7 +2115,7 @@ $('#tdPhB').addEventListener('change', async function(){
   try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
   tdStartState();
 });
-var sopPhotoB='', sopAsgSel=[], sopBusy=false;
+var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
 function sopDetail(){
   var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
   b.hidden=!sp; b.textContent=''; if(!sp) return;
@@ -2131,19 +2131,35 @@ function sopUi(ed){
 }
 $('#sopPh').addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f) return;
-  try{ sopPhotoB=await phCompress(f); var im=$('#sopPhImg'); im.src=sopPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
+  if(sopPhotos.length>=SOP_MAX){ toast('You can add up to 5 photos.'); return; }
+  try{ sopPhotos.push(await phCompress(f)); sopPhotoDraw(); }catch(e){ toast('That photo could not be read. Try again.'); }
 });
+function sopPhotoDraw(){
+  var b=$('#sopThumbs'); b.textContent='';
+  sopPhotos.forEach(function(d,i){
+    var f=mk('figure'), im=document.createElement('img'), rm=mk('button','btn small danger','Remove'); rm.type='button'; rm.style.cssText='min-height:0;padding:2px 8px;font-size:.75rem';
+    im.src=d; im.alt='Start photo '+(i+1); im.addEventListener('click', function(){ zoomOpen(d,'Start photo '+(i+1)); });
+    rm.addEventListener('click', function(){ sopPhotos.splice(i,1); sopPhotoDraw(); });
+    f.append(im,rm); b.append(f);
+  });
+  $('#sopPhCnt').textContent=sopPhotos.length?sopPhotos.length+' of '+SOP_MAX+' photos added.':'No photos yet. You can add up to '+SOP_MAX+'.';
+}
+function phSaveMany(id,o){
+  var d=db.doc('photos/'+id);
+  return d.update(o).catch(function(e){ if(e&&e.code==='not_found') return d.set(o); throw e; });
+}
 $('#sopStart').addEventListener('click', async function(){
   if(!editable()||sopBusy) return;
   var sv=$('#tdSop').value, sp=sv&&sopMap[sv]&&!sopMap[sv].x?sopMap[sv]:null; if(!sp){ toast('Choose an SOP checklist first.'); return; }
-  if(!sopPhotoB){ toast('Take the start photo first.'); return; }
+  if(!sopPhotos.length){ toast('Take at least one start photo first.'); return; }
   if(labourNames(nursery).length>0&&!sopAsgSel.length){ toast('Select who the task is assigned to.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   sopBusy=true;
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}}, now=Date.now();
-  p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), pb:1, ast:now, sop:sv, sn:sp.n, ss:sp.st.slice()};
-  try{ await phSave(id,'b',sopPhotoB); }catch(e){ toast('The photo could not be saved. Check your internet and try again.'); sopBusy=false; return; }
-  if(await save(p)){ sopPhotoB=''; $('#sopPhImg').hidden=true; $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; taskSub='done'; renderTasks(); toast('SOP task started'); }
+  p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), pb:sopPhotos.length, ast:now, sop:sv, sn:sp.n, ss:sp.st.slice()};
+  var po={}; sopPhotos.forEach(function(d,i){ po[i===0?'b':'b'+(i+1)]=d; });
+  try{ await phSaveMany(id,po); }catch(e){ toast('The photos could not be saved. Check your internet and try again.'); sopBusy=false; return; }
+  if(await save(p)){ sopPhotos=[]; sopPhotoDraw(); $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; taskSub='done'; renderTasks(); toast('SOP task started'); }
   sopBusy=false;
 });
 function tdStartState(){
