@@ -519,12 +519,13 @@ select:not([multiple]){pointer-events:none}
     <div id="taskSop" style="display:flex;flex-direction:column;gap:14px" hidden>
       <section class="card team" id="sopCard">
         <h2>SOP checklists</h2>
-        <p class="pmeta">Choose a checklist, take the start photo, select who is assigned, then start it. Every step must be ticked before the task can be marked done.</p>
+        <p class="pmeta">Choose a checklist and read its steps, select who is assigned, take the start photo, then start it. Every step must be ticked before the task can be marked done.</p>
         <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
         <p class="pmeta" id="sopEmpty" hidden>No SOP checklists yet. The owner can add them here.</p>
         <label class="f" id="tdSopL" hidden><span>SOP checklist</span><select id="tdSop" aria-label="SOP checklist"></select></label>
+        <div id="sopDet" class="bcard" hidden style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:6px"></div>
+        <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="sopAsg" aria-expanded="true">Hide</button></div><div id="sopAsg" class="asgbody"></div></div>
         <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="sopPhImg" alt="Start photo" hidden style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)"></div></div>
-        <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b></div><div id="sopAsg" class="asgbody"></div></div>
         <button type="button" class="btn primary" id="sopStart" hidden>Start SOP</button>
       </section>
     </div>
@@ -2115,10 +2116,17 @@ $('#tdPhB').addEventListener('change', async function(){
   tdStartState();
 });
 var sopPhotoB='', sopAsgSel=[], sopBusy=false;
+function sopDetail(){
+  var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
+  b.hidden=!sp; b.textContent=''; if(!sp) return;
+  b.append(mk('b',null,sp.n+' ('+sp.st.length+(sp.st.length===1?' step':' steps')+')'));
+  sp.st.forEach(function(t,i){ b.append(mk('div',null,(i+1)+'. '+t)); });
+}
+$('#tdSop').addEventListener('change', sopDetail);
 function sopUi(ed){
   var l=sopList(), has=l.length>0;
   $('#sopMng').hidden=!isOwner; $('#sopEmpty').hidden=has; $('#tdSopL').hidden=!(ed&&has);
-  var on=ed&&has; $('#sopWrap').hidden=!on; $('#sopAsgWrap').hidden=!on; $('#sopStart').hidden=!on;
+  sopDetail(); var on=ed&&has; $('#sopWrap').hidden=!on; $('#sopAsgWrap').hidden=!on; $('#sopStart').hidden=!on;
   var ab=$('#sopAsg'), k=nursery+'|'+labourNames(nursery).join(','); if(ab._k!==k){ ab._k=k; sopAsgSel=[]; buildAsg(ab,labourNames(nursery),[],function(v){ sopAsgSel=v; }); }
 }
 $('#sopPh').addEventListener('change', async function(){
