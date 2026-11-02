@@ -404,7 +404,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #filter,#sopSearch{scroll-margin-top:10px}
 #list .row.alt0:not(.picked){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
 #list .row.alt1:not(.picked){background:color-mix(in srgb,var(--accent) 14%,var(--card))}
-.pgrp{display:flex; flex-direction:column; gap:8px}
+.pgrp{display:flex; flex-direction:column; gap:8px; border:1.5px solid var(--line); border-radius:14px; padding:8px}
+.cgrp{display:flex; flex-direction:column; gap:8px; border:1.5px solid var(--line); border-radius:14px; padding:8px}
 .prow{display:flex; gap:8px}
 .prow .pickopt{flex:1 1 auto; width:auto; min-width:0}
 .parr{flex:0 0 64px; min-height:48px; border:0; border-radius:10px; background:color-mix(in srgb,#a0724a 55%,var(--card)); color:#fff; font:inherit; font-size:1.7rem; font-weight:900; line-height:1; cursor:pointer}
@@ -6135,6 +6136,7 @@ var catOpen={}, CAT_BIN='<svg viewBox="0 0 24 24" width="20" height="20" fill="n
 function catsRender(){
   var box=$('#catsList'); box.textContent='';
   var prim=catPrimaries(); if(!prim.length) box.append(mk('p','pmeta','No categories yet.'));
+  var curGrp=null;
   function line(c,sub,parent,hasSubs){
     var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','delx'), dt=null;
     row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:20px':'');
@@ -6156,9 +6158,9 @@ function catsRender(){
       ar.addEventListener('click', function(){ catOpen[c[0]]=!catOpen[c[0]]; catsRender(); });
       row.append(inp,ar,del);
     } else row.append(inp,del);
-    box.append(row);
+    (curGrp||box).append(row);
   }
-  prim.forEach(function(c){ var subs=catSubs(c[0]); line(c,false,null,subs.length>0); if(catOpen[c[0]]) subs.forEach(function(x){ line(x,true,c[0],false); }); });
+  prim.forEach(function(c){ var subs=catSubs(c[0]); curGrp=mk('div','cgrp'); box.append(curGrp); line(c,false,null,subs.length>0); if(catOpen[c[0]]) subs.forEach(function(x){ line(x,true,c[0],false); }); });
   var ps=$('#catsParent'), cur=ps.value; ps.textContent='';
   var o0=mk('option',null,'Nothing (main category)'); o0.value=''; ps.append(o0);
   prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
