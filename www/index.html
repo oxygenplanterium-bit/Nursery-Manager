@@ -396,6 +396,9 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dock[hidden]{display:none}
 .dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
 #filter,#sopSearch{scroll-margin-top:10px}
+.nmtop .name{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.nmtop .rbrk{flex:0 0 100%; height:0; margin:-8px 0 0}
+.row.rhid .rbrk{display:none}
 .rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1px solid var(--line); background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
 .rsw .rswk{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
 .rsw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
@@ -1632,6 +1635,7 @@ function makeRow(id){
   var R0={name:name};
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
   el._hid=hidApply; if(edit) top.insertBefore(tg,edit.nextSibling); else top.insertBefore(tg,name.nextSibling); hidApply();
+  if(mv||xf){ var brk=mk('span','rbrk'); top.insertBefore(brk,tg.nextSibling); }
   nm.append(top); idw.append(sl,nm); el.append(idw);
   if(isOwner){
     idw.classList.add('lp');
