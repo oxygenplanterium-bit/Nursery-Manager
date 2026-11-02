@@ -933,6 +933,16 @@ select:not([multiple]){pointer-events:none}
   </form>
 </dialog>
 
+<dialog id="dlgMvAll">
+  <div class="dbody">
+    <h2 id="mvAllHead">Move All</h2>
+    <p class="pmeta" id="mvAllInfo"></p>
+    <label>Move to nursery<select id="mvAllDest"></select></label>
+    <p id="mvAllWarn" style="color:var(--warn);font-weight:600"></p>
+    <div class="actions"><button type="button" class="btn" id="mvAllCancel">Cancel</button><button type="button" class="btn primary" id="mvAllGo">Move</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgCats">
   <div class="dbody">
     <h2>Stock Categories</h2>
@@ -1829,7 +1839,7 @@ function renderStock(){
   $('#filter').hidden=!show; $('#sortSel').hidden=!show; if($('#sortSel').value!==sortMode) $('#sortSel').value=sortMode;
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
-  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); if(!armed.mvas) ma.textContent='Move all to '+NURS[otherN()];
+  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all';
   $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
@@ -1951,7 +1961,7 @@ function renderTasks(){
   renderTmr();
   $('#taskTo').hidden=!teamList('sup').length; fillAssign($('#taskTo'),$('#taskTo').value);
   $('#taskBar').hidden=!items.length;
-  var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); if(!armed.mvat) mt.textContent='Move all to '+NURS[otherN()];
+  var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); mt.textContent='Move all';
   $('#resetTasks').hidden=!(isOwner&&ed); $('#deleteTasks').hidden=!(isOwner&&ed);
   var c=taskCounts(items);
   $('#tsum').textContent=c.done+' done · '+c.notdone+' not done · '+c.pending+' pending';
@@ -3038,11 +3048,28 @@ function moveRes(id,btn){
     if(await saveSettings(p)) toast(r.n+' moved to '+NURS[dest]);
   });
 }
+var mvAllFn=null, mvAllN=0;
+function mvAllOpen(what,count,fn){
+  mvAllFn=fn; mvAllN=count;
+  $('#mvAllHead').textContent='Move all '+what;
+  $('#mvAllInfo').textContent=count+' '+what+(count===1?'':'')+' in '+NURS[nursery]+' will be moved.';
+  var sel=$('#mvAllDest'); sel.textContent='';
+  Object.keys(NURS).forEach(function(k){ var o=mk('option',null,NURS[k]); o.value=k; sel.append(o); });
+  sel.value=otherN(); $('#mvAllWarn').textContent='';
+  var d=$('#dlgMvAll'); if(!d.open) d.showModal();
+}
+$('#mvAllCancel').addEventListener('click', function(){ $('#dlgMvAll').close(); });
+$('#mvAllGo').addEventListener('click', async function(){
+  var dest=$('#mvAllDest').value;
+  if(dest===nursery){ $('#mvAllWarn').textContent='These are already in '+NURS[nursery]+'. Choose a different nursery.'; return; }
+  var f=mvAllFn; $('#dlgMvAll').close(); if(f) await f(dest);
+});
+$('#mvAllDest').addEventListener('change', function(){ $('#mvAllWarn').textContent=this.value===nursery?'These are already in '+NURS[nursery]+'. Choose a different nursery.':''; });
 $('#mvAllStock').addEventListener('click', function(){
   if(!isOwner||!editable()) return;
-  var b=this, from=nursery, dest=otherN(from);
-  arm(b,'mvas','Move all to '+NURS[dest], async function(){
-    var rows=(day&&day.rows)||{}, p={rows:{}}, n=0, skip=0, seen={};
+  var n0=sortedRows().length; if(!n0){ toast('No items to move.'); return; }
+  mvAllOpen('items',n0, async function(dest){
+    var p={rows:{}}, n=0, skip=0, seen={};
     sortedRows().forEach(function(it){ var r=it[1], k=normName(r.name);
       if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest}; n++; });
     if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'No items to move.'); return; }
@@ -3051,8 +3078,8 @@ $('#mvAllStock').addEventListener('click', function(){
 });
 $('#mvAllTasks').addEventListener('click', function(){
   if(!isOwner||!editable()) return;
-  var b=this, dest=otherN(nursery);
-  arm(b,'mvat','Move all to '+NURS[dest], async function(){
+  var n0=taskList(nursery).length; if(!n0){ toast('No tasks to move.'); return; }
+  mvAllOpen('tasks',n0, async function(dest){
     var p={tasks:{}}, n=0;
     taskList(nursery).forEach(function(it){ p.tasks[it[0]]={nid:dest}; n++; });
     if(n && await save(p)) toast(n+' task'+(n>1?'s':'')+' moved to '+NURS[dest]);
@@ -3060,8 +3087,8 @@ $('#mvAllTasks').addEventListener('click', function(){
 });
 $('#mvAllRes').addEventListener('click', function(){
   if(!isOwner) return;
-  var b=this, dest=otherN(nursery);
-  arm(b,'mvar','Move all to '+NURS[dest], async function(){
+  var list=resList().filter(function(it){ return (it[1].nid||'1')===nursery; }); if(!list.length){ toast('Nothing to move.'); return; }
+  mvAllOpen('resources',list.length, async function(dest){
     var p={res:{}}, n=0, skip=0, seen={};
     resList().filter(function(it){ return (it[1].nid||'1')===nursery; }).forEach(function(it){
       var k=normName(it[1].n);
@@ -3546,7 +3573,7 @@ function renderRes(){
   $('#resBar').hidden=!items.length;
   $('#rsum').textContent=c.yes+' available · '+c.no+' not available · '+c.none+' not checked';
   $('#resAll').hidden=!(ed&&c.none>0);
-  var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); if(!armed.mvar) mr.textContent='Move all to '+NURS[otherN()];
+  var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); mr.textContent='Move all';
   $('#resReset').hidden=!(isOwner&&ed&&(c.yes+c.no)>0);
   var s=$('#rstate'); s.hidden=items.length>0;
   s.textContent = day===undefined ? 'Loading…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No tools or resources were checked on this date.' : (isOwner ? 'No tools or resources yet. Add them above.' : 'No tools or resources yet. The owner adds them.')));
