@@ -3059,12 +3059,12 @@ function logMove(kind,entries){ if(!entries||!entries.length) return; moveLog[ki
 function undoTop(kind){ var a=moveLog[kind]; for(var i=a.length-1;i>=0;i--){ if(kind==='res'||a[i].day===selDate) return i; } return -1; }
 function undoSync(){
   [['rows','#undoStock',function(){ return isOwner&&editable()&&day; }],['tasks','#undoTasks',function(){ return isOwner&&editable()&&day; }],['res','#undoRes',function(){ return isOwner; }]].forEach(function(x){
-    var b=$(x[1]); if(!b) return; var i=undoTop(x[0]); b.hidden=!(x[2]()&&i>=0);
-    if(!b.hidden){ var m=moveLog[x[0]][i], n=m.e.length; b.textContent='Undo move ('+n+')'; }
+    var b=$(x[1]); if(!b) return; var i=undoTop(x[0]); b.hidden=!x[2]();
+    b.style.opacity=i>=0?'':'.55'; b.textContent=i>=0?'Undo move ('+moveLog[x[0]][i].e.length+')':'Undo move';
   });
 }
 async function undoMove(kind){
-  if(!isOwner) return; var i=undoTop(kind); if(i<0) return;
+  if(!isOwner) return; var i=undoTop(kind); if(i<0){ toast('No recent move to undo. Moves made from now on can be undone here.',4000); return; }
   var m=moveLog[kind][i], p={}, key=kind==='res'?'res':kind, n=0, skip=0; p[key]={};
   m.e.forEach(function(x){
     var o=kind==='rows'?(day&&day.rows&&day.rows[x.id]):kind==='tasks'?(day&&day.tasks&&day.tasks[x.id]):res[x.id];
