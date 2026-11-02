@@ -392,8 +392,9 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dlgLow .bcard,#dlgBat .bcard,#dlgDue .bcard{min-width:0}
 .tabs[aria-label="Sections"]{display:none !important}
 .wrap{padding-bottom:120px}
-#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:12px; padding:12px 16px; border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
+#dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; flex-direction:column; gap:10px; padding:12px 12px; box-sizing:border-box; width:min(calc(100vw - 20px),380px); border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
+.dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
 .dk{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
 .dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
@@ -824,7 +825,7 @@ select:not([multiple]){pointer-events:none}
   <div class="dbody">
     <h2>More</h2>
     <div id="moreGrid"></div>
-    <p class="pmeta" style="text-align:center">Long press an icon to move it to the home page. Long press a home icon to move it here.</p>
+    <p class="pmeta" style="text-align:center">Long press an icon to move it to the home page. Long press a home icon to move it back here.</p>
     <div class="actions"><button type="button" class="btn" id="moreClose">Close</button></div>
   </div>
 </dialog>
@@ -5892,16 +5893,21 @@ function dkTile(key,label,onclick,badge,onlong){
   var tm=0, lp=false, sx=0, sy=0;
   function stop(){ if(tm){ clearTimeout(tm); tm=0; } }
   if(onlong){
-    b.addEventListener('pointerdown', function(e){ lp=false; sx=e.clientX; sy=e.clientY; stop(); tm=setTimeout(function(){ tm=0; lp=true; try{ if(navigator.vibrate) navigator.vibrate(20); }catch(x){} onlong(); }, 550); });
-    b.addEventListener('pointermove', function(e){ if(tm&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10)) stop(); });
-    ['pointerup','pointercancel','pointerleave'].forEach(function(n){ b.addEventListener(n, stop); });
+    function begin(x,y){ lp=false; sx=x; sy=y; stop(); tm=setTimeout(function(){ tm=0; lp=true; try{ if(navigator.vibrate) navigator.vibrate(20); }catch(z){} onlong(); }, 550); }
+    function mv(x,y){ if(tm&&(Math.abs(x-sx)>12||Math.abs(y-sy)>12)) stop(); }
+    b.addEventListener('touchstart', function(e){ var t=e.touches[0]; begin(t.clientX,t.clientY); }, {passive:true});
+    b.addEventListener('touchmove', function(e){ var t=e.touches[0]; mv(t.clientX,t.clientY); }, {passive:true});
+    ['touchend','touchcancel'].forEach(function(n){ b.addEventListener(n, function(e){ stop(); if(lp&&e.cancelable) e.preventDefault(); }); });
+    b.addEventListener('mousedown', function(e){ begin(e.clientX,e.clientY); });
+    b.addEventListener('mousemove', function(e){ mv(e.clientX,e.clientY); });
+    ['mouseup','mouseleave'].forEach(function(n){ b.addEventListener(n, stop); });
     b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
   b.addEventListener('click', function(e){ if(lp){ lp=false; e.preventDefault(); e.stopPropagation(); return; } onclick(e); }, true);
   return b;
 }
 var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
-var DK_MAX=4;
+var DK_MAX=12, DK_ROW=4;
 function dkAvail(m){
   var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='att'||k==='res') return true;
   var src=$(m[2]); return !!(src&&!src.hidden);
@@ -5931,14 +5937,17 @@ function dockBuild(){
     }));
   });
   DK_ALL.forEach(function(m){ if(pref.indexOf(m[0])<0&&dkAvail(m)) extra+=dkBadge(m[0]); });
-  d.append(dkTile('more','More',openMore,extra));
+  var tiles=Array.prototype.slice.call(d.children); d.textContent='';
+  tiles.push(dkTile('more','More',openMore,extra));
+  var rows=[]; for(var i=0;i<tiles.length-1||i===0;i+=DK_ROW) rows.push(tiles.slice(i,Math.min(i+DK_ROW,tiles.length-1)));
+  rows[0].push(tiles[tiles.length-1]);
+  for(var r=rows.length-1;r>=0;r--){ var rw=mk('div','dkr'); rows[r].forEach(function(t){ rw.append(t); }); d.append(rw); }
 }
 function openMore(){
   var g=$('#moreGrid'), pref=dkPrefGet(); g.textContent='';
   DK_ALL.forEach(function(m){
     if(pref.indexOf(m[0])>=0||!dkAvail(m)) return;
     g.append(dkTile(m[0],m[1],function(){ dkGo(m); },dkBadge(m[0]),function(){
-      if(pref.length>=DK_MAX){ toast('Home page is full. Long press a home icon to move it to More first.',4000); return; }
       dkPrefSet(pref.concat([m[0]])); dockSig=''; dockUpdate(); openMore(); toast(m[1]+' moved to the home page');
     }));
   });
@@ -5950,6 +5959,7 @@ $('#dlgMore .dbody').addEventListener('click', function(e){ if(e.target===this) 
 var dockSig='';
 function dockUpdate(){
   var d=$('#dock'); d.hidden=!!(tab||fdOpen);
+  var wr=document.querySelector('.wrap'); if(wr&&!d.hidden) wr.style.paddingBottom=(d.offsetHeight+40)+'px';
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
 /* ---------- start ---------- */
