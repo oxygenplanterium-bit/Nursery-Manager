@@ -3088,6 +3088,7 @@ function mvAllOpen(what,count,fn){
   $('#mvAllInfo').textContent=count+' '+what+(count===1?'':'')+' in '+NURS[nursery]+' will be moved.';
   var sel=$('#mvAllDest'); sel.textContent='';
   Object.keys(NURS).forEach(function(k){ var o=mk('option',null,NURS[k]); o.value=k; sel.append(o); });
+  armed.mvall=false; $('#mvAllGo').textContent='Move';
   sel.value=otherN(); $('#mvAllWarn').textContent=''; pickify(sel,'Move to nursery'); sel._sync();
   var d=$('#dlgMvAll'); if(!d.open) d.showModal();
 }
@@ -3095,9 +3096,9 @@ $('#mvAllCancel').addEventListener('click', function(){ $('#dlgMvAll').close(); 
 $('#mvAllGo').addEventListener('click', async function(){
   var dest=$('#mvAllDest').value;
   if(dest===nursery){ $('#mvAllWarn').textContent='These are already in '+NURS[nursery]+'. Choose a different nursery.'; return; }
-  var f=mvAllFn; $('#dlgMvAll').close(); if(f) await f(dest);
+  arm(this,'mvall','Move', async function(){ var f=mvAllFn; $('#dlgMvAll').close(); if(f) await f(dest); });
 });
-$('#mvAllDest').addEventListener('change', function(){ $('#mvAllWarn').textContent=this.value===nursery?'These are already in '+NURS[nursery]+'. Choose a different nursery.':''; });
+$('#mvAllDest').addEventListener('change', function(){ armed.mvall=false; $('#mvAllGo').textContent='Move'; $('#mvAllWarn').textContent=this.value===nursery?'These are already in '+NURS[nursery]+'. Choose a different nursery.':''; });
 $('#mvAllStock').addEventListener('click', function(){
   if(!isOwner||!editable()) return;
   var n0=sortedRows().length; if(!n0){ toast('No items to move.'); return; }
