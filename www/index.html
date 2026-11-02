@@ -4365,7 +4365,7 @@ function openPick(sel,title,done){
       if(!c){ optBtn(o,o.textContent,box); return; }
       if(c.p) return;
       var subs=opts.filter(function(x){ var cx=catMap[x.value]; return cx&&cx.p===o.value; });
-      if(!subs.length){ optBtn(o,o.textContent,box); return; }
+      if(!subs.length){ var g0=mk('div','pgrp'); optBtn(o,o.textContent,g0); box.append(g0); return; }
       var g=mk('div','pgrp'), row=mk('div','prow'), ar=mk('button','parr','\u25b8'), sb=mk('div','psubs');
       optBtn(o,o.textContent,row); ar.type='button'; row.append(ar); g.append(row,sb);
       subs.forEach(function(x){ optBtn(x,catMap[x.value].n,sb); });
