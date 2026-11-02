@@ -397,6 +397,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dock[hidden]{display:none}
 .dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
 #filter,#sopSearch{scroll-margin-top:10px}
+.rcat{font-size:.72rem; font-weight:600; color:var(--accent); margin-top:2px}
 .rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1px solid var(--line); background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
 .rsw .rswk{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
 .rsw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
@@ -519,6 +520,8 @@ select:not([multiple]){pointer-events:none}
         <option value="purchase-desc">Purchases: high to low</option>
         <option value="damages-desc">Damages: high to low</option>
       </select>
+      <select id="catSel" aria-label="Filter by category" hidden></select>
+      <button class="btn small" id="catBtn" type="button" hidden>Categories</button>
       <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
       <button class="btn small" id="mvAllStock" hidden></button>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
@@ -913,12 +916,23 @@ select:not([multiple]){pointer-events:none}
     <label><span id="editLabel">Name</span>
       <input type="text" id="editName" required maxlength="120">
     </label>
+    <label id="editCatL">Category<select id="editCat"></select></label>
     <div class="actions">
       <button type="button" class="btn danger" id="editRemove">Delete</button>
       <button type="button" class="btn" id="editCancel">Cancel</button>
       <button class="btn primary" type="submit">Save</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="dlgCats">
+  <div class="dbody">
+    <h2>Stock Categories</h2>
+    <p class="pmeta">Create categories such as Indoor, Outdoor, Flowering, Fruit, Pots. Assign one to each item when you add or edit it.</p>
+    <div id="catsList" style="display:grid;gap:8px;margin:8px 0"></div>
+    <div class="sline" style="display:flex;gap:8px"><input type="text" id="catsNew" maxlength="40" placeholder="New category name" style="flex:1;min-width:0"><button type="button" class="btn primary" id="catsAdd">Add</button></div>
+    <div class="actions"><button type="button" class="btn" id="catsClose">Close</button></div>
+  </div>
 </dialog>
 
 <dialog id="dlgAdd">
@@ -928,6 +942,7 @@ select:not([multiple]){pointer-events:none}
     <input type="file" id="addFile" accept=".csv,.xlsx,.xls,text/csv" hidden>
     <button type="button" class="btn" id="addFileBtn" style="width:100%">Upload CSV or Excel file</button>
     <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
+    <label id="addCatL">Category (optional)<select id="addCat"></select></label>
     <label>Items
       <textarea id="addText" rows="8" placeholder="Areca Palm 6 inch, 40&#10;Money Plant, 120&#10;Terracotta Pot 8 inch, 60"></textarea>
     </label>
@@ -1383,7 +1398,7 @@ var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
 var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
 var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
 var winPushed=false, winPane=null;
-var tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
+var catMap={}, catFilter='', tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
 var CK='nurseryCache1', cache={idx:null,days:{},meta:{}}, cacheT=null, indexLive=false, dayLive=false;
 try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; cache.meta=cc.meta||{}; } }catch(e){}
 function cacheSave(){
@@ -1482,7 +1497,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -1633,7 +1648,7 @@ function makeRow(id){
   var R0={name:name};
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
   el._hid=hidApply; if(edit) top.insertBefore(tg,edit.nextSibling); else top.insertBefore(tg,name.nextSibling); hidApply();
-  nm.append(top); idw.append(sl,nm); el.append(idw);
+  var catEl=mk('div','rcat'); catEl.hidden=true; nm.append(top,catEl); idw.append(sl,nm); el.append(idw);
   if(isOwner){
     idw.classList.add('lp');
     var lpT=null, lx=0, ly=0;
@@ -1643,7 +1658,7 @@ function makeRow(id){
     ['pointerup','pointercancel','pointerleave'].forEach(function(t){ idw.addEventListener(t,lpStop); });
     idw.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
-  var R={sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
+  var R={cat:catEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
     if(canWrite && (f!=='total'||isOwner)){
@@ -1698,7 +1713,7 @@ function noteEl(id,r,f,ed){
 }
 function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
-  R.sl.textContent=n; R.name.textContent=r.name;
+  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=catName(r.cat); R.cat.hidden=!R.cat.textContent;
   if(R.edit) R.edit.hidden=!ed;
   if(R.xf) R.xf.hidden=!(ed&&canWrite);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
@@ -1771,7 +1786,7 @@ function renderRows(items,serial){
     var id=it[0], r=it[1]; seen.add(id);
     var el=rowEls.get(id); if(!el){ el=makeRow(id); rowEls.set(id,el); }
     updateRow(el,id,r,serial[id]||i+1);
-    el.hidden = !!q && (r.name||'').toLowerCase().indexOf(q)===-1;
+    el.hidden = (!!q && (r.name||'').toLowerCase().indexOf(q)===-1) || !catMatch(r);
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
@@ -1797,7 +1812,7 @@ function renderTotals(items){
   Object.keys(s).forEach(function(f){ totalsBuilt[f].textContent=fmtN(s[f]); });
 }
 function renderStock(){
-  setTimeout(hideAllLabel,0);
+  setTimeout(hideAllLabel,0); catSync();
   var items=day ? sortedRows() : [];
   var show=!!day && items.length>0, q=filter.trim().toLowerCase();
   $('#ledger').hidden=!show;
@@ -1822,7 +1837,7 @@ function renderStock(){
       var b2=mk('button','btn primary addwide','Add New Item'); b2.type='button'; b2.addEventListener('click', openAdd); s.append(b2);
     }else s.textContent='The owner has not added any stock yet.';
   }
-  else if(q && !items.some(function(it){ return (it[1].name||'').toLowerCase().indexOf(q)!==-1; })) s.textContent='No item matches "'+filter.trim()+'".';
+  else if((q||catFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && catMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items in this category.';
   else s.hidden=true;
   if(show){
     var serial={}; items.forEach(function(it,i){ serial[it[0]]=i+1; });
@@ -2728,6 +2743,7 @@ function openEdit(kind,id){
   $('#editLabel').textContent = kind==='item' ? 'Item name' : 'Task';
   $('#editName').value = kind==='item' ? o.name : o.title;
   $('#editRemove').textContent = kind==='item' ? 'Remove item' : 'Delete task';
+  $('#editCatL').hidden=kind!=='item'; if(kind==='item'){ catFill($('#editCat'),o.cat||''); }
   var d=$('#dlgEdit'); if(!d.open) d.showModal();
 }
 $('#fEdit').addEventListener('submit', async function(e){
@@ -2736,7 +2752,7 @@ $('#fEdit').addEventListener('submit', async function(e){
   if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
   var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
   patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
-  if(edCtx.kind==='item') patch[key][edCtx.id].modAt=Date.now();
+  if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; }
   $('#dlgEdit').close(); await save(patch);
 });
 $('#editCancel').addEventListener('click', function(){ $('#dlgEdit').close(); });
@@ -2762,6 +2778,7 @@ function openAdd(){
   $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
   $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
   $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
+  catFill($('#addCat'),''); $('#addCatL').hidden=!catList().length;
   $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
   $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
   var d=$('#dlgAdd'); if(!d.open) d.showModal();
@@ -2864,6 +2881,7 @@ $('#fAdd').addEventListener('submit', async function(e){
     existing[lk]=1; maxO++; added++;
     var id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery, addedAt:Date.now()};
+    if($('#addCat').value) base.cat=$('#addCat').value;
     if(!isOwner){ base.order=0; base.pending=true; base.by=nameNow()||'A supervisor'; base.reqAt=Date.now(); newNames.push(it.name); }
     patch.rows[id]=base;
   });
@@ -5979,6 +5997,44 @@ function dockUpdate(){
   var wr=document.querySelector('.wrap'); if(wr&&!d.hidden) wr.style.paddingBottom=(d.offsetHeight+40)+'px';
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
+/* ---------- stock categories ---------- */
+function catList(){ return Object.keys(catMap||{}).filter(function(id){ return catMap[id]&&catMap[id].n; }).map(function(id){ return [id,catMap[id]]; }).sort(function(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }); }
+function catName(id){ return (id&&catMap&&catMap[id]&&catMap[id].n)||''; }
+function catMatch(r){ if(!catFilter) return true; if(catFilter==='-') return !catName(r.cat); return r.cat===catFilter; }
+function catFill(sel,val){
+  sel.textContent=''; var o0=mk('option',null,'No category'); o0.value=''; sel.append(o0);
+  catList().forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; sel.append(o); });
+  sel.value=catName(val)?val:'';
+}
+function catSync(){
+  var sel=$('#catSel'), list=catList(), show=!!day&&list.length>0;
+  sel.hidden=!show; $('#catBtn').hidden=!(isOwner&&day);
+  if(catFilter&&catFilter!=='-'&&!catName(catFilter)) catFilter='';
+  sel.textContent=''; var o=mk('option',null,'All categories'); o.value=''; sel.append(o);
+  list.forEach(function(c){ var x=mk('option',null,c[1].n); x.value=c[0]; sel.append(x); });
+  var u=mk('option',null,'No category'); u.value='-'; sel.append(u); sel.value=catFilter;
+}
+$('#catSel').addEventListener('change', function(){ catFilter=this.value; renderAll(); });
+function catsRender(){
+  var box=$('#catsList'); box.textContent='';
+  var list=catList(); if(!list.length) box.append(mk('p','pmeta','No categories yet.'));
+  list.forEach(function(c){
+    var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','btn small danger','Delete'); row.style.cssText='display:flex;gap:8px;align-items:center';
+    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label','Category name'); del.type='button';
+    inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); } });
+    del.addEventListener('click', function(){ arm(del,'cat'+c[0],'Delete', async function(){ var p={cats:{}}; p.cats[c[0]]=null; if(await saveSettings(p)){ delete catMap[c[0]]; catsRender(); renderAll(); toast('Category deleted'); } }); });
+    row.append(inp,del); box.append(row);
+  });
+}
+$('#catBtn').addEventListener('click', function(){ if(!isOwner) return; catsRender(); $('#catsNew').value=''; var d=$('#dlgCats'); if(!d.open) d.showModal(); });
+$('#catsClose').addEventListener('click', function(){ $('#dlgCats').close(); });
+$('#catsAdd').addEventListener('click', async function(){
+  var v=$('#catsNew').value.trim().replace(/\s+/g,' '); if(!v||!isOwner) return;
+  if(catList().some(function(c){ return c[1].n.toLowerCase()===v.toLowerCase(); })){ toast(v+' already exists.'); return; }
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={cats:{}}; p.cats[id]={n:v,o:catList().length+1};
+  if(await saveSettings(p)){ catMap[id]=p.cats[id]; $('#catsNew').value=''; catsRender(); renderAll(); }
+});
+$('#catsNew').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#catsAdd').click(); } });
 /* ---------- stock: one Hide / Show button for all item cards ---------- */
 function hideAllLabel(){
   var rows=document.querySelectorAll('#ledger .row'), o=rowHidGet(), anyShown=false;
@@ -6016,7 +6072,7 @@ function applySettings(d){
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
-  minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
+  catMap = d.cats||{}; minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
 }
 function applyCachedMeta(){
   var m=cache.meta||{};
