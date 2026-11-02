@@ -394,6 +394,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .wrap{padding-bottom:120px}
 #dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; gap:12px; padding:12px 16px; border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
+.dk{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
 .dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
 .dkt svg{width:30px; height:30px; stroke:#fff; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
@@ -823,6 +824,7 @@ select:not([multiple]){pointer-events:none}
   <div class="dbody">
     <h2>More</h2>
     <div id="moreGrid"></div>
+    <p class="pmeta" style="text-align:center">Long press an icon to move it to the home page. Long press a home icon to move it here.</p>
     <div class="actions"><button type="button" class="btn" id="moreClose">Close</button></div>
   </div>
 </dialog>
@@ -5882,31 +5884,63 @@ var DK_IC={
  dash:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
 };
 var DK_BG={tasks:'linear-gradient(160deg,#6ddc7f,#2e9e4a)',att:'linear-gradient(160deg,#6cb8ff,#2f6fd6)',more:'linear-gradient(160deg,#a9a9b4,#6c6c78)',stock:'linear-gradient(160deg,#ffb36b,#e0731f)',team:'linear-gradient(160deg,#c59bff,#7b4cd6)',res:'linear-gradient(160deg,#9aa7b5,#566472)',cs:'linear-gradient(160deg,#ff9ac1,#d6417f)',sal:'linear-gradient(160deg,#5fd8c8,#1f9c8c)',acc:'linear-gradient(160deg,#ffd76b,#d99a12)',inv:'linear-gradient(160deg,#7fb2ff,#3a64d8)',due:'linear-gradient(160deg,#ff8f8f,#d63a3a)',bat:'linear-gradient(160deg,#9be26a,#4f9d1f)',low:'linear-gradient(160deg,#ffcf5c,#e08a00)',dash:'linear-gradient(160deg,#6ad0e8,#1f8fb0)',chat:'linear-gradient(160deg,#6fe08f,#1e9e56)'};
-function dkTile(key,label,onclick,badge){
+function dkTile(key,label,onclick,badge,onlong){
   var b=mk('button','dk'), t=mk('span','dkt'); b.type='button'; b.setAttribute('aria-label',label);
   t.style.background=DK_BG[key]; t.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+DK_IC[key]+'</svg>';
   b.append(t, mk('span',null,label));
   if(badge) b.append(mk('span','dkb',String(badge)));
-  b.addEventListener('click', onclick); return b;
+  var tm=0, lp=false, sx=0, sy=0;
+  function stop(){ if(tm){ clearTimeout(tm); tm=0; } }
+  if(onlong){
+    b.addEventListener('pointerdown', function(e){ lp=false; sx=e.clientX; sy=e.clientY; stop(); tm=setTimeout(function(){ tm=0; lp=true; try{ if(navigator.vibrate) navigator.vibrate(20); }catch(x){} onlong(); }, 550); });
+    b.addEventListener('pointermove', function(e){ if(tm&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10)) stop(); });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(n){ b.addEventListener(n, stop); });
+    b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+  b.addEventListener('click', function(e){ if(lp){ lp=false; e.preventDefault(); e.stopPropagation(); return; } onclick(e); }, true);
+  return b;
 }
-var MORE_ITEMS=[['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['res','Resources','#tabRes'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
+var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
+var DK_MAX=4;
+function dkAvail(m){
+  var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='att'||k==='res') return true;
+  var src=$(m[2]); return !!(src&&!src.hidden);
+}
+function dkKey(){ return 'nurseryDock'+(isOwner?'O':'S'); }
+function dkPrefGet(){
+  var def=isOwner?['stock','tasks','att','acc']:['stock','tasks','att','res'], v=null;
+  try{ v=JSON.parse(localStorage.getItem(dkKey())||'null'); }catch(e){}
+  if(!Array.isArray(v)) return def;
+  return v.filter(function(k,i){ return v.indexOf(k)===i && DK_ALL.some(function(m){ return m[0]===k&&dkAvail(m); }); }).slice(0,DK_MAX);
+}
+function dkPrefSet(a){ try{ localStorage.setItem(dkKey(), JSON.stringify(a)); }catch(e){} }
+function dkBadge(k){ return k==='low'?(day?lowItems().length:0):(k==='chat'?chatTotal():0); }
+function dkGo(m){
+  $('#dlgMore').close();
+  if(m[0]==='chat'){ tab='chat'; chatOpen=''; renderAll(); } else $(m[2]).click();
+}
 function chatTotal(){ var n=0; try{ chatIds().forEach(function(id){ n+=chatUnread(id); }); }catch(e){} return n; }
 function dockBuild(){
   var d=$('#dock'); d.textContent='';
-  var low=(day?lowItems().length:0)+chatTotal();
-  d.append(dkTile('stock','Stock',function(){ $('#tabStock').click(); }),
-           dkTile('tasks','Tasks',function(){ $('#tabTasks').click(); }),
-           dkTile('att','Attendance',function(){ $('#tabAtt').click(); }));
-  if(isOwner) d.append(dkTile('acc','Accounts',function(){ $('#tabAcc').click(); }));
-  else d.append(dkTile('res','Resources',function(){ $('#tabRes').click(); }));
-  d.append(dkTile('more','More',openMore,low));
+  var pref=dkPrefGet(), extra=0;
+  pref.forEach(function(k){
+    var m=DK_ALL.filter(function(x){ return x[0]===k; })[0];
+    d.append(dkTile(k,m[1],function(){ dkGo(m); },dkBadge(k),function(){
+      if(pref.length<=1){ toast('Keep at least one icon on the home page.'); return; }
+      dkPrefSet(pref.filter(function(x){ return x!==k; })); dockSig=''; dockUpdate(); toast(m[1]+' moved to More');
+    }));
+  });
+  DK_ALL.forEach(function(m){ if(pref.indexOf(m[0])<0&&dkAvail(m)) extra+=dkBadge(m[0]); });
+  d.append(dkTile('more','More',openMore,extra));
 }
 function openMore(){
-  var g=$('#moreGrid'); g.textContent='';
-  MORE_ITEMS.forEach(function(m){
-    var src=$(m[2]); if(m[0]!=='chat'&&(!src||src.hidden||(m[0]==='res'&&!isOwner))) return;
-    var badge=m[0]==='low'&&day?lowItems().length:(m[0]==='chat'?chatTotal():0);
-    g.append(dkTile(m[0],m[1],function(){ $('#dlgMore').close(); if(m[0]==='chat'){ tab='chat'; chatOpen=''; renderAll(); } else src.click(); },badge));
+  var g=$('#moreGrid'), pref=dkPrefGet(); g.textContent='';
+  DK_ALL.forEach(function(m){
+    if(pref.indexOf(m[0])>=0||!dkAvail(m)) return;
+    g.append(dkTile(m[0],m[1],function(){ dkGo(m); },dkBadge(m[0]),function(){
+      if(pref.length>=DK_MAX){ toast('Home page is full. Long press a home icon to move it to More first.',4000); return; }
+      dkPrefSet(pref.concat([m[0]])); dockSig=''; dockUpdate(); openMore(); toast(m[1]+' moved to the home page');
+    }));
   });
   var d=$('#dlgMore'); if(!d.open) d.showModal();
 }
@@ -5916,7 +5950,7 @@ $('#dlgMore .dbody').addEventListener('click', function(e){ if(e.target===this) 
 var dockSig='';
 function dockUpdate(){
   var d=$('#dock'); d.hidden=!!(tab||fdOpen);
-  var sig=(isOwner?'o':'s')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
+  var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
 /* ---------- start ---------- */
 function applySettings(d){
