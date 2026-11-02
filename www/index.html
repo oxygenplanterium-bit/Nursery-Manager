@@ -156,8 +156,19 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .bar input[type=search]{flex:1 1 180px}
 #stockBar input[type=search]{flex:1 1 100%}
 .bar select#sortSel{flex:0 0 75%; width:75%; margin-left:auto; font-weight:600; background:color-mix(in srgb,#4f8cff 20%,var(--card)); border-color:color-mix(in srgb,#4f8cff 45%,var(--line))}
-.bar select#catSel{flex:1 1 45%; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
-#catBtn{flex:0 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar select#catSel,.bar select#tagSel{flex:1 1 45%; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
+#catBtn{flex:1 1 0; min-width:0}
+#stockTools{flex:1 1 100%; display:flex; gap:8px}
+#stockTools .btn{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tglbl{display:block; font-size:.85rem; font-weight:700; margin:8px 0 4px}
+.tgchips,.tgsug,.rtags{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0}
+.tgchip{border:1px solid #4f8cff; background:color-mix(in srgb,#4f8cff 18%,var(--card)); color:inherit; border-radius:999px; padding:6px 12px; font:inherit; font-size:.85rem; cursor:pointer}
+.tgs{border:1px dashed var(--line); background:transparent; color:inherit; border-radius:999px; padding:5px 11px; font:inherit; font-size:.8rem; cursor:pointer}
+.rtag{border:1px solid color-mix(in srgb,#4f8cff 55%,var(--line)); background:color-mix(in srgb,#4f8cff 16%,var(--card)); border-radius:999px; padding:2px 9px; font-size:.72rem; font-weight:600}
+#grpOut table{border-collapse:collapse; width:100%; font-size:.85rem}
+#grpOut th,#grpOut td{border-bottom:1px solid var(--line); padding:6px 8px; text-align:right; white-space:nowrap}
+#grpOut th:first-child,#grpOut td:first-child{text-align:left; white-space:normal}
+#grpOut tr.tot td{font-weight:800}
 #stockCtl,#ledger{box-sizing:border-box; max-width:100%; min-width:0}
 #stockCtl{flex:1 1 100%; display:flex; flex-wrap:wrap; gap:10px; align-items:center; border:1.5px solid var(--line); border-radius:16px; padding:10px}
 #stockActs{flex:1 1 100%; display:flex; gap:8px}
@@ -539,9 +550,12 @@ select:not([multiple]){pointer-events:none}
           <option value="sales-desc">Sales: high to low</option>
           <option value="purchase-desc">Purchases: high to low</option>
           <option value="damages-desc">Damages: high to low</option>
+        <option value="cat-asc">Category: A to Z</option>
+        <option value="tag-asc">Tag: A to Z</option>
         </select>
         <select id="catSel" aria-label="Filter by category" hidden></select>
-        <button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button>
+        <select id="tagSel" aria-label="Filter by tag" hidden></select>
+        <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="grpBtn" type="button">Group Report</button></div>
         <div id="stockActs">
           <button class="btn small" id="mvAllStock" hidden></button>
           <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
@@ -943,6 +957,7 @@ select:not([multiple]){pointer-events:none}
       <input type="text" id="editName" required maxlength="120">
     </label>
     <label id="editCatL">Category<select id="editCat"></select></label>
+    <div id="editTagsL"><span class="tglbl">Tags (optional)</span><div id="editTagsBox"></div></div>
     <div class="actions">
       <button type="button" class="btn danger" id="editRemove">Delete</button>
       <button type="button" class="btn" id="editCancel">Cancel</button>
@@ -958,6 +973,17 @@ select:not([multiple]){pointer-events:none}
     <label>Move to nursery<select id="mvAllDest"></select></label>
     <p id="mvAllWarn" style="color:var(--warn);font-weight:600"></p>
     <div class="actions"><button type="button" class="btn" id="mvAllCancel">Cancel</button><button type="button" class="btn primary" id="mvAllGo">Move</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlgGrp">
+  <div class="dbody">
+    <h2>Stock Report</h2>
+    <p class="pmeta" id="grpSub"></p>
+    <label>Group by<select id="grpBy"><option value="cat">Category</option><option value="main">Main Category</option><option value="tag">Tag</option></select></label>
+    <div id="grpOut" style="overflow-x:auto;margin:10px 0"></div>
+    <p class="pmeta" id="grpNote"></p>
+    <div class="actions"><button type="button" class="btn" id="grpClose">Close</button><button type="button" class="btn primary" id="grpPdf">PDF / Share</button></div>
   </div>
 </dialog>
 
@@ -981,6 +1007,7 @@ select:not([multiple]){pointer-events:none}
     <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
     <label id="addCatL">Category (required)<select id="addCat"></select></label>
     <p id="addCatErr" style="color:var(--warn);font-weight:700;margin:4px 0" hidden></p>
+    <div><span class="tglbl">Tags (optional, applied to every item added)</span><div id="addTagsBox"></div></div>
     <label>Items
       <textarea id="addText" rows="8" placeholder="Areca Palm 6 inch, 40&#10;Money Plant, 120&#10;Terracotta Pot 8 inch, 60"></textarea>
     </label>
@@ -1436,7 +1463,7 @@ var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
 var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
 var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
 var winPushed=false, winPane=null;
-var catMap={}, catFilter='', tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
+var catMap={}, catFilter='', tagFilter='', tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
 var CK='nurseryCache1', cache={idx:null,days:{},meta:{}}, cacheT=null, indexLive=false, dayLive=false;
 try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; cache.meta=cc.meta||{}; } }catch(e){}
 function cacheSave(){
@@ -1535,7 +1562,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -1686,7 +1713,7 @@ function makeRow(id){
   var R0={name:name};
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
   el._hid=hidApply; if(edit) top.insertBefore(tg,edit.nextSibling); else top.insertBefore(tg,name.nextSibling); hidApply();
-  var catEl=mk('div','rcat'); catEl.hidden=true; nm.append(top,catEl); idw.append(sl,nm); el.append(idw);
+  var catEl=mk('div','rcat'); catEl.hidden=true; var tgEl=mk('div','rtags'); tgEl.hidden=true; nm.append(top,catEl,tgEl); idw.append(sl,nm); el.append(idw);
   if(isOwner){
     idw.classList.add('lp');
     var lpT=null, lx=0, ly=0;
@@ -1696,7 +1723,7 @@ function makeRow(id){
     ['pointerup','pointercancel','pointerleave'].forEach(function(t){ idw.addEventListener(t,lpStop); });
     idw.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
-  var R={cat:catEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
+  var R={cat:catEl,tg:tgEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
     if(canWrite && (f!=='total'||isOwner)){
@@ -1751,7 +1778,7 @@ function noteEl(id,r,f,ed){
 }
 function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
-  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=catName(r.cat); R.cat.hidden=!R.cat.textContent;
+  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=catName(r.cat); R.cat.hidden=!R.cat.textContent; R.tg.textContent=''; (r.tags||[]).forEach(function(t){ R.tg.append(mk('span','rtag',t)); }); R.tg.hidden=!(r.tags&&r.tags.length);
   if(R.edit) R.edit.hidden=!ed;
   if(R.xf) R.xf.hidden=!(ed&&canWrite);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
@@ -1792,6 +1819,7 @@ function xferEntries(r){
   var x=(r&&r.x)||{};
   return Object.keys(x).map(function(k){ return Object.assign({xid:k},x[k]); }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
 }
+function sortKeyOf(key,r){ return key==='cat'?catName(r.cat):((r.tags||[]).slice().sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); })[0]||''); }
 function sortItems(items){
   if(!sortMode) return items;
   var m=sortMode.split('-'), key=m[0], dir=m[1]==='desc'?-1:1;
@@ -1799,6 +1827,7 @@ function sortItems(items){
   return items.map(function(it,i){ return {it:it,i:i}; }).sort(function(a,b){
     var c;
     if(key==='name') c=(a.it[1].name||'').localeCompare(b.it[1].name||'',undefined,{numeric:true,sensitivity:'base'})*dir;
+    else if(key==='cat'||key==='tag'){ var A=sortKeyOf(key,a.it[1]), B=sortKeyOf(key,b.it[1]); c=(!A&&!B)?0:(!A?1:(!B?-1:A.localeCompare(B,undefined,{sensitivity:'base'})*dir)); }
     else c=(val(a.it[1])-val(b.it[1]))*dir;
     return c || a.i-b.i;
   }).map(function(x){ return x.it; });
@@ -1824,7 +1853,7 @@ function renderRows(items,serial){
     var id=it[0], r=it[1]; seen.add(id);
     var el=rowEls.get(id); if(!el){ el=makeRow(id); rowEls.set(id,el); }
     updateRow(el,id,r,serial[id]||i+1);
-    el.hidden = (!!q && (r.name||'').toLowerCase().indexOf(q)===-1) || !catMatch(r);
+    el.hidden = (!!q && (r.name||'').toLowerCase().indexOf(q)===-1) || !rowMatch(r);
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
@@ -1851,7 +1880,7 @@ function renderTotals(items){
   Object.keys(s).forEach(function(f){ totalsBuilt[f].textContent=fmtN(s[f]); });
 }
 function renderStock(){
-  setTimeout(hideAllLabel,0); catSync();
+  setTimeout(hideAllLabel,0); catSync(); tagSync();
   var items=day ? sortedRows() : [];
   var show=!!day && items.length>0, q=filter.trim().toLowerCase();
   $('#ledger').hidden=!show;
@@ -1876,7 +1905,7 @@ function renderStock(){
       var b2=mk('button','btn primary addwide','Add New Item'); b2.type='button'; b2.addEventListener('click', openAdd); s.append(b2);
     }else s.textContent='The owner has not added any stock yet.';
   }
-  else if((q||catFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && catMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items in this category.';
+  else if((q||catFilter||tagFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && rowMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items match this filter.';
   else s.hidden=true;
   if(show){
     var serial={}; items.forEach(function(it,i){ serial[it[0]]=i+1; });
@@ -2782,7 +2811,7 @@ function openEdit(kind,id){
   $('#editLabel').textContent = kind==='item' ? 'Item name' : 'Task';
   $('#editName').value = kind==='item' ? o.name : o.title;
   $('#editRemove').textContent = kind==='item' ? 'Remove item' : 'Delete task';
-  $('#editCatL').hidden=kind!=='item'; if(kind==='item'){ catFill($('#editCat'),o.cat||''); }
+  $('#editCatL').hidden=kind!=='item'; $('#editTagsL').hidden=kind!=='item'; if(kind==='item'){ catFill($('#editCat'),o.cat||''); editTags.set(o.tags||[]); }
   var d=$('#dlgEdit'); if(!d.open) d.showModal();
 }
 $('#fEdit').addEventListener('submit', async function(e){
@@ -2791,7 +2820,7 @@ $('#fEdit').addEventListener('submit', async function(e){
   if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
   var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
   patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
-  if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; }
+  if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; patch[key][edCtx.id].tags=editTags.get(); }
   $('#dlgEdit').close(); await save(patch);
 });
 $('#editCancel').addEventListener('click', function(){ $('#dlgEdit').close(); });
@@ -2817,7 +2846,7 @@ function openAdd(){
   $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
   $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
   $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
-  catFill($('#addCat'),'',true); $('#addCat').dataset.primOnly=''; $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
+  addTags.set([]); catFill($('#addCat'),'',true); $('#addCat').dataset.primOnly=''; $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
   $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
   $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
   var d=$('#dlgAdd'); if(!d.open) d.showModal();
@@ -2929,6 +2958,7 @@ $('#fAdd').addEventListener('submit', async function(e){
     var id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery, addedAt:Date.now()};
     if($('#addCat').value) base.cat=$('#addCat').value;
+    var atg=addTags.get(); if(atg.length) base.tags=atg;
     if(!isOwner){ base.order=0; base.pending=true; base.by=nameNow()||'A supervisor'; base.reqAt=Date.now(); newNames.push(it.name); }
     patch.rows[id]=base;
   });
@@ -6108,6 +6138,73 @@ function dockUpdate(){
   var wr=document.querySelector('.wrap'); if(wr&&!d.hidden) wr.style.paddingBottom=(d.offsetHeight+40)+'px';
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
+/* ---------- stock tags and group report ---------- */
+function tagClean(v){ return String(v||'').replace(/[,;]+/g,' ').trim().replace(/\s+/g,' ').slice(0,24); }
+function tagAll(){
+  var seen={}, out=[]; sortedRows().forEach(function(it){ (it[1].tags||[]).forEach(function(t){ var k=t.toLowerCase(); if(!seen[k]){ seen[k]=1; out.push(t); } }); });
+  return out.sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); });
+}
+function tagMatch(r){ if(!tagFilter) return true; if(tagFilter==='-') return !(r.tags&&r.tags.length); var k=tagFilter.toLowerCase(); return (r.tags||[]).some(function(t){ return t.toLowerCase()===k; }); }
+function rowMatch(r){ return catMatch(r)&&tagMatch(r); }
+function tagSync(){
+  var sel=$('#tagSel'), list=tagAll(), show=!!day&&list.length>0;
+  sel.hidden=!show; if(tagFilter&&tagFilter!=='-'&&!list.some(function(t){ return t.toLowerCase()===tagFilter.toLowerCase(); })) tagFilter='';
+  sel.textContent=''; var o=mk('option',null,'All tags'); o.value=''; sel.append(o);
+  list.forEach(function(t){ var x=mk('option',null,t); x.value=t; sel.append(x); });
+  var u=mk('option',null,'No tags'); u.value='-'; sel.append(u); sel.value=tagFilter;
+}
+$('#tagSel').addEventListener('change', function(){ tagFilter=this.value; renderAll(); });
+function tagEditor(box){
+  var st={tags:[]}, chips=mk('div','tgchips'), row=mk('div','sline'), inp=document.createElement('input'), add=mk('button','btn small','Add tag'), sg=mk('div','tgsug');
+  row.style.cssText='display:flex;gap:8px;align-items:center'; inp.type='text'; inp.maxLength=24; inp.placeholder='Type a tag, then Add'; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label','New tag'); add.type='button';
+  function has(t){ var k=t.toLowerCase(); return st.tags.some(function(x){ return x.toLowerCase()===k; }); }
+  function render(){
+    chips.textContent=''; st.tags.forEach(function(t,i){ var c=mk('button','tgchip',t+' ×'); c.type='button'; c.setAttribute('aria-label','Remove tag '+t); c.addEventListener('click', function(){ st.tags.splice(i,1); render(); }); chips.append(c); });
+    sg.textContent=''; tagAll().filter(function(t){ return !has(t); }).slice(0,12).forEach(function(t){ var b=mk('button','tgs','+ '+t); b.type='button'; b.addEventListener('click', function(){ put(t); }); sg.append(b); });
+  }
+  function put(v){ v=tagClean(v); if(!v) return; if(has(v)) return; if(st.tags.length>=8){ toast('Up to 8 tags per item.'); return; } st.tags.push(v); render(); }
+  add.addEventListener('click', function(){ put(inp.value); inp.value=''; inp.focus(); });
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===','){ e.preventDefault(); put(inp.value); inp.value=''; } });
+  row.append(inp,add); box.append(chips,row,sg);
+  return { get:function(){ put(inp.value); inp.value=''; return st.tags.slice(); }, set:function(a){ st.tags=(a||[]).map(tagClean).filter(Boolean).slice(0,8); inp.value=''; render(); } };
+}
+var editTags=tagEditor($('#editTagsBox')), addTags=tagEditor($('#addTagsBox'));
+function grpData(by){
+  var g={}, order=[], items=sortedRows();
+  function put(name,r){ var k=name.toLowerCase(); if(!g[k]){ g[k]={n:name,items:0,total:0,bal:0,val:0,cost:0}; order.push(k); } var o=g[k], b=bal(r); o.items++; o.total+=r.total||0; o.bal+=b; o.val+=b*(Number(r.sp)||0); o.cost+=b*(Number(r.cost)||0); }
+  items.forEach(function(it){
+    var r=it[1];
+    if(by==='tag'){ if(r.tags&&r.tags.length) r.tags.forEach(function(t){ put(t,r); }); else put('No tags',r); }
+    else{ var c=catMap[r.cat], nm=catName(r.cat); if(by==='main'&&c&&c.p) nm=catName(c.p); put(nm||'No category',r); }
+  });
+  var rows=order.map(function(k){ return g[k]; }).sort(function(a,b){ return a.n.localeCompare(b.n); });
+  var tot={n:'Total',items:items.length,total:0,bal:0,val:0,cost:0}; items.forEach(function(it){ var r=it[1], b=bal(r); tot.total+=r.total||0; tot.bal+=b; tot.val+=b*(Number(r.sp)||0); tot.cost+=b*(Number(r.cost)||0); });
+  return {rows:rows,tot:tot};
+}
+function grpRender(){
+  var by=$('#grpBy').value, d=grpData(by), out=$('#grpOut'); out.textContent='';
+  $('#grpSub').textContent=NURS[nursery]+' · '+fmtIso(selDate);
+  $('#grpNote').textContent=by==='tag'?'An item with several tags is counted under each tag, so the group totals can add up to more than the overall total.':'';
+  var t=document.createElement('table'), hd=['Group','Items','Total Qty','Bal Qty','Value (SP)'].concat(isOwner?['Value (Cost)']:[]);
+  var th=document.createElement('tr'); hd.forEach(function(h){ th.append(mk('th',null,h)); }); t.append(th);
+  d.rows.concat([d.tot]).forEach(function(x,i){ var tr=document.createElement('tr'); if(i===d.rows.length) tr.className='tot'; var cells=[x.n,fmtN(x.items),fmtN(x.total),fmtN(x.bal),'₹'+fmtMoney(x.val)].concat(isOwner?['₹'+fmtMoney(x.cost)]:[]); cells.forEach(function(c){ tr.append(mk('td',null,c)); }); t.append(tr); });
+  out.append(t);
+}
+$('#grpBtn').addEventListener('click', function(){ if(!day) return; grpRender(); var d=$('#dlgGrp'); if(!d.open) d.showModal(); });
+$('#grpBy').addEventListener('change', grpRender);
+$('#grpClose').addEventListener('click', function(){ $('#dlgGrp').close(); });
+$('#grpPdf').addEventListener('click', async function(){
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  var by=$('#grpBy').value, d=grpData(by), doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26;
+  doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('STOCK REPORT BY '+({cat:'CATEGORY',main:'MAIN CATEGORY',tag:'TAG'}[by]), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
+  doc.text(NURS[nursery]+' · '+fmtIso(selDate), W-36, y, {align:'right'});
+  var head=['Group','Items','Total Qty','Bal Qty','Value (SP)'].concat(isOwner?['Value (Cost)']:[]);
+  var body=d.rows.concat([d.tot]).map(function(x){ return [x.n,fmtN(x.items),fmtN(x.total),fmtN(x.bal),'Rs '+fmtMoney(x.val)].concat(isOwner?['Rs '+fmtMoney(x.cost)]:[]); });
+  doc.autoTable({startY:y+14, theme:'grid', styles:{fontSize:10,cellPadding:5}, head:[head], body:body, columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}, headStyles:{fillColor:[46,125,50]}});
+  var buf=doc.output('arraybuffer');
+  try{ await downloads.save({filename:'stock-report-'+by+'-'+selDate+'.pdf', data:buf}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+});
 /* ---------- stock categories ---------- */
 function catSort(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }
 function catDup(name,exceptId){ var k=String(name||'').trim().replace(/\s+/g,' ').toLowerCase(); return catAll().filter(function(c){ return c[0]!==exceptId&&c[1].n.trim().replace(/\s+/g,' ').toLowerCase()===k; })[0]||null; }
