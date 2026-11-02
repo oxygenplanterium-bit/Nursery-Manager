@@ -2817,7 +2817,7 @@ function openAdd(){
   $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
   $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
   $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
-  catFill($('#addCat'),'',true); $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
+  catFill($('#addCat'),'',true); $('#addCat').dataset.primOnly=''; $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
   $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
   $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
   var d=$('#dlgAdd'); if(!d.open) d.showModal();
@@ -2838,7 +2838,9 @@ function splitDups(list){
   return {fresh:fresh, dups:dups};
 }
 $('#addText').addEventListener('input', function(){
-  var sp=splitDups(parseAdd()), n=sp.fresh.length;
+  var pl=parseAdd(), ac=$('#addCat'), bulk=pl.length>1; ac.dataset.primOnly=bulk?'1':'';
+  if(bulk&&catMap[ac.value]&&catMap[ac.value].p){ ac.value=''; if(ac._sync) ac._sync(); var ce=$('#addCatErr'); ce.textContent='Bulk items go under a main category only. Choose a main category.'; ce.hidden=false; }
+  var sp=splitDups(pl), n=sp.fresh.length;
   $('#addCount').textContent = n ? n+(n===1?' item':' items')+' ready to add' : '';
   $('#addWarn').textContent = sp.dups.length ? 'Already listed, will be skipped: '+sp.dups.join(', ') : '';
 });
@@ -2912,6 +2914,7 @@ $('#fAdd').addEventListener('submit', async function(e){
   var ce=$('#addCatErr'), cb=$('#addCatL .pickbtn'), cm='';
   if(!catList().length) cm=isOwner?'Create a category first: close this window and use Sub Categories on the Stock page.':'No categories exist yet. Ask the owner to create them first.';
   else if(!$('#addCat').value) cm=list.length>1?'Select the main category for these items before adding them.':'Select a category for this item before adding it.';
+  else if(list.length>1&&catMap[$('#addCat').value]&&catMap[$('#addCat').value].p) cm='Bulk items can only be added to a main category, not a sub-category.';
   if(cm){ ce.textContent=cm; ce.hidden=false; if(cb) cb.style.borderColor='var(--warn)'; toast(cm,4000); try{ $('#addCatL').scrollIntoView({block:'center'}); }catch(x){} return; }
   ce.hidden=true; if(cb) cb.style.borderColor='';
   var sp=splitDups(list);
@@ -4376,7 +4379,7 @@ function openPick(sel,title,done){
       if(!c){ optBtn(o,o.textContent,box); return; }
       if(c.p) return;
       var subs=opts.filter(function(x){ var cx=catMap[x.value]; return cx&&cx.p===o.value; });
-      if(!subs.length){ var g0=mk('div','pgrp'); optBtn(o,o.textContent,g0); box.append(g0); return; }
+      if(!subs.length||sel.dataset.primOnly){ var g0=mk('div','pgrp'); optBtn(o,o.textContent,g0); box.append(g0); return; }
       var g=mk('div','pgrp'), row=mk('div','prow'), ar=mk('button','parr','\u25b8'), sb=mk('div','psubs');
       optBtn(o,o.textContent,row); ar.type='button'; row.append(ar); g.append(row,sb);
       subs.forEach(function(x){ optBtn(x,catMap[x.value].n,sb); });
