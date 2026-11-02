@@ -979,7 +979,7 @@ select:not([multiple]){pointer-events:none}
     <input type="file" id="addFile" accept=".csv,.xlsx,.xls,text/csv" hidden>
     <button type="button" class="btn" id="addFileBtn" style="width:100%">Upload CSV or Excel file</button>
     <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
-    <label id="addCatL">Category (optional)<select id="addCat"></select></label>
+    <label id="addCatL">Category (required)<select id="addCat"></select></label>
     <label>Items
       <textarea id="addText" rows="8" placeholder="Areca Palm 6 inch, 40&#10;Money Plant, 120&#10;Terracotta Pot 8 inch, 60"></textarea>
     </label>
@@ -2816,7 +2816,7 @@ function openAdd(){
   $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
   $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
   $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
-  catFill($('#addCat'),''); $('#addCatL').hidden=!catList().length;
+  catFill($('#addCat'),'',true); $('#addCatL').hidden=false;
   $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
   $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
   var d=$('#dlgAdd'); if(!d.open) d.showModal();
@@ -2908,6 +2908,8 @@ $('#addCancel').addEventListener('click', function(){ $('#dlgAdd').close(); });
 $('#fAdd').addEventListener('submit', async function(e){
   e.preventDefault();
   var list=parseAdd(); if(!list.length||!editable()||!canWrite) return;
+  if(!catList().length){ $('#addWarn').textContent=isOwner?'Create a category first: close this window and use Sub Categories on the Stock page.':'No categories exist yet. Ask the owner to create them first.'; return; }
+  if(!$('#addCat').value){ $('#addWarn').textContent=list.length>1?'Select the main category for these items before adding them.':'Select a category for this item before adding it.'; $('#addCatL').scrollIntoView({block:'center'}); return; }
   var sp=splitDups(list);
   if(!sp.fresh.length){ toast('Already in the list: '+sp.dups.join(', ')); return; }
   var rows=(day&&day.rows)||{}, existing={}, maxO=0;
@@ -6123,8 +6125,8 @@ function pickify(sel,title){
   sel.addEventListener('change', sync); b.addEventListener('click', function(){ openPick(sel,title); });
   sel._sync=sync; sync();
 }
-function catFill(sel,val){
-  sel.dataset.cat='1'; sel.textContent=''; var o0=mk('option',null,'No category'); o0.value=''; sel.append(o0);
+function catFill(sel,val,req){
+  sel.dataset.cat='1'; sel.textContent=''; var o0=mk('option',null,req?'Select category':'No category'); o0.value=''; sel.append(o0);
   catList().forEach(function(c){ var o=mk('option',null,catName(c[0])); o.value=c[0]; sel.append(o); });
   sel.value=catName(val)?val:''; pickify(sel,'Category'); sel._sync();
 }
