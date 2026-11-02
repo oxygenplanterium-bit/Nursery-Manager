@@ -3088,7 +3088,7 @@ function mvAllOpen(what,count,fn){
   $('#mvAllInfo').textContent=count+' '+what+(count===1?'':'')+' in '+NURS[nursery]+' will be moved.';
   var sel=$('#mvAllDest'); sel.textContent='';
   Object.keys(NURS).forEach(function(k){ var o=mk('option',null,NURS[k]); o.value=k; sel.append(o); });
-  sel.value=otherN(); $('#mvAllWarn').textContent='';
+  sel.value=otherN(); $('#mvAllWarn').textContent=''; pickify(sel,'Move to nursery'); sel._sync();
   var d=$('#dlgMvAll'); if(!d.open) d.showModal();
 }
 $('#mvAllCancel').addEventListener('click', function(){ $('#dlgMvAll').close(); });
@@ -6098,10 +6098,17 @@ function catMatch(r){
   if(r.cat===catFilter) return !!catName(r.cat);
   var c=catMap[r.cat]; return !!(c&&c.p===catFilter&&catName(r.cat));
 }
+function pickify(sel,title){
+  if(sel._sync) return; sel.style.display='none';
+  var b=mk('button','pickbtn',''); b.type='button'; b.setAttribute('aria-haspopup','dialog'); sel.parentNode.append(b);
+  function sync(){ var o=sel.options[sel.selectedIndex]; b.textContent=o?o.textContent:title; }
+  sel.addEventListener('change', sync); b.addEventListener('click', function(){ openPick(sel,title); });
+  sel._sync=sync; sync();
+}
 function catFill(sel,val){
   sel.dataset.cat='1'; sel.textContent=''; var o0=mk('option',null,'No category'); o0.value=''; sel.append(o0);
   catList().forEach(function(c){ var o=mk('option',null,catName(c[0])); o.value=c[0]; sel.append(o); });
-  sel.value=catName(val)?val:'';
+  sel.value=catName(val)?val:''; pickify(sel,'Category'); sel._sync();
 }
 function catSync(){
   var sel=$('#catSel'), list=catList(), show=!!day&&list.length>0; sel.dataset.cat='1';
@@ -6128,7 +6135,7 @@ function catsRender(){
   var ps=$('#catsParent'), cur=ps.value; ps.textContent='';
   var o0=mk('option',null,'Nothing (main category)'); o0.value=''; ps.append(o0);
   prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
-  ps.value=catMap[cur]&&!catMap[cur].p?cur:'';
+  ps.value=catMap[cur]&&!catMap[cur].p?cur:''; pickify(ps,'Add under'); ps._sync();
 }
 $('#catBtn').addEventListener('click', function(){ if(!isOwner) return; catsRender(); $('#catsNew').value=''; var d=$('#dlgCats'); if(!d.open) d.showModal(); });
 $('#catsClose').addEventListener('click', function(){ $('#dlgCats').close(); });
