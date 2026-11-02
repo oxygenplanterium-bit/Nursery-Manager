@@ -928,9 +928,10 @@ select:not([multiple]){pointer-events:none}
 <dialog id="dlgCats">
   <div class="dbody">
     <h2>Stock Categories</h2>
-    <p class="pmeta">Create categories such as Indoor, Outdoor, Flowering, Fruit, Pots. Assign one to each item when you add or edit it.</p>
+    <p class="pmeta">Create main categories such as Indoor or Outdoor, then add sub-categories under them. Assign one to each item when you add or edit it.</p>
     <div id="catsList" style="display:grid;gap:8px;margin:8px 0"></div>
-    <div class="sline" style="display:flex;gap:8px"><input type="text" id="catsNew" maxlength="40" placeholder="New category name" style="flex:1;min-width:0"><button type="button" class="btn primary" id="catsAdd">Add</button></div>
+    <select id="catsParent" aria-label="Where to add"></select>
+    <div class="sline" style="display:flex;gap:8px;margin-top:8px"><input type="text" id="catsNew" maxlength="40" placeholder="New category name" style="flex:1;min-width:0"><button type="button" class="btn primary" id="catsAdd">Add</button></div>
     <div class="actions"><button type="button" class="btn" id="catsClose">Close</button></div>
   </div>
 </dialog>
@@ -5998,12 +5999,24 @@ function dockUpdate(){
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
 /* ---------- stock categories ---------- */
-function catList(){ return Object.keys(catMap||{}).filter(function(id){ return catMap[id]&&catMap[id].n; }).map(function(id){ return [id,catMap[id]]; }).sort(function(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }); }
-function catName(id){ return (id&&catMap&&catMap[id]&&catMap[id].n)||''; }
-function catMatch(r){ if(!catFilter) return true; if(catFilter==='-') return !catName(r.cat); return r.cat===catFilter; }
+function catSort(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }
+function catAll(){ return Object.keys(catMap||{}).filter(function(id){ return catMap[id]&&catMap[id].n; }).map(function(id){ return [id,catMap[id]]; }); }
+function catPrimaries(){ return catAll().filter(function(c){ return !c[1].p; }).sort(catSort); }
+function catSubs(pid){ return catAll().filter(function(c){ return c[1].p===pid; }).sort(catSort); }
+function catList(){ var out=[]; catPrimaries().forEach(function(c){ out.push(c); catSubs(c[0]).forEach(function(x){ out.push(x); }); }); return out; }
+function catName(id){
+  var c=id&&catMap&&catMap[id]; if(!c||!c.n) return '';
+  if(c.p){ var pp=catMap[c.p]; if(!pp||!pp.n) return ''; return pp.n+' \u203a '+c.n; }
+  return c.n;
+}
+function catMatch(r){
+  if(!catFilter) return true; if(catFilter==='-') return !catName(r.cat);
+  if(r.cat===catFilter) return !!catName(r.cat);
+  var c=catMap[r.cat]; return !!(c&&c.p===catFilter&&catName(r.cat));
+}
 function catFill(sel,val){
   sel.textContent=''; var o0=mk('option',null,'No category'); o0.value=''; sel.append(o0);
-  catList().forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; sel.append(o); });
+  catList().forEach(function(c){ var o=mk('option',null,catName(c[0])); o.value=c[0]; sel.append(o); });
   sel.value=catName(val)?val:'';
 }
 function catSync(){
@@ -6011,27 +6024,35 @@ function catSync(){
   sel.hidden=!show; $('#catBtn').hidden=!(isOwner&&day);
   if(catFilter&&catFilter!=='-'&&!catName(catFilter)) catFilter='';
   sel.textContent=''; var o=mk('option',null,'All categories'); o.value=''; sel.append(o);
-  list.forEach(function(c){ var x=mk('option',null,c[1].n); x.value=c[0]; sel.append(x); });
+  list.forEach(function(c){ var x=mk('option',null,catName(c[0])); x.value=c[0]; sel.append(x); });
   var u=mk('option',null,'No category'); u.value='-'; sel.append(u); sel.value=catFilter;
 }
 $('#catSel').addEventListener('change', function(){ catFilter=this.value; renderAll(); });
 function catsRender(){
   var box=$('#catsList'); box.textContent='';
-  var list=catList(); if(!list.length) box.append(mk('p','pmeta','No categories yet.'));
-  list.forEach(function(c){
-    var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','btn small danger','Delete'); row.style.cssText='display:flex;gap:8px;align-items:center';
-    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label','Category name'); del.type='button';
-    inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); } });
-    del.addEventListener('click', function(){ arm(del,'cat'+c[0],'Delete', async function(){ var p={cats:{}}; p.cats[c[0]]=null; if(await saveSettings(p)){ delete catMap[c[0]]; catsRender(); renderAll(); toast('Category deleted'); } }); });
+  var prim=catPrimaries(); if(!prim.length) box.append(mk('p','pmeta','No categories yet.'));
+  function line(c,sub){
+    var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','btn small danger','Delete'); row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:22px':'');
+    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label',sub?'Sub-category name':'Category name'); del.type='button';
+    inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); catsRender(); } });
+    del.addEventListener('click', function(){ arm(del,'cat'+c[0],'Delete', async function(){
+      var p={cats:{}}; p.cats[c[0]]=null; if(!sub) catSubs(c[0]).forEach(function(x){ p.cats[x[0]]=null; });
+      if(await saveSettings(p)){ Object.keys(p.cats).forEach(function(k){ delete catMap[k]; }); catsRender(); renderAll(); toast('Category deleted'); } }); });
     row.append(inp,del); box.append(row);
-  });
+  }
+  prim.forEach(function(c){ line(c,false); catSubs(c[0]).forEach(function(x){ line(x,true); }); });
+  var ps=$('#catsParent'), cur=ps.value; ps.textContent='';
+  var o0=mk('option',null,'Main category'); o0.value=''; ps.append(o0);
+  prim.forEach(function(c){ var o=mk('option',null,'Sub-category of '+c[1].n); o.value=c[0]; ps.append(o); });
+  ps.value=catMap[cur]&&!catMap[cur].p?cur:'';
 }
 $('#catBtn').addEventListener('click', function(){ if(!isOwner) return; catsRender(); $('#catsNew').value=''; var d=$('#dlgCats'); if(!d.open) d.showModal(); });
 $('#catsClose').addEventListener('click', function(){ $('#dlgCats').close(); });
 $('#catsAdd').addEventListener('click', async function(){
   var v=$('#catsNew').value.trim().replace(/\s+/g,' '); if(!v||!isOwner) return;
-  if(catList().some(function(c){ return c[1].n.toLowerCase()===v.toLowerCase(); })){ toast(v+' already exists.'); return; }
-  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={cats:{}}; p.cats[id]={n:v,o:catList().length+1};
+  var par=$('#catsParent').value, sibs=par?catSubs(par):catPrimaries();
+  if(sibs.some(function(c){ return c[1].n.toLowerCase()===v.toLowerCase(); })){ toast(v+' already exists there.'); return; }
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={cats:{}}; p.cats[id]={n:v,o:sibs.length+1}; if(par) p.cats[id].p=par;
   if(await saveSettings(p)){ catMap[id]=p.cats[id]; $('#catsNew').value=''; catsRender(); renderAll(); }
 });
 $('#catsNew').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#catsAdd').click(); } });
