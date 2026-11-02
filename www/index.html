@@ -6127,19 +6127,34 @@ function catSync(){
   var u=mk('option',null,'No category'); u.value='-'; sel.append(u); sel.value=catFilter;
 }
 $('#catSel').addEventListener('change', function(){ catFilter=this.value; renderAll(); });
+var catOpen={}, CAT_BIN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
 function catsRender(){
   var box=$('#catsList'); box.textContent='';
   var prim=catPrimaries(); if(!prim.length) box.append(mk('p','pmeta','No categories yet.'));
-  function line(c,sub){
-    var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','btn small danger','Delete'); row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:22px':'');
-    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label',sub?'Sub-category name':'Category name'); del.type='button';
+  function line(c,sub,parent,hasSubs){
+    var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','delx'), dt=null;
+    row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:22px':'');
+    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label',sub?'Sub-category name':'Category name');
     inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); catsRender(); } });
-    del.addEventListener('click', function(){ arm(del,'cat'+c[0],'Delete', async function(){
-      var p={cats:{}}; p.cats[c[0]]=null; if(!sub) catSubs(c[0]).forEach(function(x){ p.cats[x[0]]=null; });
-      if(await saveSettings(p)){ Object.keys(p.cats).forEach(function(k){ delete catMap[k]; }); catsRender(); renderAll(); toast('Category deleted'); } }); });
-    row.append(inp,del); box.append(row);
+    del.type='button'; del.setAttribute('aria-label','Delete '+c[1].n); del.style.cssText='min-width:44px;min-height:44px;justify-content:center'; del.innerHTML=CAT_BIN+'<span class="delt" hidden>Tap again</span>';
+    del.addEventListener('click', function(){
+      var t=del.querySelector('.delt');
+      if(!del.classList.contains('on')){ del.classList.add('on'); t.hidden=false; dt=setTimeout(function(){ del.classList.remove('on'); t.hidden=true; },4000); return; }
+      clearTimeout(dt);
+      (async function(){
+        var p={cats:{}}; p.cats[c[0]]=null; if(!sub) catSubs(c[0]).forEach(function(x){ p.cats[x[0]]=null; });
+        if(await saveSettings(p)){ Object.keys(p.cats).forEach(function(k){ delete catMap[k]; }); catsRender(); renderAll(); toast('Category deleted'); }
+      })();
+    });
+    if(!sub&&hasSubs){
+      var ar=mk('button','btn small catar',catOpen[c[0]]?'\u25be':'\u25b8'); ar.type='button'; ar.style.cssText='min-width:44px;min-height:44px;font-size:1.3rem;font-weight:900;padding:0';
+      ar.setAttribute('aria-expanded',catOpen[c[0]]?'true':'false'); ar.setAttribute('aria-label',(catOpen[c[0]]?'Hide':'Show')+' sub-categories of '+c[1].n);
+      ar.addEventListener('click', function(){ catOpen[c[0]]=!catOpen[c[0]]; catsRender(); });
+      row.append(inp,ar,del);
+    } else row.append(inp,del);
+    box.append(row);
   }
-  prim.forEach(function(c){ line(c,false); catSubs(c[0]).forEach(function(x){ line(x,true); }); });
+  prim.forEach(function(c){ var subs=catSubs(c[0]); line(c,false,null,subs.length>0); if(catOpen[c[0]]) subs.forEach(function(x){ line(x,true,c[0],false); }); });
   var ps=$('#catsParent'), cur=ps.value; ps.textContent='';
   var o0=mk('option',null,'Nothing (main category)'); o0.value=''; ps.append(o0);
   prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
@@ -6151,7 +6166,7 @@ $('#catsAdd').addEventListener('click', async function(){
   var v=$('#catsNew').value.trim().replace(/\s+/g,' '); if(!v||!isOwner) return;
   var par=$('#catsParent').value, sibs=par?catSubs(par):catPrimaries();
   if(sibs.some(function(c){ return c[1].n.toLowerCase()===v.toLowerCase(); })){ toast(v+' already exists there.'); return; }
-  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={cats:{}}; p.cats[id]={n:v,o:sibs.length+1}; if(par) p.cats[id].p=par;
+  var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={cats:{}}; p.cats[id]={n:v,o:sibs.length+1}; if(par) p.cats[id].p=par; if(par) catOpen[par]=true;
   if(await saveSettings(p)){ catMap[id]=p.cats[id]; $('#catsNew').value=''; catsRender(); renderAll(); }
 });
 $('#catsNew').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#catsAdd').click(); } });
