@@ -930,7 +930,7 @@ select:not([multiple]){pointer-events:none}
     <h2>Stock Categories</h2>
     <p class="pmeta">Create main categories such as Indoor or Outdoor, then add sub-categories under them. Assign one to each item when you add or edit it.</p>
     <div id="catsList" style="display:grid;gap:8px;margin:8px 0"></div>
-    <select id="catsParent" aria-label="Where to add"></select>
+    <label>Add under<select id="catsParent"></select></label>
     <div class="sline" style="display:flex;gap:8px;margin-top:8px"><input type="text" id="catsNew" maxlength="40" placeholder="New category name" style="flex:1;min-width:0"><button type="button" class="btn primary" id="catsAdd">Add</button></div>
     <div class="actions"><button type="button" class="btn" id="catsClose">Close</button></div>
   </div>
@@ -6042,8 +6042,8 @@ function catsRender(){
   }
   prim.forEach(function(c){ line(c,false); catSubs(c[0]).forEach(function(x){ line(x,true); }); });
   var ps=$('#catsParent'), cur=ps.value; ps.textContent='';
-  var o0=mk('option',null,'Main category'); o0.value=''; ps.append(o0);
-  prim.forEach(function(c){ var o=mk('option',null,'Sub-category of '+c[1].n); o.value=c[0]; ps.append(o); });
+  var o0=mk('option',null,'Nothing (main category)'); o0.value=''; ps.append(o0);
+  prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
   ps.value=catMap[cur]&&!catMap[cur].p?cur:'';
 }
 $('#catBtn').addEventListener('click', function(){ if(!isOwner) return; catsRender(); $('#catsNew').value=''; var d=$('#dlgCats'); if(!d.open) d.showModal(); });
