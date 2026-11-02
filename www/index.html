@@ -158,6 +158,8 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .bar select#sortSel{flex:1 1 100%; width:auto; font-weight:600}
 .bar select#catSel{flex:1 1 0; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
 #catBtn{flex:0 0 auto}
+#stockActs{flex:1 1 100%; display:flex; gap:8px}
+#stockActs .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; white-space:nowrap}
 .chip{font-size:.82rem; font-weight:600; padding:4px 10px; border-radius:99px; background:var(--warn-soft); color:var(--warn)}
 .state{color:var(--muted); text-align:center; padding:22px 14px; display:flex; flex-direction:column; align-items:center; gap:12px}
 
@@ -533,9 +535,11 @@ select:not([multiple]){pointer-events:none}
       </select>
       <select id="catSel" aria-label="Filter by category" hidden></select>
       <button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button>
-      <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
-      <button class="btn small" id="mvAllStock" hidden></button>
-      <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
+      <div id="stockActs">
+        <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
+        <button class="btn small" id="mvAllStock" hidden></button>
+        <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
+      </div>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
