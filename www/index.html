@@ -395,6 +395,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dock{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; flex-direction:column; gap:10px; padding:12px 12px; box-sizing:border-box; width:min(calc(100vw - 20px),380px); border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
 .dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
+#filter,#sopSearch{scroll-margin-top:10px}
 .dk{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
 .dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
@@ -5962,6 +5963,21 @@ function dockUpdate(){
   var wr=document.querySelector('.wrap'); if(wr&&!d.hidden) wr.style.paddingBottom=(d.offsetHeight+40)+'px';
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
 }
+/* ---------- keep sheets and search results above the on-screen keyboard ---------- */
+(function(){
+  var vv=window.visualViewport; if(!vv) return;
+  function fit(){
+    var kb=Math.max(0, Math.round(window.innerHeight-vv.height-vv.offsetTop)), up=kb>80;
+    document.querySelectorAll('dialog.pickdlg').forEach(function(d){
+      if(!d.open||!up){ d.style.bottom=''; d.style.maxHeight=''; return; }
+      d.style.bottom=kb+'px'; d.style.maxHeight=Math.max(220,Math.round(vv.height-16))+'px';
+    });
+  }
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+  function lift(el){ setTimeout(function(){ try{ el.scrollIntoView({block:'start',behavior:'smooth'}); }catch(e){} }, 350); }
+  ['#filter','#sopSearch'].forEach(function(q){ var el=$(q); if(el) el.addEventListener('focus', function(){ lift(el); }); });
+  document.addEventListener('focusin', function(e){ if(e.target&&e.target.id==='pickSearch') setTimeout(fit,350); });
+})();
 /* ---------- start ---------- */
 function applySettings(d){
   ownerWa = String(d.ownerWa||'');
