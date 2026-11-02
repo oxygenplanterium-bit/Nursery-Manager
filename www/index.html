@@ -403,8 +403,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .parr{flex:0 0 64px; min-height:48px; border:0; border-radius:10px; background:var(--accent); color:var(--accent-ink,#fff); font:inherit; font-size:1.7rem; font-weight:900; line-height:1; cursor:pointer}
 .psubs{display:flex; flex-direction:column; gap:8px; margin-left:20px}
 .psubs[hidden]{display:none}
-.psubs .pickopt:not([aria-pressed="true"]):nth-child(odd){background:color-mix(in srgb,#4f8cff 20%,var(--card))}
-.psubs .pickopt:not([aria-pressed="true"]):nth-child(even){background:color-mix(in srgb,#a86be6 18%,var(--card))}
+.pickopt.pmain:not([aria-pressed="true"]){background:color-mix(in srgb,#4caf50 24%,var(--card))}
+.pickopt.psub:not([aria-pressed="true"]){background:color-mix(in srgb,#a0724a 26%,var(--card))}
 .rcat{font-size:.72rem; font-weight:600; color:var(--accent); margin-top:2px}
 .rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1px solid var(--line); background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
 .rsw .rswk{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
@@ -4285,7 +4285,7 @@ function openAcc(k,eid){
 }
 function openPick(sel,title,done){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title;
-  var optBtn=function(o,label,parent){ var b=mk('button','pickopt',label); b.type='button'; b.dataset.full=o.textContent; if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); }); parent.append(b); return b; };
+  var optBtn=function(o,label,parent){ var b=mk('button','pickopt',label); b.type='button'; b.dataset.full=o.textContent; var cc=sel.dataset.cat&&catMap[o.value]; if(cc) b.classList.add(cc.p?'psub':'pmain'); if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); }); parent.append(b); return b; };
   if(sel.dataset.cat){
     var opts=Array.prototype.slice.call(sel.options);
     opts.forEach(function(o){
@@ -4304,7 +4304,7 @@ function openPick(sel,title,done){
   } else Array.prototype.forEach.call(sel.options,function(o){ optBtn(o,o.textContent,box); });
   if(!box.children.length) box.append(mk('p','pmeta','Nothing to choose from yet.'));
   var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6;
-  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||(b.dataset.full||b.textContent).toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')&&!b.closest('.psubs')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); if(q) box.querySelectorAll('.psubs').forEach(function(x){ x.hidden=false; }); var nm=box.querySelector('.pnone'); if(!n&&!nm){ box.append(mk('p','pmeta pnone','No match.')); } else if(n&&nm) nm.remove(); };
+  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||(b.dataset.full||b.textContent).toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')&&!b.classList.contains('pmain')&&!b.classList.contains('psub')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); if(q) box.querySelectorAll('.psubs').forEach(function(x){ x.hidden=false; }); var nm=box.querySelector('.pnone'); if(!n&&!nm){ box.append(mk('p','pmeta pnone','No match.')); } else if(n&&nm) nm.remove(); };
   var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
 document.addEventListener('click', function(e){
