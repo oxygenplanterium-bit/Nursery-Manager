@@ -396,6 +396,10 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dock[hidden]{display:none}
 .dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
 #filter,#sopSearch{scroll-margin-top:10px}
+.rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1px solid var(--line); background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
+.rsw .rswk{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
+.rsw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
+.rsw[aria-checked="true"] .rswk{transform:translateX(14px)}
 .row.rhid>*:not(.id){display:none!important}
 .row.rhid .nmtop>button:not(.delx):not(.ed1):not(.rtg){display:none!important}
 .dk{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
@@ -1623,11 +1627,11 @@ function makeRow(id){
     xf=mk('button','edit','Transfer stock'); xf.type='button'; xf.addEventListener('click', function(){ openXfer(id); });
     top.append(xf);
   }
-  var tg=mk('button','edit rtg'); tg.type='button';
-  var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.textContent=h?'Show':'Hide'; tg.setAttribute('aria-expanded',h?'false':'true'); tg.setAttribute('aria-label',(h?'Show':'Hide')+' details of '+(R0.name.textContent||'this item')); };
+  var tg=mk('button','rsw rtg'); tg.type='button'; tg.setAttribute('role','switch'); tg.append(mk('span','rswk'));
+  var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
   var R0={name:name};
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
-  el._hid=hidApply; top.append(tg); hidApply();
+  el._hid=hidApply; if(edit) top.insertBefore(tg,edit.nextSibling); else top.insertBefore(tg,name.nextSibling); hidApply();
   nm.append(top); idw.append(sl,nm); el.append(idw);
   if(isOwner){
     idw.classList.add('lp');
