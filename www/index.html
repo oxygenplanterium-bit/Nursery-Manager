@@ -5939,7 +5939,7 @@ function dockBuild(){
   DK_ALL.forEach(function(m){ if(pref.indexOf(m[0])<0&&dkAvail(m)) extra+=dkBadge(m[0]); });
   var tiles=Array.prototype.slice.call(d.children); d.textContent='';
   tiles.push(dkTile('more','More',openMore,extra));
-  var rows=[]; for(var i=0;i<tiles.length-1||i===0;i+=DK_ROW) rows.push(tiles.slice(i,Math.min(i+DK_ROW,tiles.length-1)));
+  var rows=[tiles.slice(0,Math.min(DK_ROW,tiles.length-1))]; for(var i=DK_ROW;i<tiles.length-1;i+=5) rows.push(tiles.slice(i,Math.min(i+5,tiles.length-1)));
   rows[0].push(tiles[tiles.length-1]);
   for(var r=rows.length-1;r>=0;r--){ var rw=mk('div','dkr'); rows[r].forEach(function(t){ rw.append(t); }); d.append(rw); }
 }
