@@ -504,6 +504,24 @@ select:not([multiple]){pointer-events:none}
     <button class="btn small primary" type="button" id="lowBtn">View</button>
   </section>
 
+  <div class="fdpick">
+    <label class="f card fdnl"><span class="sr">Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap" aria-label="Pick a date for previous days reports and entries"><span>Pick a date</span><b id="dayArr">▾</b></button>
+    </div>
+    <div id="dayWrap" class="card" hidden><label class="f"><span>Open a previous day</span><select id="daySel"></select></label></div>
+    <section class="card fields">
+      <div class="two">
+        <label class="f"><span class="sr">Date (automatic)</span><input id="todayField" readonly aria-label="Date (automatic)"></label>
+        <button class="btn" id="closeBtn" hidden style="align-self:stretch;min-height:44px">Close day</button>
+        
+      </div>
+      <div class="statusline" id="statusline"><span id="dstat"></span></div>
+      <div class="statusline" id="actrow" hidden style="flex-wrap:nowrap;align-items:center"><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
+      <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name below to mark tasks and attendance.</p>
+    </section>
+
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
     <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -1322,19 +1340,7 @@ select:not([multiple]){pointer-events:none}
     <label class="f card fdnl"><span class="sr">Nursery</span>
       <select id="fdNurs" aria-label="Select nursery"><option value="all">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <button type="button" class="btn dayTog" id="dayTog" aria-expanded="false" aria-controls="dayWrap" aria-label="Pick a date for previous days reports and entries"><span>Pick a date</span><b id="dayArr">▾</b></button>
     </div>
-    <div id="dayWrap" class="card" hidden><label class="f"><span>Open a previous day</span><select id="daySel"></select></label></div>
-    <section class="card fields">
-      <div class="two">
-        <label class="f"><span class="sr">Date (automatic)</span><input id="todayField" readonly aria-label="Date (automatic)"></label>
-        <button class="btn" id="closeBtn" hidden style="align-self:stretch;min-height:44px">Close day</button>
-        
-      </div>
-      <div class="statusline" id="statusline"><span id="dstat"></span></div>
-      <div class="statusline" id="actrow" hidden style="flex-wrap:nowrap;align-items:center"><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
-      <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name above to mark tasks and attendance.</p>
-    </section>
     <details class="card fddrop" id="fdxKpi" hidden>
       <summary>KPIs</summary>
       <div class="fdattin">
