@@ -532,6 +532,7 @@ select:not([multiple]){pointer-events:none}
       <button class="btn small" id="catBtn" type="button" hidden>Categories</button>
       <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
       <button class="btn small" id="mvAllStock" hidden></button>
+      <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
@@ -585,6 +586,7 @@ select:not([multiple]){pointer-events:none}
     <div class="bar" id="taskBar" hidden>
       <span class="tsum" id="tsum"></span>
       <button class="btn small" id="mvAllTasks" hidden></button>
+      <button class="btn small" id="undoTasks" type="button" hidden>Undo move</button>
       <button class="btn small" id="resetTasks" style="margin-left:auto" hidden>Reset All Tasks</button>
       <button class="btn small danger" id="deleteTasks" hidden>Delete All</button>
     </div>
@@ -777,6 +779,7 @@ select:not([multiple]){pointer-events:none}
     <div class="bar" id="resBar" hidden>
       <span class="tsum" id="rsum"></span>
       <button class="btn small" id="mvAllRes" hidden></button>
+      <button class="btn small" id="undoRes" type="button" hidden>Undo move</button>
       <button class="btn small" id="resAll" style="margin-left:auto" hidden>Mark all available</button>
       <button class="btn small danger" id="resReset" hidden>Reset Resources</button>
     </div>
@@ -1839,7 +1842,7 @@ function renderStock(){
   $('#filter').hidden=!show; $('#sortSel').hidden=!show; if($('#sortSel').value!==sortMode) $('#sortSel').value=sortMode;
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
-  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all';
+  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all'; undoSync();
   $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
@@ -1961,7 +1964,7 @@ function renderTasks(){
   renderTmr();
   $('#taskTo').hidden=!teamList('sup').length; fillAssign($('#taskTo'),$('#taskTo').value);
   $('#taskBar').hidden=!items.length;
-  var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); mt.textContent='Move all';
+  var mt=$('#mvAllTasks'); mt.hidden=!(isOwner&&ed&&items.length); mt.textContent='Move all'; undoSync();
   $('#resetTasks').hidden=!(isOwner&&ed); $('#deleteTasks').hidden=!(isOwner&&ed);
   var c=taskCounts(items);
   $('#tsum').textContent=c.done+' done · '+c.notdone+' not done · '+c.pending+' pending';
@@ -3026,7 +3029,7 @@ function moveRow(id,btn){
   if(rowClash(r.name,dest,id)){ toast(r.name+' is already in '+NURS[dest]+'.'); return; }
   arm(btn,'mvr'+id,mvLabel(from), async function(){
     var p={rows:{}}; p.rows[id]={nid:dest};
-    if(await save(p)) toast(r.name+' moved to '+NURS[dest]);
+    if(await save(p)){ logMove('rows',[{id:id,from:from,dest:dest}]); toast(r.name+' moved to '+NURS[dest]); }
   });
 }
 function moveTask(id,btn){
@@ -3035,7 +3038,7 @@ function moveTask(id,btn){
   var from=t.nid||'1', dest=otherN(from);
   arm(btn,'mvt'+id,''+mvLabel(from), async function(){
     var p={tasks:{}}; p.tasks[id]={nid:dest};
-    if(await save(p)) toast('Task moved to '+NURS[dest]);
+    if(await save(p)){ logMove('tasks',[{id:id,from:from,dest:dest}]); toast('Task moved to '+NURS[dest]); }
   });
 }
 function moveRes(id,btn){
@@ -3045,9 +3048,39 @@ function moveRes(id,btn){
   if(resClash(r.n,dest,id)){ toast(r.n+' is already in '+NURS[dest]+'.'); return; }
   arm(btn,'mvs'+id,mvLabel(from), async function(){
     var p={res:{}}; p.res[id]={nid:dest};
-    if(await saveSettings(p)) toast(r.n+' moved to '+NURS[dest]);
+    if(await saveSettings(p)){ logMove('res',[{id:id,from:from,dest:dest}]); toast(r.n+' moved to '+NURS[dest]); }
   });
 }
+/* ---------- undo for moves between nurseries ---------- */
+var moveLog={rows:[],tasks:[],res:[]};
+try{ var ml=JSON.parse(localStorage.getItem('nurseryMoves')||'null'); if(ml&&ml.rows&&ml.tasks&&ml.res) moveLog=ml; }catch(e){}
+function moveLogSave(){ try{ localStorage.setItem('nurseryMoves',JSON.stringify(moveLog)); }catch(e){} }
+function logMove(kind,entries){ if(!entries||!entries.length) return; moveLog[kind].push({day:kind==='res'?'':selDate,at:Date.now(),e:entries}); if(moveLog[kind].length>10) moveLog[kind].shift(); moveLogSave(); undoSync(); }
+function undoTop(kind){ var a=moveLog[kind]; for(var i=a.length-1;i>=0;i--){ if(kind==='res'||a[i].day===selDate) return i; } return -1; }
+function undoSync(){
+  [['rows','#undoStock',function(){ return isOwner&&editable()&&day; }],['tasks','#undoTasks',function(){ return isOwner&&editable()&&day; }],['res','#undoRes',function(){ return isOwner; }]].forEach(function(x){
+    var b=$(x[1]); if(!b) return; var i=undoTop(x[0]); b.hidden=!(x[2]()&&i>=0);
+    if(!b.hidden){ var m=moveLog[x[0]][i], n=m.e.length; b.textContent='Undo move ('+n+')'; }
+  });
+}
+async function undoMove(kind){
+  if(!isOwner) return; var i=undoTop(kind); if(i<0) return;
+  var m=moveLog[kind][i], p={}, key=kind==='res'?'res':kind, n=0, skip=0; p[key]={};
+  m.e.forEach(function(x){
+    var o=kind==='rows'?(day&&day.rows&&day.rows[x.id]):kind==='tasks'?(day&&day.tasks&&day.tasks[x.id]):res[x.id];
+    if(!o||o.removed||o.x||(o.nid||'1')!==x.dest){ skip++; return; }
+    if(kind==='rows'&&rowClash(o.name,x.from,x.id)){ skip++; return; }
+    if(kind==='res'&&resClash(o.n,x.from,x.id)){ skip++; return; }
+    p[key][x.id]={nid:x.from}; n++;
+  });
+  moveLog[kind].splice(i,1); moveLogSave();
+  if(!n){ toast('Nothing to undo: those items were changed since.'); undoSync(); return; }
+  var ok=kind==='res'?await saveSettings(p):await save(p);
+  if(ok) toast(n+' moved back'+(skip?'; '+skip+' skipped (changed since)':'')); undoSync();
+}
+$('#undoStock').addEventListener('click', function(){ undoMove('rows'); });
+$('#undoTasks').addEventListener('click', function(){ undoMove('tasks'); });
+$('#undoRes').addEventListener('click', function(){ undoMove('res'); });
 var mvAllFn=null, mvAllN=0;
 function mvAllOpen(what,count,fn){
   mvAllFn=fn; mvAllN=count;
@@ -3070,10 +3103,10 @@ $('#mvAllStock').addEventListener('click', function(){
   var n0=sortedRows().length; if(!n0){ toast('No items to move.'); return; }
   mvAllOpen('items',n0, async function(dest){
     var p={rows:{}}, n=0, skip=0, seen={};
-    sortedRows().forEach(function(it){ var r=it[1], k=normName(r.name);
-      if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest}; n++; });
+    var ent=[]; sortedRows().forEach(function(it){ var r=it[1], k=normName(r.name);
+      if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest}; ent.push({id:it[0],from:r.nid||'1',dest:dest}); n++; });
     if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'No items to move.'); return; }
-    if(await save(p)) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
+    var okm=await save(p); if(okm) logMove('rows',ent); if(okm) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
   });
 });
 $('#mvAllTasks').addEventListener('click', function(){
@@ -3081,20 +3114,20 @@ $('#mvAllTasks').addEventListener('click', function(){
   var n0=taskList(nursery).length; if(!n0){ toast('No tasks to move.'); return; }
   mvAllOpen('tasks',n0, async function(dest){
     var p={tasks:{}}, n=0;
-    taskList(nursery).forEach(function(it){ p.tasks[it[0]]={nid:dest}; n++; });
-    if(n && await save(p)) toast(n+' task'+(n>1?'s':'')+' moved to '+NURS[dest]);
+    var ent=[]; taskList(nursery).forEach(function(it){ p.tasks[it[0]]={nid:dest}; ent.push({id:it[0],from:nursery,dest:dest}); n++; });
+    var okm=n&&await save(p); if(okm) logMove('tasks',ent); if(okm) toast(n+' task'+(n>1?'s':'')+' moved to '+NURS[dest]);
   });
 });
 $('#mvAllRes').addEventListener('click', function(){
   if(!isOwner) return;
   var list=resList().filter(function(it){ return (it[1].nid||'1')===nursery; }); if(!list.length){ toast('Nothing to move.'); return; }
   mvAllOpen('resources',list.length, async function(dest){
-    var p={res:{}}, n=0, skip=0, seen={};
+    var p={res:{}}, n=0, skip=0, seen={}, ent=[];
     resList().filter(function(it){ return (it[1].nid||'1')===nursery; }).forEach(function(it){
       var k=normName(it[1].n);
-      if(resClash(it[1].n,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.res[it[0]]={nid:dest}; n++; });
+      if(resClash(it[1].n,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.res[it[0]]={nid:dest}; ent.push({id:it[0],from:nursery,dest:dest}); n++; });
     if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'Nothing to move.'); return; }
-    if(await saveSettings(p)) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
+    var okm=await saveSettings(p); if(okm) logMove('res',ent); if(okm) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
   });
 });
 
@@ -3573,7 +3606,7 @@ function renderRes(){
   $('#resBar').hidden=!items.length;
   $('#rsum').textContent=c.yes+' available · '+c.no+' not available · '+c.none+' not checked';
   $('#resAll').hidden=!(ed&&c.none>0);
-  var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); mr.textContent='Move all';
+  var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); mr.textContent='Move all'; undoSync();
   $('#resReset').hidden=!(isOwner&&ed&&(c.yes+c.no)>0);
   var s=$('#rstate'); s.hidden=items.length>0;
   s.textContent = day===undefined ? 'Loading…' : (day===null ? 'No report was saved for this date.' : (selDate!==latest() ? 'No tools or resources were checked on this date.' : (isOwner ? 'No tools or resources yet. Add them above.' : 'No tools or resources yet. The owner adds them.')));
