@@ -4,7 +4,7 @@
   "private": true,
   "description": "Nursery Daily Manager - Android app (Capacitor + Firebase)",
   "scripts": {
-    "build:web": "esbuild src/platform.js --bundle --minify --format=iife --target=es2019 --outfile=www/platform.js"
+    "build:web": "esbuild src/platform.js --bundle --minify --format=iife --target=es2019 --outfile=www/platform.js && esbuild src/pdf-lib.js --bundle --minify --format=iife --target=es2019 --outfile=www/pdf-lib.js && esbuild src/xlsx-lib.js --bundle --minify --format=iife --target=es2019 --outfile=www/xlsx-lib.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",

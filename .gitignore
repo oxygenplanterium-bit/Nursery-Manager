@@ -1,3 +1,5 @@
 node_modules/
 android/
 www/platform.js
+www/pdf-lib.js
+www/xlsx-lib.js

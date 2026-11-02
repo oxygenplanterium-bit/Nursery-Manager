@@ -2895,6 +2895,9 @@ function csvRows(text){
   if(cur!==''||row.length){ row.push(cur); rows.push(row); }
   return rows;
 }
+var pdfP=null, xlsP=null;
+function ensurePdf(){ if(window.jspdf) return Promise.resolve(); if(!pdfP) pdfP=loadScript('pdf-lib.js').catch(function(){ pdfP=null; }); return pdfP; }
+function ensureXlsx(){ if(window.XLSX) return Promise.resolve(); if(!xlsP) xlsP=loadScript('xlsx-lib.js').catch(function(){ xlsP=null; }); return xlsP; }
 function loadScript(src){
   return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error('load')); }; document.head.appendChild(s); });
 }
@@ -2925,7 +2928,7 @@ $('#addFile').addEventListener('change', async function(){
   try{
     var rows;
     if(/\.(xlsx|xls)$/i.test(f.name)){
-      if(!window.XLSX) await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      await ensureXlsx(); if(!window.XLSX) throw new Error('xlsx');
       var wb=XLSX.read(await f.arrayBuffer(), {type:'array'});
       rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false, defval:''});
     } else {
@@ -4194,7 +4197,7 @@ async function invVoid(id){
 }
 async function invPdf(id){
   var x=(invData.i||{})[id]; if(!x) return;
-  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
   var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26, c=invCalc(x.l,x.g,x.dt,x.dv,x.sh);
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text((x.ty==='S'?'SALES INVOICE':x.ty==='E'?'ESTIMATE - '+String(x.tier||'Gold').toUpperCase():'PURCHASE INVOICE')+(x.void?' (CANCELLED)':''), 36, y);
   doc.setFont(undefined,'normal'); doc.setFontSize(10);
@@ -4499,7 +4502,7 @@ function rupeesWords(n){
 }
 async function accVoucher(id){
   var x=(accData.e||{})[id]; if(!x) return;
-  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
   var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26, rc=x.k==='rc', inv=x.inv?(invData.i||{})[x.inv]:null;
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text(rc?'RECEIPT VOUCHER':'PAYMENT VOUCHER', 36, y);
   doc.setFont(undefined,'normal'); doc.setFontSize(10);
@@ -4517,7 +4520,7 @@ async function accVoucher(id){
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 }
 $('#accPdf').addEventListener('click', async function(){
-  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
   var items=accMonthItems(true).slice().reverse(), S=accSums(items), ym=accMonth.split('-'), mon=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26, M={cash:'Cash',upi:'UPI',bank:'Bank'};
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('ACCOUNTS STATEMENT - '+mon.toUpperCase(), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
@@ -4799,6 +4802,7 @@ async function weekInfo(){
   el.style.color = w.marked.length ? '' : 'var(--warn)';
 }
 async function weeklyPdf(startKey,W){
+  if(!window.jspdf) await ensurePdf();
   var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
   var w=W||await loadWeek(startKey), dates=w.dates, keysW=w.keysW, today=w.today, docs=w.docs;
   var by={'1':{names:{},order:[]},'2':{names:{},order:[]}};
@@ -5731,7 +5735,7 @@ function renderSalDlg(){
     var foot=[[m.balance<0?'Excess advance to recover':'Balance to pay',R(Math.abs(m.balance))]];
     var wa=mk('button','btn primary','Share slip (PDF) on WhatsApp'); wa.type='button'; wa.style.minHeight='48px';
     wa.addEventListener('click', async function(){
-      var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+      if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
       if(!downloads){ toast('Saving files is not available in this view.'); return; }
       var doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(); var hy=letterhead(doc)-26;
       doc.setFontSize(16); doc.text('Salary Slip - '+mon, 36, 44+hy);
@@ -6202,7 +6206,7 @@ $('#grpBtn').addEventListener('click', function(){ if(!day) return; grpRender();
 $('#grpBy').addEventListener('change', grpRender);
 $('#grpClose').addEventListener('click', function(){ $('#dlgGrp').close(); });
 $('#grpPdf').addEventListener('click', async function(){
-  var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tool is not ready. Check your internet and try again.'); return; }
   var by=$('#grpBy').value, d=grpData(by), doc=new J({unit:'pt',format:'a4'}), W=doc.internal.pageSize.getWidth(), y=letterhead(doc)+26;
   doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('STOCK REPORT BY '+({cat:'CATEGORY',main:'MAIN CATEGORY',tag:'TAG'}[by]), 36, y); doc.setFont(undefined,'normal'); doc.setFontSize(10);
   doc.text(NURS[nursery]+' · '+fmtIso(selDate), W-36, y, {align:'right'});
@@ -6343,6 +6347,7 @@ function applyCachedMeta(){
   if(m.salary){ salData=m.salary; salData.e=salData.e||{}; salData.b=salData.b||{}; salData.cfg=salData.cfg||{}; }
 }
 async function boot(){
+  setTimeout(ensurePdf,2500);
   if(cache.idx) index=cache.idx;
   applyCachedMeta();
   try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
@@ -6351,9 +6356,7 @@ async function boot(){
   renderAll();
   var c=window.claude;
   if(c&&c.use){
-    try{ db=await c.use('db'); }catch(e){}
-    try{ user=await c.use('user'); }catch(e){}
-    try{ downloads=await c.use('downloads'); }catch(e){}
+    await Promise.all([ c.use('db').then(function(x){ db=x; },function(){}), c.use('user').then(function(x){ user=x; },function(){}), c.use('downloads').then(function(x){ downloads=x; },function(){}) ]);
   }
   if(!db){
     $('#state').textContent='Could not connect. Check your internet and reopen the app.';
@@ -6361,13 +6364,13 @@ async function boot(){
   }
   if(user){
     try{
-      accountOwner=await user.canEdit();
+      var ur=await Promise.all([ user.canEdit(), user.can('data.write'), user.id(), supName?null:user.me() ]);
+      accountOwner=ur[0];
       var sm=''; try{ sm=localStorage.getItem('nurseryMode')||''; }catch(e){}
       isOwner = accountOwner && sm!=='supervisor';
-      var w=await user.can('data.write');
-      canWrite=accountOwner || w!==false;
-      uid=await user.id();
-      if(!supName){ var me=await user.me(); if(me&&me.name){ supName=me.name; $('#supName').value=supName; } }
+      canWrite=accountOwner || ur[1]!==false;
+      uid=ur[2];
+      if(!supName){ var me=ur[3]; if(me&&me.name){ supName=me.name; $('#supName').value=supName; } }
     }catch(e){ canWrite=true; }
   }else canWrite=true;
   if(accountOwner){

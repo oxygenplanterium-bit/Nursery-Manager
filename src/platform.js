@@ -5,12 +5,8 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { jsPDF, applyPlugin } from './jspdf-autotable-shim.js';
-import * as XLSX from 'xlsx';
 import { SUPABASE_URL, SUPABASE_KEY, OWNER_EMAIL } from './config.js';
 
-window.jspdf = { jsPDF };
-window.XLSX = XLSX;
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storage: window.localStorage } });
 
