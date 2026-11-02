@@ -6133,8 +6133,8 @@ function catsRender(){
   var prim=catPrimaries(); if(!prim.length) box.append(mk('p','pmeta','No categories yet.'));
   function line(c,sub,parent,hasSubs){
     var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','delx'), dt=null;
-    row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:22px':'');
-    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label',sub?'Sub-category name':'Category name');
+    row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:20px':'');
+    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0;min-height:48px;background:'+(sub?'color-mix(in srgb,#a0724a 26%,var(--card))':'color-mix(in srgb,#4caf50 24%,var(--card))'); inp.setAttribute('aria-label',sub?'Sub-category name':'Category name');
     inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); catsRender(); } });
     del.type='button'; del.setAttribute('aria-label','Delete '+c[1].n); del.style.cssText='min-width:44px;min-height:44px;justify-content:center'; del.innerHTML=CAT_BIN+'<span class="delt" hidden>Tap again</span>';
     del.addEventListener('click', function(){
@@ -6147,7 +6147,7 @@ function catsRender(){
       })();
     });
     if(!sub&&hasSubs){
-      var ar=mk('button','btn small catar',catOpen[c[0]]?'\u25be':'\u25b8'); ar.type='button'; ar.style.cssText='min-width:44px;min-height:44px;font-size:1.3rem;font-weight:900;padding:0';
+      var ar=mk('button','parr catar',catOpen[c[0]]?'\u25be':'\u25b8'); ar.type='button'; ar.style.cssText='flex:0 0 56px';
       ar.setAttribute('aria-expanded',catOpen[c[0]]?'true':'false'); ar.setAttribute('aria-label',(catOpen[c[0]]?'Hide':'Show')+' sub-categories of '+c[1].n);
       ar.addEventListener('click', function(){ catOpen[c[0]]=!catOpen[c[0]]; catsRender(); });
       row.append(inp,ar,del);
