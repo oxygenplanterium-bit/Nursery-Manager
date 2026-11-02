@@ -1675,7 +1675,7 @@ function renderTop(){
 /* ---------- stock tab ---------- */
 function otherN(n){ return (n||nursery)==='1'?'2':'1'; }
 function moveBtn(label){ var b=mk('button','edit mv',label||'Move'); b.type='button'; return b; }
-function mvLabel(n){ return 'Move to '+NURS[otherN(n)]; }
+function mvLabel(n){ return 'Move to'; }
 function rowHidGet(){ try{ return JSON.parse(localStorage.getItem('nurseryRowHid')||'{}')||{}; }catch(e){ return {}; } }
 function rowHidSet(o){ try{ localStorage.setItem('nurseryRowHid',JSON.stringify(o)); }catch(e){} }
 function makeRow(id){
@@ -3080,31 +3080,31 @@ $('#rmDone').addEventListener('click', function(){ selRowId=null; paintSel(); })
 function moveRow(id,btn){
   if(!isOwner||!editable()) return;
   var r=day.rows&&day.rows[id]; if(!r||r.removed) return;
-  var from=r.nid||'1', dest=otherN(from);
-  if(rowClash(r.name,dest,id)){ toast(r.name+' is already in '+NURS[dest]+'.'); return; }
-  arm(btn,'mvr'+id,mvLabel(from), async function(){
+  var from=r.nid||'1';
+  mvAllOpen('item',1,async function(dest){
+    if(rowClash(r.name,dest,id)){ toast(r.name+' is already in '+NURS[dest]+'.'); return; }
     var p={rows:{}}; p.rows[id]={nid:dest};
     if(await save(p)){ logMove('rows',[{id:id,from:from,dest:dest}]); toast(r.name+' moved to '+NURS[dest]); }
-  });
+  },{head:'Move Item',info:'"'+r.name+'" is in '+NURS[from]+'.',from:from});
 }
 function moveTask(id,btn){
   if(!isOwner||!editable()) return;
   var t=day.tasks&&day.tasks[id]; if(!t||t.removed) return;
-  var from=t.nid||'1', dest=otherN(from);
-  arm(btn,'mvt'+id,''+mvLabel(from), async function(){
+  var from=t.nid||'1';
+  mvAllOpen('task',1,async function(dest){
     var p={tasks:{}}; p.tasks[id]={nid:dest};
     if(await save(p)){ logMove('tasks',[{id:id,from:from,dest:dest}]); toast('Task moved to '+NURS[dest]); }
-  });
+  },{head:'Move Task',info:'"'+t.title+'" is in '+NURS[from]+'.',from:from});
 }
 function moveRes(id,btn){
   if(!isOwner) return;
   var r=res[id]; if(!r||r.x) return;
-  var from=r.nid||'1', dest=otherN(from);
-  if(resClash(r.n,dest,id)){ toast(r.n+' is already in '+NURS[dest]+'.'); return; }
-  arm(btn,'mvs'+id,mvLabel(from), async function(){
+  var from=r.nid||'1';
+  mvAllOpen('resource',1,async function(dest){
+    if(resClash(r.n,dest,id)){ toast(r.n+' is already in '+NURS[dest]+'.'); return; }
     var p={res:{}}; p.res[id]={nid:dest};
     if(await saveSettings(p)){ logMove('res',[{id:id,from:from,dest:dest}]); toast(r.n+' moved to '+NURS[dest]); }
-  });
+  },{head:'Move Resource',info:'"'+r.n+'" is in '+NURS[from]+'.',from:from});
 }
 /* ---------- undo for moves between nurseries ---------- */
 var moveLog={rows:[],tasks:[],res:[]};
@@ -3137,23 +3137,24 @@ $('#undoStock').addEventListener('click', function(){ undoMove('rows'); });
 $('#undoTasks').addEventListener('click', function(){ undoMove('tasks'); });
 $('#undoRes').addEventListener('click', function(){ undoMove('res'); });
 var mvAllFn=null, mvAllN=0;
-function mvAllOpen(what,count,fn){
-  mvAllFn=fn; mvAllN=count;
-  $('#mvAllHead').textContent='Move all '+what;
-  $('#mvAllInfo').textContent=count+' '+what+(count===1?'':'')+' in '+NURS[nursery]+' will be moved.';
+var mvAllFrom='';
+function mvAllOpen(what,count,fn,o){
+  mvAllFn=fn; mvAllN=count; mvAllFrom=(o&&o.from)||nursery;
+  $('#mvAllHead').textContent=(o&&o.head)||('Move all '+what);
+  $('#mvAllInfo').textContent=(o&&o.info)||(count+' '+what+' in '+NURS[nursery]+' will be moved.');
   var sel=$('#mvAllDest'); sel.textContent='';
   Object.keys(NURS).forEach(function(k){ var o=mk('option',null,NURS[k]); o.value=k; sel.append(o); });
   armed.mvall=false; $('#mvAllGo').textContent='Move';
-  sel.value=otherN(); $('#mvAllWarn').textContent=''; pickify(sel,'Move to nursery'); sel._sync();
+  sel.value=otherN(mvAllFrom); $('#mvAllWarn').textContent=''; pickify(sel,'Move to nursery'); sel._sync();
   var d=$('#dlgMvAll'); if(!d.open) d.showModal();
 }
 $('#mvAllCancel').addEventListener('click', function(){ $('#dlgMvAll').close(); });
 $('#mvAllGo').addEventListener('click', async function(){
   var dest=$('#mvAllDest').value;
-  if(dest===nursery){ $('#mvAllWarn').textContent='These are already in '+NURS[nursery]+'. Choose a different nursery.'; return; }
+  if(dest===mvAllFrom){ $('#mvAllWarn').textContent='Already in '+NURS[mvAllFrom]+'. Choose a different nursery.'; return; }
   arm(this,'mvall','Move', async function(){ var f=mvAllFn; $('#dlgMvAll').close(); if(f) await f(dest); });
 });
-$('#mvAllDest').addEventListener('change', function(){ armed.mvall=false; $('#mvAllGo').textContent='Move'; $('#mvAllWarn').textContent=this.value===nursery?'These are already in '+NURS[nursery]+'. Choose a different nursery.':''; });
+$('#mvAllDest').addEventListener('change', function(){ armed.mvall=false; $('#mvAllGo').textContent='Move'; $('#mvAllWarn').textContent=this.value===mvAllFrom?'Already in '+NURS[mvAllFrom]+'. Choose a different nursery.':''; });
 $('#mvAllStock').addEventListener('click', function(){
   if(!isOwner||!editable()) return;
   var n0=sortedRows().length; if(!n0){ toast('No items to move.'); return; }
