@@ -5968,6 +5968,10 @@ function dockUpdate(){
   var vv=window.visualViewport; if(!vv) return;
   function fit(){
     var kb=Math.max(0, Math.round(window.innerHeight-vv.height-vv.offsetTop)), up=kb>80;
+    document.querySelectorAll('dialog:not(#dlgInv):not(.pickdlg)').forEach(function(d){
+      if(!d.open||!up){ d.style.bottom=''; return; }
+      d.style.bottom=(kb+8)+'px';
+    });
     document.querySelectorAll('dialog.pickdlg').forEach(function(d){
       if(!d.open||!up){ d.style.bottom=''; d.style.maxHeight=''; return; }
       d.style.bottom=kb+'px'; d.style.maxHeight=Math.max(220,Math.round(vv.height-16))+'px';
@@ -5976,7 +5980,7 @@ function dockUpdate(){
   vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
   function lift(el){ setTimeout(function(){ try{ el.scrollIntoView({block:'start',behavior:'smooth'}); }catch(e){} }, 350); }
   ['#filter','#sopSearch'].forEach(function(q){ var el=$(q); if(el) el.addEventListener('focus', function(){ lift(el); }); });
-  document.addEventListener('focusin', function(e){ if(e.target&&e.target.id==='pickSearch') setTimeout(fit,350); });
+  document.addEventListener('focusin', function(e){ if(e.target&&(e.target.id==='pickSearch'||e.target.id==='sopSearch')) setTimeout(fit,350); });
 })();
 /* ---------- start ---------- */
 function applySettings(d){
