@@ -1601,9 +1601,31 @@ function subscribeDay(k){
     if(selDate!==k) return;
     day=s.exists ? s.data() : null; dayLive=true;
     if(day){ cache.days[k]=day; cacheSave(); }
-    notePending();
+    notePending(); carryTd();
     renderAll();
   }, function(){ if(selDate===k){ if(!cache.days[k]) day=null; renderAll(); } });
+}
+var carrying=false;
+/* a running "tasks start" entry lives in the day it was started; when the day rolls over, move it to today so it can still be finished or deleted */
+async function carryTd(){
+  if(carrying||!canWrite||!dayLive||!day||day.closed||selDate!==latest()) return;
+  var ks=keys(), i=ks.indexOf(selDate); if(i<1) return;
+  carrying=true;
+  try{
+    for(var j=i-1;j>=Math.max(0,i-7);j--){
+      var prev=ks[j], ps=await db.doc('days/'+prev).get(); if(!ps.exists) continue;
+      var pt=(ps.data()||{}).td||{}, np={td:{}}, pp={td:{}}, n=0;
+      Object.keys(pt).forEach(function(id){
+        var x=pt[id]; if(!x||x.en||x.carried) return;
+        if(!(day.td&&day.td[id])){ var c={}; Object.keys(x).forEach(function(f){ c[f]=x[f]; }); np.td[id]=c; }
+        pp.td[id]={carried:true}; n++;
+      });
+      if(!n) continue;
+      if(Object.keys(np.td).length) await db.doc('days/'+selDate).update(np);
+      await db.doc('days/'+prev).update(pp);
+    }
+  }catch(e){}
+  finally{ carrying=false; }
 }
 function dayOpen(o){ var w=$('#dayWrap'); if(!w) return; w.hidden=!o; $('#dayTog').setAttribute('aria-expanded',o); $('#dayArr').textContent=o?'\u25B4':'\u25BE'; }
 $('#dayTog').addEventListener('click', function(){ dayOpen($('#dayWrap').hidden); });
@@ -2049,7 +2071,7 @@ function tdWork(x,now){
 }
 function tdItems(n){
   n=n||nursery; var o=(day&&day.td)||{};
-  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
+  return Object.keys(o).filter(function(id){ var x=o[id]; return x&&!x.carried&&(x.nid||'1')===n; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].st||0)-(a[1].st||0); });
 }
 function labourNames(nid){ return teamList('staff').concat(teamList('sup')).filter(function(it){ return (it[1].nid||'1')===nid; }).map(function(it){ return it[1].n; }).filter(Boolean); }
 function buildAsg(box,names,sel,onChange){
