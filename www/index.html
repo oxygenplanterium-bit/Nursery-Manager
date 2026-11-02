@@ -433,7 +433,12 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .rsw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
 .rsw[aria-checked="true"] .rswk{transform:translateX(14px)}
 .row.rhid>*:not(.id){display:none!important}
-.row.rhid .nmtop>button:not(.rtg){display:none!important}
+#list .row .nmtop{flex-wrap:nowrap; justify-content:space-between; width:100%}
+#list .row .nmtop .name{flex:1 1 0; min-width:0}
+#list .row .nmtop .rsw{flex:0 0 auto; margin-left:auto}
+.row>.rtags{grid-column:1/-1}
+.row>.ract{grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px}
+.ract .ractl,.ract .ractr{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
 .dk{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
 .dk{display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0; color:var(--ink); font:inherit; font-size:.7rem; font-weight:600; padding:0; cursor:pointer; position:relative}
 .dkt{width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.22)}
@@ -1696,24 +1701,26 @@ function makeRow(id){
     dlBtn=dl;
   }
   top.append(name);
-  if(dlBtn) top.append(dlBtn);
+  var actL=mk('div','ractl'), actR=mk('div','ractr');
+  if(dlBtn) actL.append(dlBtn);
   if(isOwner){
     edit=mk('button','edit ed1','Edit'); edit.type='button';
     edit.addEventListener('click', function(){ openEdit('item',id); });
-    top.append(edit);
     mv=moveBtn(); mv.addEventListener('click', function(){ moveRow(id,mv); });
-    top.append(mv);
+    actL.append(mv);
   }
   if(canWrite){
     xf=mk('button','edit','Transfer stock'); xf.type='button'; xf.addEventListener('click', function(){ openXfer(id); });
-    top.append(xf);
+    actR.append(xf);
   }
+  if(edit) actR.append(edit);
   var tg=mk('button','rsw rtg'); tg.type='button'; tg.setAttribute('role','switch'); tg.append(mk('span','rswk'));
-  var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
   var R0={name:name};
+  var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
-  el._hid=hidApply; if(edit) top.insertBefore(tg,edit.nextSibling); else top.insertBefore(tg,name.nextSibling); hidApply();
-  var catEl=mk('div','rcat'); catEl.hidden=true; var tgEl=mk('div','rtags'); tgEl.hidden=true; nm.append(top,catEl,tgEl); idw.append(sl,nm); el.append(idw);
+  el._hid=hidApply; top.append(tg); hidApply();
+  var catEl=mk('div','rcat'); catEl.hidden=true; var tgEl=mk('div','rtags'); tgEl.hidden=true; nm.append(top,catEl); idw.append(sl,nm); el.append(idw);
+  var actRow=mk('div','ract'); actRow.append(actL,actR);
   if(isOwner){
     idw.classList.add('lp');
     var lpT=null, lx=0, ly=0;
@@ -1755,7 +1762,7 @@ function makeRow(id){
     cr.append(c);
   });
   ac.classList.add('bal'); ac.append(av); R.amt=av; cr.append(ac); el.append(cr);
-  el.append(R.notes);
+  el.append(R.notes); el.append(tgEl,actRow);
   el._r=R; return el;
 }
 function noteEl(id,r,f,ed){
