@@ -402,6 +402,8 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dock[hidden]{display:none}
 .dkr{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center}
 #filter,#sopSearch{scroll-margin-top:10px}
+#list .row.alt0:not(.picked){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
+#list .row.alt1:not(.picked){background:color-mix(in srgb,var(--accent) 14%,var(--card))}
 .pgrp{display:flex; flex-direction:column; gap:8px}
 .prow{display:flex; gap:8px}
 .prow .pickopt{flex:1 1 auto; width:auto; min-width:0}
@@ -1820,6 +1822,7 @@ function renderRows(items,serial){
     pos++;
   });
   rowEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); rowEls.delete(id); } });
+  var vis=0; Array.prototype.forEach.call(list.children,function(el){ if(!el.dataset||!el.dataset.id) return; if(el.hidden){ el.classList.remove('alt0','alt1'); return; } el.classList.toggle('alt0',vis%2===0); el.classList.toggle('alt1',vis%2===1); vis++; });
 }
 var totalsBuilt=null;
 function sums(items){
