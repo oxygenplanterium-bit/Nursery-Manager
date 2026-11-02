@@ -391,6 +391,10 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #zoomBox img{display:block; width:100%; height:100%; object-fit:contain}
 #zoomBar{flex:0 0 auto; padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px)); background:#000; display:flex; justify-content:center}
 #zoomBar .btn{min-width:160px}
+.hdgrp{display:flex; flex-direction:column; gap:10px; padding:10px}
+.hdgrp .card{border:0; box-shadow:none; background:transparent; margin:0; padding:0}
+.hdgrp .fdnl select,.hdgrp .dayTog,.hdgrp #todayField,.hdgrp #closeBtn,.hdgrp #daySel{border:1px solid var(--line)}
+.hdgrp .fdnl{padding:0}
 .fdpick{display:flex; gap:8px; align-items:stretch}
 .fdpick .fdnl{flex:1.5 1 0; min-width:0; padding:4px 10px; margin:0; display:flex; align-items:center}
 .fdpick .fdnl select{min-height:36px; padding:4px 24px 4px 8px; font-size:15px}
@@ -504,6 +508,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn small primary" type="button" id="lowBtn">View</button>
   </section>
 
+  <div class="card hdgrp">
   <div class="fdpick">
     <label class="f card fdnl"><span class="sr">Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
@@ -521,6 +526,7 @@ select:not([multiple]){pointer-events:none}
       <div class="statusline" id="actrow" hidden style="flex-wrap:nowrap;align-items:center"><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
       <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name below to mark tasks and attendance.</p>
     </section>
+  </div>
 
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
