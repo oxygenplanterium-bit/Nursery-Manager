@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:35 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:50 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -5084,7 +5084,7 @@ async function chatNotifEnable(){
   await chatPushSync(); chatNotifBtn(); toast('Notifications turned on');
 }
 async function chatNotifOff(){
-  try{ localStorage.setItem('nurseryChatNotif','0'); }catch(e){}
+  try{ localStorage.setItem('nurseryChatNotif','0'); }catch(e){} try{ alNotifBtn(); }catch(e){}
   try{ if('serviceWorker' in navigator){ var reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription(); if(sub){ var j=sub.toJSON(); await sub.unsubscribe(); if(db) await db.doc('push/'+hashStr(j.endpoint)).delete().catch(function(){}); } } }catch(e){}
   chatNotifBtn(); toast('Notifications turned off');
 }
