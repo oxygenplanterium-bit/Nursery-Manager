@@ -3776,14 +3776,15 @@ function resAckSave(patch){
   var d=db.doc('meta/resack');
   return d.update(patch).catch(function(e){ if(e&&e.code==='not_found') return d.set(patch); throw e; }).then(function(){ return true; }, function(){ toast('Could not save. Check your internet and try again.',4000); return false; });
 }
-function resAccepted(id,r){ var a=resAck[id]; return !!(a&&a.to===(r.to||'')&&(a.q||0)===(r.q||0)); }
+function resAckKey(id,r){ return r.to?id:id+'_'+supId; }
+function resAccepted(id,r){ var a=resAck[resAckKey(id,r)]; return !!(a&&a.to===(r.to||'')&&(a.q||0)===(r.q||0)); }
 function resPending(){
   if(isOwner||!supId) return [];
-  return resList().filter(function(it){ return it[1].to===supId&&!resAccepted(it[0],it[1]); });
+  return resList().filter(function(it){ return (it[1].to===supId||!it[1].to)&&!resAccepted(it[0],it[1]); });
 }
 function resOkList(){
   if(!isOwner) return [];
-  return Object.keys(resAck).filter(function(id){ var a=resAck[id], r=res[id]; return a&&!a.seen&&r&&!r.x&&resAccepted(id,r); }).map(function(id){ return [id,resAck[id]]; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+  return Object.keys(resAck).filter(function(k){ var a=resAck[k], r=res[a&&a.rid||k]; return a&&!a.seen&&r&&!r.x&&a.to===(r.to||'')&&(a.q||0)===(r.q||0); }).map(function(k){ return k; }).map(function(id){ return [id,resAck[id]]; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
 }
 function resOkUpdate(){
   var bx=$('#resOk'); if(!bx) return; var l=resOkList(); bx.hidden=!l.length; if(!l.length) return;
@@ -3807,8 +3808,8 @@ function resMsgUpdate(){
 $('#resMsgBtn').addEventListener('click', async function(){
   if(isOwner||!supId) return; var l=resPending(); if(!l.length) return;
   var p={}, who=nameNow()||'Supervisor', now=Date.now();
-  l.forEach(function(it){ p[it[0]]={to:it[1].to,q:it[1].q||0,n:it[1].n,nid:it[1].nid||'1',by:who,at:now,seen:null}; });
-  if(await resAckSave(p)){ l.forEach(function(it){ resAck[it[0]]=p[it[0]]; }); resMsgUpdate(); toast('Accepted. Thank you.'); if(tab==='res') renderRes(); }
+  l.forEach(function(it){ p[resAckKey(it[0],it[1])]={rid:it[0],to:it[1].to||'',q:it[1].q||0,n:it[1].n,nid:it[1].nid||'1',by:who,at:now,seen:null}; });
+  if(await resAckSave(p)){ Object.keys(p).forEach(function(k){ resAck[k]=p[k]; }); resMsgUpdate(); toast('Accepted. Thank you.'); if(tab==='res') renderRes(); }
 });
 function resShown(n){
   n=n||nursery;
