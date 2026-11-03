@@ -381,6 +381,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 .kpit label{display:flex; flex-direction:column; gap:4px; font-size:.82rem; font-weight:600}
 .kpit input{min-height:40px; padding:6px 8px}
 .kpit .btn{grid-column:1/-1}
+.phf:has(>img[hidden]){display:none!important}
 .thumbs{display:flex; gap:10px; flex-wrap:wrap; margin:4px 0}
 .thumbs figure{margin:0; display:flex; flex-direction:column; gap:3px; align-items:flex-start}
 .thumbs figcaption{font-size:.75rem; color:var(--muted)}
@@ -534,7 +535,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:35 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:00 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -691,7 +692,7 @@ select:not([multiple]){pointer-events:none}
         <form class="team" id="fTd" hidden novalidate>
           <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
-          <div class="asgwrap"><div class="asghead"><b>Start photo :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
+          <div class="asgwrap"><div class="asghead"><b>Start photo :</b><span style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn small" style="cursor:pointer"><span id="tdPhBT">Take photo</span><input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label><button type="button" class="btn small danger" id="tdPhBDel" hidden>Delete photo</button></span></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
@@ -2293,7 +2294,8 @@ function makeTd(id){
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); try{ db.doc('photos/'+id).delete().catch(function(){}); }catch(e){} }); });
   var phA='', phL=mk('label','btn small'), phI=document.createElement('input'), phT=mk('span',null,'Take photo after finishing'), phV=mk('button','btn small','View photos'), phM=mk('img');
   phI.type='file'; phI.accept='image/*'; phI.setAttribute('capture','environment'); phI.style.display='none'; phL.style.cssText='cursor:pointer;align-self:flex-start'; phL.append(phT,phI);
-  phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)'; phV.type='button';
+  phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block';
+  var phF=mk('figure','phf'), thr=mk('div'); phF.style.cssText='margin:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start'; phF.append(phM, mk('figcaption',null,'Finish photo')); phF.lastChild.style.cssText='font-size:.75rem;color:var(--muted)'; thr.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin:4px 0'; phV.type='button';
   var phD=mk('button','btn small danger','Delete photo'); phD.type='button'; phD.hidden=true; phD.style.alignSelf='flex-start';
   phD.addEventListener('click', function(){ phA=''; phM.removeAttribute('src'); phM.hidden=true; phD.hidden=true; phT.textContent='Take photo after finishing'; fin.disabled=!(ta.value.trim()&&(el._x&&(el._x.pa||el._x.re===false))); });
   phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phD.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phA||(el._x&&(el._x.pa||el._x.re===false)))); });
@@ -2325,7 +2327,7 @@ function makeTd(id){
   var head=mk('div','tdhead'), arr=mk('button','btn tdarr','\u25BE'), bd=mk('div','tdbd'); arr.type='button'; arr.setAttribute('aria-label','Show or hide task details');
   arr.addEventListener('click', function(){ var x=el._x; if(!x||!x.en) return; tdOpen[id]=!tdOpen[id]; updateTd(el,x,editable()); });
   var th=mk('div','thumbs'); var sb=mk('div'); sb.hidden=true; sb.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0;padding:8px;border:1px solid var(--line);border-radius:10px';
-  head.append(t,arr); bd.append(meta,th,sb,asB,phL,phM,phD,phV,ta,row); el.append(head,bd);
+  head.append(t,arr); th.style.margin='0'; thr.append(th,phF); bd.append(meta,thr,sb,asB,phL,phD,phV,ta,row); el.append(head,bd);
   el._r={th:th,sb:sb,arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT,phD:phD}; return el;
 }
 function tdMeta(x){
@@ -2520,9 +2522,10 @@ async function phView(id,title){
   }catch(e){ body.textContent=''; body.append(mk('p','pmeta','The photos could not be loaded. Check your internet and try again.')); }
 }
 $('#phClose').addEventListener('click', function(){ $('#dlgPh').close(); });
+$('#tdPhBDel').addEventListener('click', function(){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBImg').removeAttribute('src'); $('#tdPhBT').textContent='Take photo'; this.hidden=true; tdStartState(); });
 $('#tdPhB').addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f) return;
-  try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
+  try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; $('#tdPhBT').textContent='Retake photo'; $('#tdPhBDel').hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
   tdStartState();
 });
 var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
@@ -2838,7 +2841,7 @@ $('#fTd').addEventListener('submit', async function(e){
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
-  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
+  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBT').textContent='Take photo'; $('#tdPhBDel').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc,sop){
   var y=secStart(doc,sop?'8. SOPs started and time taken':'7. Tasks started and time taken',false), nm=sop?'SOP':'task';
