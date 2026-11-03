@@ -548,6 +548,13 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" type="button" id="resMsgBtn">Confirm</button>
   </section>
 
+  <section class="card alertcard" id="resOk" hidden style="flex-direction:column;align-items:stretch;gap:8px;overflow:hidden">
+    <b style="margin:-14px -14px 2px;padding:12px 14px;background:var(--accent);color:#fff;display:block">Resources Accepted</b>
+    <p class="pmeta" id="resOkSub" style="margin:0"></p>
+    <div style="overflow-x:auto"><table id="resOkTbl" style="width:100%;border-collapse:collapse;font-size:.85rem"></table></div>
+    <button class="btn primary" type="button" id="resOkBtn">OK</button>
+  </section>
+
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
     <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -3775,8 +3782,24 @@ function resPending(){
   if(isOwner||!supId) return [];
   return resList().filter(function(it){ return it[1].to===supId&&!resAccepted(it[0],it[1]); });
 }
+function resOkList(){
+  if(!isOwner) return [];
+  return Object.keys(resAck).filter(function(id){ var a=resAck[id], r=res[id]; return a&&!a.seen&&r&&!r.x&&resAccepted(id,r); }).map(function(id){ return [id,resAck[id]]; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); });
+}
+function resOkUpdate(){
+  var bx=$('#resOk'); if(!bx) return; var l=resOkList(); bx.hidden=!l.length; if(!l.length) return;
+  var t=$('#resOkTbl'); t.textContent='';
+  var multi=l.some(function(it){ return (it[1].nid||'1')!==(l[0][1].nid||'1'); });
+  var hr=document.createElement('tr'); ['Sl.','Resource','Qty','Accepted by','Time'].forEach(function(h){ var th=mk('th',null,h); th.style.cssText='text-align:left;padding:6px 6px;border-bottom:2px solid var(--line)'; hr.append(th); }); t.append(hr);
+  l.forEach(function(it,i){ var a=it[1], tr=document.createElement('tr'); [i+1,a.n+(multi?' ('+(NURS[a.nid||'1']||'')+')':''),fmtN(a.q||0),a.by||assigneeName(a.to),fmtTime(a.at)].forEach(function(v,k){ var td=mk('td',null,String(v)); td.style.cssText='padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top'+(k===2?';text-align:center':''); tr.append(td); }); t.append(tr); });
+  $('#resOkSub').textContent=l.length+(l.length===1?' resource has':' resources have')+' been accepted. Each holder confirmed that they received the material and will keep it safe for future use.';
+}
+$('#resOkBtn').addEventListener('click', async function(){
+  var l=resOkList(); if(!l.length) return; var p={}; l.forEach(function(it){ p[it[0]]={seen:true}; });
+  if(await resAckSave(p)){ l.forEach(function(it){ resAck[it[0]].seen=true; }); resOkUpdate(); }
+});
 function resMsgUpdate(){
-  var bx=$('#resMsg'); if(!bx) return; resAckSubscribe();
+  var bx=$('#resMsg'); if(!bx) return; resAckSubscribe(); resOkUpdate();
   var l=resPending(); bx.hidden=!l.length; if(!l.length) return;
   var t=$('#resMsgTbl'); t.textContent='';
   var multi=l.some(function(it){ return (it[1].nid||'1')!==(l[0][1].nid||'1'); });
@@ -3787,7 +3810,7 @@ function resMsgUpdate(){
 $('#resMsgBtn').addEventListener('click', async function(){
   if(isOwner||!supId) return; var l=resPending(); if(!l.length) return;
   var p={}, who=nameNow()||'Supervisor', now=Date.now();
-  l.forEach(function(it){ p[it[0]]={to:it[1].to,q:it[1].q||0,n:it[1].n,nid:it[1].nid||'1',by:who,at:now}; });
+  l.forEach(function(it){ p[it[0]]={to:it[1].to,q:it[1].q||0,n:it[1].n,nid:it[1].nid||'1',by:who,at:now,seen:null}; });
   if(await resAckSave(p)){ l.forEach(function(it){ resAck[it[0]]=p[it[0]]; }); resMsgUpdate(); toast('Accepted. Thank you.'); if(tab==='res') renderRes(); }
 });
 function resShown(n){
