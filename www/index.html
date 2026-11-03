@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 5:55 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 6:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2241,7 +2241,7 @@ function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
   var fin=mk('button','btn small primary','Mark done'), ed=mk('button','btn small','Edit report'), del=mk('button','btn small danger','Delete'); fin.type='button'; ed.type='button'; del.type='button'; row.append(fin,ed,del);
-  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!(ta.value.trim()&&(phA||x.re===false)); });
+  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!(ta.value.trim()&&(phA||x.pa||x.re===false)); });
   ta.addEventListener('change', function(){
     var x=el._x; if(!editable()||!x) return;
     if(x.en && !ta.value.trim()){ toast('The report cannot be empty.'); ta.value=x.note||''; return; }
@@ -2257,7 +2257,7 @@ function makeTd(id){
     var x=el._x; if(!x||x.en||!editable()) return;
     if(x.ss&&x.ss.length&&sopDone(x)<x.ss.length){ toast('Tick every step of the checklist before marking the task done.'); return; }
     if(!ta.value.trim()){ toast('Fill the report in the notes box before marking the task done.'); return; }
-    if(!phA&&x.re!==false){ toast('Take the photo after finishing before marking the task done.'); return; }
+    if(!phA&&!x.pa&&x.re!==false){ toast('Take the photo after finishing before marking the task done.'); return; }
     if(needSup()){ toast('Choose your name at the top first.'); return; }
     try{ if(phA) await phSave(id,'a',phA); }catch(e){ toast('The photo could not be saved. Check your internet and try again.'); return; }
     var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600)}; if(phA) p.td[id].pa=1; phA=''; phM.hidden=true;
@@ -2269,8 +2269,8 @@ function makeTd(id){
   phI.type='file'; phI.accept='image/*'; phI.setAttribute('capture','environment'); phI.style.display='none'; phL.style.cssText='cursor:pointer;align-self:flex-start'; phL.append(phT,phI);
   phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)'; phV.type='button';
   var phD=mk('button','btn small danger','Delete photo'); phD.type='button'; phD.hidden=true; phD.style.alignSelf='flex-start';
-  phD.addEventListener('click', function(){ phA=''; phM.removeAttribute('src'); phM.hidden=true; phD.hidden=true; phT.textContent='Take photo after finishing'; fin.disabled=!(ta.value.trim()&&(el._x&&el._x.re===false)); });
-  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phD.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phA||(el._x&&el._x.re===false))); });
+  phD.addEventListener('click', function(){ phA=''; phM.removeAttribute('src'); phM.hidden=true; phD.hidden=true; phT.textContent='Take photo after finishing'; fin.disabled=!(ta.value.trim()&&(el._x&&(el._x.pa||el._x.re===false))); });
+  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phD.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phA||(el._x&&(el._x.pa||el._x.re===false)))); });
   phV.addEventListener('click', function(){ var x=el._x; phView(id,(x&&x.title)||'Task'); });
   phM.style.cursor='pointer'; phM.addEventListener('click', function(){ if(phM.src) zoomOpen(phM.src,'Finish photo'); });
   var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.className='tdasg'; asB.append(asV,asE,asC,asP);
@@ -2314,12 +2314,12 @@ function updateTd(el,x,ed){
   R.bd.hidden=collapsed; R.arr.hidden=!x.en; R.arr.textContent=collapsed?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!collapsed);
   R.t.textContent=(el._n?el._n+'. ':'')+x.title+(x.en?'':' (in progress)');
   sopRender(R.sb,el._id,x,ed); phThumbs(R.th,el._id,x);
-  R.phL.hidden=!(ed&&!x.en); R.phV.hidden=true; if(x.en) R.phM.hidden=true; R.phD.hidden=!(ed&&!x.en&&!R.phM.hidden);
+  R.phL.hidden=!(ed&&!x.en); R.phT.textContent=((R.phM.src&&!R.phM.hidden)||x.pa)?'Retake photo':'Take photo after finishing'; R.phV.hidden=true; if(x.en) R.phM.hidden=true; R.phD.hidden=!(ed&&!x.en&&!R.phM.hidden);
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
   if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; R.asE.disabled=false; if(R.asC) R.asC.hidden=true; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
-  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&((R.phM.src&&!R.phM.hidden)||x.re===false));
+  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&((R.phM.src&&!R.phM.hidden)||x.pa||x.re===false));
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
 
