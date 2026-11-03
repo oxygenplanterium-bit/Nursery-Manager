@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:10 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4254,11 +4254,10 @@ function updateRes(el,id,r,ed){
   R.qin.disabled=!ed;
   R.nb.hidden=true;
   R.chk.setAttribute('aria-label','Available with supervisor: '+r.n);
-  var bits=[RES_TXT(r.v)+(r.v!==null && r.qty!==null ? ' ('+fmtN(r.qty)+' of '+fmtN(r.q||0)+')' : '')];
-  if(r.v!==null && (r.who||r.at)) bits.push([r.who,fmtTime(r.at)].filter(Boolean).join(' '));
+  var bits=[];
   if(!isOwner && r.to) bits.push('Handed to you'+(resAck[id]&&resAccepted(id,{to:r.to,q:r.q})?' (accepted)':' (not yet accepted)'));
   if(isOwner && r.to){ var ak=resAck[id]; bits.push(resAccepted(id,{to:r.to,q:r.q})?'Accepted by '+(ak.by||assigneeName(r.to))+' on '+new Date(ak.at).toLocaleDateString('en-GB'):'Awaiting acceptance'); }
-  R.meta.textContent=''; R.meta.hidden=true;
+  R.meta.textContent=bits.join(' · '); R.meta.hidden=!bits.length;
   if(R.inp){
     if(document.activeElement!==R.inp) R.inp.value=(res[id]&&res[id].n)||r.n;
     if(document.activeElement!==R.qi) R.qi.value=(r.qr!==undefined?r.qr:r.q)||0;
