@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:45 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:05 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4879,6 +4879,12 @@ function openAcc(k,eid){
 function openPick(sel,title,done){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title;
   var optBtn=function(o,label,parent){ var b=mk('button','pickopt',label); b.type='button'; b.dataset.full=o.textContent; var cc=sel.dataset.cat&&catMap[o.value]; if(cc) b.classList.add(cc.p?'psub':'pmain'); if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); });
+    if(sel.id==='srcSel'&&isOwner&&srcMap[o.value]){
+      var sr=mk('div','prow trow'), se=mk('button','btn small','Edit'), sd=mk('button','btn small danger','Delete'); se.type=sd.type='button'; se.style.flex=sd.style.flex='0 0 auto';
+      se.addEventListener('click', function(){ $('#dlgPick').close(); srcEdOpen(o.value); });
+      sd.addEventListener('click', function(){ var u=srcUse(o.value); if(u){ toast(srcMap[o.value].n+' is used by '+u+(u===1?' item or batch':' items or batches')+'. Change those first.',4500); return; } arm(sd,'srcdel'+o.value,'Delete', function(){ srcDelete(o.value); }); });
+      sr.append(b,se,sd); parent.append(sr); return b;
+    }
     if(sel.id==='tagSel'&&isOwner&&o.value&&o.value!=='-'){
       var tr=mk('div','prow trow'), te=mk('button','btn small','Edit'), td=mk('button','btn small danger','Delete'); te.type=td.type='button'; te.style.flex=td.style.flex='0 0 auto';
       te.addEventListener('click', function(){ tagEdOpen(o.value); });
@@ -7031,6 +7037,10 @@ function srcsRender(){
     });
     row.append(nm,up,dn,eb,del); box.append(row);
   });
+}
+function srcDelete(k){
+  var p={srcs:{}}; p.srcs[k]=SRC_DEF[k]?{x:true}:null;
+  return saveSettings(p).then(function(ok){ if(ok){ delete srcMap[k]; srcApply({srcs:srcsCurrent()}); if(srcFilter===k) srcFilter=''; try{ $('#dlgPick').close(); }catch(e){} try{ srcsRender(); }catch(e){} renderAll(); toast('Source deleted'); } });
 }
 function srcEdOpen(id){ sedId=id; $('#sedName').value=srcMap[id].n; $('#sedStages').value=srcMap[id].st.join('\n'); $('#sedErr').textContent=''; var d=$('#dlgSrcEd'); if(!d.open) d.showModal(); }
 $('#sedCancel').addEventListener('click', function(){ $('#dlgSrcEd').close(); });
