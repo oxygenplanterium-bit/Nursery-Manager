@@ -598,8 +598,8 @@ select:not([multiple]){pointer-events:none}
         </select>
         <select id="catSel" aria-label="Filter by category" hidden></select>
         <select id="tagSel" aria-label="Filter by tag" hidden></select>
-        <select id="srcSel" aria-label="Filter by source"><option value="">All sources</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option><option value="-">Source not set</option></select>
-        <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="grpBtn" type="button">Group Report</button></div>
+        <select id="srcSel" aria-label="Filter by source"></select>
+        <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="srcBtn" type="button" hidden>Sources</button><button class="btn small" id="grpBtn" type="button">Group Report</button></div>
         <div id="stockActs">
           <button class="btn small" id="mvAllStock" hidden></button>
           <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
@@ -1022,7 +1022,7 @@ select:not([multiple]){pointer-events:none}
       <input type="text" id="editName" required maxlength="120">
     </label>
     <label id="editCatL">Category<select id="editCat"></select></label>
-    <label id="editSrcL">Source<select id="editSrc"><option value="">Not set</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option></select></label>
+    <label id="editSrcL">Source<select id="editSrc"></select></label>
     <div id="editTagsL"><span class="tglbl">Tags (optional)</span><div id="editTagsBox"></div></div>
     <div class="actions">
       <button type="button" class="btn danger" id="editRemove">Delete</button>
@@ -1064,6 +1064,26 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
+<dialog id="dlgSrcs">
+  <div class="dbody">
+    <h2>Sources</h2>
+    <p class="pmeta">A source is where plants come from, such as Cuttings grown, Seed grown or Purchased plants. Each source has its own batch stages. Add your own, rename them or change their stages.</p>
+    <div class="sline" style="display:flex;gap:8px"><input type="text" id="srcsNew" maxlength="40" placeholder="New source name" style="flex:1;min-width:0"><button type="button" class="btn primary" id="srcsAdd">Add</button></div>
+    <div id="srcsList" style="display:grid;gap:8px;margin:12px 0 8px"></div>
+    <div class="actions"><button type="button" class="btn" id="srcsClose">Close</button></div>
+  </div>
+</dialog>
+<dialog id="dlgSrcEd">
+  <div class="dbody">
+    <h2>Edit Source</h2>
+    <label class="f"><span>Name</span><input type="text" id="sedName" maxlength="40" autocomplete="off"></label>
+    <label class="f"><span>Batch stages (one per line, in order)</span><textarea id="sedStages" rows="7" maxlength="400"></textarea></label>
+    <p class="pmeta">The first stage is when a batch starts. The last stage means ready: a batch there can be transferred to stock. Changing stages affects new batches only.</p>
+    <p class="pmeta" id="sedErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="sedCancel">Cancel</button><button type="button" class="btn primary" id="sedSave">Save</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgCatEd">
   <div class="dbody">
     <h2 id="cedHead">Edit Category</h2>
@@ -1083,7 +1103,7 @@ select:not([multiple]){pointer-events:none}
     <input type="file" id="addFile" accept=".csv,.xlsx,.xls,text/csv" hidden>
     <button type="button" class="btn" id="addFileBtn" style="width:100%">Upload CSV or Excel file</button>
     <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
-    <label id="addSrcL">Source (optional)<select id="addSrc"><option value="">Not set</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option></select></label>
+    <label id="addSrcL">Source (optional)<select id="addSrc"></select></label>
     <label id="addCatL">Category (required)<select id="addCat"></select></label>
     <p id="addCatErr" style="color:var(--warn);font-weight:700;margin:4px 0" hidden></p>
     <div><span class="tglbl">Tags (optional, applied to every item added)</span><div id="addTagsBox"></div></div>
@@ -1910,7 +1930,28 @@ function xferEntries(r){
   var x=(r&&r.x)||{};
   return Object.keys(x).map(function(k){ return Object.assign({xid:k},x[k]); }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
 }
-var SRC_NAME={P:'Purchased plants',C:'Cuttings grown',S:'Seed grown'};
+var SRC_DEF={C:{n:'Cuttings grown',o:1,st:['Planted','Rooting','Hardening','Potted','Ready to sell']},S:{n:'Seed grown',o:2,st:['Sown','Germinated','Seedling','Transplanted','Ready to sell']},P:{n:'Purchased plants',o:3,st:['Received','Acclimatising','Ready to sell']}};
+var SRC_NAME={}, BSTG={}, BSRC_DATE={}, srcMap={};
+function srcOrder(){ return Object.keys(srcMap).sort(function(a,b){ return (srcMap[a].o||0)-(srcMap[b].o||0)||srcMap[a].n.localeCompare(srcMap[b].n); }); }
+function srcApply(d){
+  var cs=(d&&d.srcs)||{}; srcMap={};
+  Object.keys(SRC_DEF).forEach(function(k){ if(cs[k]&&cs[k].x) return; srcMap[k]={n:(cs[k]&&cs[k].n)||SRC_DEF[k].n, o:(cs[k]&&cs[k].o)||SRC_DEF[k].o, st:(cs[k]&&cs[k].st&&cs[k].st.length>1)?cs[k].st:SRC_DEF[k].st}; });
+  Object.keys(cs).forEach(function(k){ if(SRC_DEF[k]||!cs[k]||cs[k].x||!cs[k].n) return; srcMap[k]={n:cs[k].n, o:cs[k].o||50, st:(cs[k].st&&cs[k].st.length>1)?cs[k].st:['Started','Growing','Ready to sell']}; });
+  [SRC_NAME,BSTG,BSRC_DATE].forEach(function(o){ Object.keys(o).forEach(function(k){ delete o[k]; }); });
+  Object.keys(srcMap).forEach(function(k){ SRC_NAME[k]=srcMap[k].n; BSTG[k]=srcMap[k].st; BSRC_DATE[k]=srcMap[k].st[0]+' on'; });
+  srcFill();
+}
+function srcFill(){
+  var l=srcOrder();
+  [['addSrc','Not set'],['editSrc','Not set'],['srcSel','All sources']].forEach(function(q){
+    var sel=document.getElementById(q[0]); if(!sel) return; var cur=sel.value; sel.textContent='';
+    var o0=document.createElement('option'); o0.value=''; o0.textContent=q[1]; sel.append(o0);
+    l.forEach(function(k){ var o=document.createElement('option'); o.value=k; o.textContent=srcMap[k].n; sel.append(o); });
+    if(q[0]==='srcSel'){ var u=document.createElement('option'); u.value='-'; u.textContent='Source not set'; sel.append(u); }
+    sel.value=cur; if(sel.value!==cur) sel.value=''; if(sel._sync) sel._sync();
+  });
+}
+srcApply({});
 function sortKeyOf(key,r){ return key==='src'?(SRC_NAME[r.src]||''):key==='cat'?catName(r.cat):((r.tags||[]).slice().sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); })[0]||''); }
 function sortItems(items){
   if(!sortMode) return items;
@@ -6123,11 +6164,9 @@ function batSave(patch){
 var LOSS_WHY=[['Disease','Disease'],['Pest','Pests'],['Heat or cold','Heat or cold'],['Overwatering','Overwatering'],['Underwatering','Underwatering'],['Transport damage','Transport damage'],['Other','Other']];
 function batItemSel(){ var sl=mkSelect([['','Select item']].concat(rowsOf(batN).map(function(it){ return [it[0],it[1].name+' (Qty '+fmtN(bal(it[1]))+')']; }))); sl.setAttribute('aria-label','Item'); return sl; }
 /* ---- batch journey: stages, health checks, transfer to stock, report ---- */
-var BSTG={C:['Planted','Rooting','Hardening','Potted','Ready to sell'],S:['Sown','Germinated','Seedling','Transplanted','Ready to sell'],P:['Received','Acclimatising','Ready to sell']};
-var BSRC_DATE={C:'Planted on',S:'Sown on',P:'Received on'};
 var HC_TXT={good:'Good',watch:'Needs attention',poor:'Poor'}, HC_COL={good:'var(--accent)',watch:'#c98a00',poor:'var(--warn)'};
 var batPk=[], batOpen={}, batHcOpen={}, batDraft={}, batPhP={}, batXfer=null;
-function batStages(x){ return BSTG[x.src||'C']; }
+function batStages(x){ return x.stg&&x.stg.length>1?x.stg:(BSTG[x.src||'C']||SRC_DEF.C.st); }
 function batStageIx(x){ var l=batStages(x), i=l.indexOf(x.stage); return i<0?0:i; }
 function batFinal(x){ return batStageIx(x)>=batStages(x).length-1; }
 function batHcList(x){ return Object.keys(x.hc||{}).map(function(k){ return Object.assign({id:k},x.hc[k]); }).sort(function(a,b){ return (a.at||0)-(b.at||0); }); }
@@ -6151,7 +6190,7 @@ function batCard(e,i,t,body){
   var id=e[0], x=e[1], c=mk('div','bcard'), r=mk('div','brow'), stg=batStages(x), ix=batStageIx(x), dd=x.ready?dayDiff(t,x.ready):null;
   c.style.background=RC_BG[i%2];
   r.append(mk('b',null,x.name), mk('b',null,fmtN(x.qty)+' plants')); c.append(r);
-  c.append(mk('div','pmeta',(SRC_NAME[x.src||'C'])+' · Age '+dayDiff(x.d,t)+' days · '+BSRC_DATE[x.src||'C']+' '+fmtIso(x.d)+((x.qty0&&x.qty0>0)?' · Survival '+Math.round(x.qty/x.qty0*100)+'%':'')));
+  c.append(mk('div','pmeta',((SRC_NAME[x.src||'C']||''))+' · Age '+dayDiff(x.d,t)+' days · '+(BSRC_DATE[x.src||'C']||'Started on')+' '+fmtIso(x.d)+((x.qty0&&x.qty0>0)?' · Survival '+Math.round(x.qty/x.qty0*100)+'%':'')));
   var ch=mk('div',null); ch.style.cssText='display:flex;flex-wrap:wrap;gap:4px;margin:4px 0';
   stg.forEach(function(sn,k){ var s=mk('span',null,sn); s.style.cssText='font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:10px;border:1px solid var(--line);'+(k<ix?'background:var(--accent);color:#fff;opacity:.75':(k===ix?'background:var(--accent);color:#fff':'color:var(--muted)')); ch.append(s); });
   c.append(ch);
@@ -6190,7 +6229,7 @@ function batCard(e,i,t,body){
   if(batOpen[id]){
     var h=mk('div',null); h.style.cssText='display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:6px';
     h.append(mk('b',null,'Journey'));
-    var ev=[{at:x.at||0,t:fmtIso(x.d)+' · '+BSRC_DATE[x.src||'C']+' · '+fmtN(x.qty0||x.qty)+' plants'+(x.by?' · By '+x.by:'')}];
+    var ev=[{at:x.at||0,t:fmtIso(x.d)+' · '+(BSRC_DATE[x.src||'C']||'Started on')+' · '+fmtN(x.qty0||x.qty)+' plants'+(x.by?' · By '+x.by:'')}];
     batShList(x).slice(1).forEach(function(s){ ev.push({at:s.at||0,t:fmtIso(s.d)+' · Moved to '+s.s+(s.by?' · By '+s.by:'')}); });
     hl.forEach(function(q){ ev.push({at:q.at||0,t:fmtIso(q.d)+' · Health: '+HC_TXT[q.st]+(q.lost?' · Lost '+q.lost:'')+(q.note?' · '+q.note:'')+(q.by?' · By '+q.by:''),ph:q.ph?q:null}); });
     ev.sort(function(a,b){ return a.at-b.at; }).forEach(function(q){ var l=mk('div','pmeta',q.t); h.append(l);
@@ -6207,7 +6246,7 @@ function batXferCard(body,t){
   var sl=mkSelect(opts), q=mkIn('number','Plants to move',x.qty), cs=mkIn('number','Cost per plant (optional)',x.cost||''), go=mk('button','btn primary','Transfer to stock'), cn=mk('button','btn','Cancel');
   var nm=normName(x.name), m=rows.filter(function(it){ return normName(it[1].name)===nm; })[0]; sl.value=x.item&&day&&day.rows&&day.rows[x.item]?x.item:(m?m[0]:'');
   q.min='1'; q.step='1'; q.max=x.qty; q.inputMode='numeric'; cs.min='0'; cs.step='any'; go.type='button'; cn.type='button';
-  f.append(mk('b',null,'Transfer to stock · '+x.name), mk('div','pmeta','Moves the plants into the stock register as saleable items, marked '+SRC_NAME[x.src||'C']+'.'), mkLbl('Stock item',sl), mkLbl('Plants to move (up to '+fmtN(x.qty)+')',q), mkLbl('Cost per plant (Rs.)',cs), mk('div','sline')); f.lastChild.append(go,cn);
+  f.append(mk('b',null,'Transfer to stock · '+x.name), mk('div','pmeta','Moves the plants into the stock register as saleable items, marked '+(SRC_NAME[x.src||'C']||'')+'.'), mkLbl('Stock item',sl), mkLbl('Plants to move (up to '+fmtN(x.qty)+')',q), mkLbl('Cost per plant (Rs.)',cs), mk('div','sline')); f.lastChild.append(go,cn);
   batPk.push([sl,'Stock item']);
   cn.addEventListener('click', function(){ batXfer=null; renderBat(); });
   go.addEventListener('click', async function(){
@@ -6229,7 +6268,7 @@ function batXferCard(body,t){
   body.append(f);
 }
 function renderBatB(body,t){
-  var f=mk('div','bcard'), src=mkSelect([['','Select source'],['C','Cuttings grown'],['S','Seed grown'],['P','Purchased plants']]), nmI=mkIn('text','Plant name (for example Rose)'), q=mkIn('number','Number of plants'), d1=mkIn('date',null,t), d2=mkIn('date'), cs=mkIn('number','Cost per plant (optional)'), nt=mkIn('text','Note (optional)'), ad=mk('button','btn primary','Start Batch'), dl=mkLbl('Planted on',d1);
+  var f=mk('div','bcard'), src=mkSelect([['','Select source']].concat(srcOrder().map(function(k){ return [k,SRC_NAME[k]]; }))), nmI=mkIn('text','Plant name (for example Rose)'), q=mkIn('number','Number of plants'), d1=mkIn('date',null,t), d2=mkIn('date'), cs=mkIn('number','Cost per plant (optional)'), nt=mkIn('text','Note (optional)'), ad=mk('button','btn primary','Start Batch'), dl=mkLbl('Planted on',d1);
   src.setAttribute('aria-label','Source'); nmI.maxLength=60; nmI.autocomplete='off'; q.min='1'; q.step='1'; q.inputMode='numeric'; cs.min='0'; cs.step='any'; nt.maxLength=60; ad.type='button';
   var lst=document.createElement('datalist'); lst.id='batNames'; rowsOf(batN).forEach(function(it){ var o=document.createElement('option'); o.value=it[1].name; lst.append(o); }); nmI.setAttribute('list','batNames');
   src.addEventListener('change', function(){ dl.firstChild.textContent=BSRC_DATE[src.value||'C']; });
@@ -6239,7 +6278,7 @@ function renderBatB(body,t){
     if(!src.value){ toast('Select the source: cuttings, seeds or purchased.'); return; } if(!nm){ toast('Enter the plant name.'); return; } if(!(n>0)){ toast('Enter the number of plants.'); return; } if(!d2.value){ toast('Pick the expected ready date.'); return; }
     var link=rowsOf(batN).filter(function(it){ return normName(it[1].name)===normName(nm); })[0];
     var id='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), pt={b:{}}, sid='s'+Date.now().toString(36), stg=BSTG[src.value][0], dd=d1.value||t, who=nameNow()||(isOwner?'Owner':'');
-    pt.b[id]={item:link?link[0]:'',name:nm,nid:batN,qty:n,qty0:n,src:src.value,stage:stg,d:dd,ready:d2.value,note:nt.value.trim(),by:who,at:Date.now(),st:'',sh:{}}; if(Number(cs.value)>0&&isOwner) pt.b[id].cost=Number(cs.value);
+    pt.b[id]={item:link?link[0]:'',name:nm,nid:batN,qty:n,qty0:n,src:src.value,stg:BSTG[src.value].slice(),stage:stg,d:dd,ready:d2.value,note:nt.value.trim(),by:who,at:Date.now(),st:'',sh:{}}; if(Number(cs.value)>0&&isOwner) pt.b[id].cost=Number(cs.value);
     pt.b[id].sh[sid]={s:stg,d:dd,by:who,at:Date.now()};
     if(await batSave(pt)) toast('Batch started');
   });
@@ -6249,17 +6288,17 @@ function renderBatB(body,t){
   body.append(mk('b',null,'Growing ('+open.length+')'));
   if(!open.length) body.append(mk('p','pmeta','No batches are growing.'));
   open.forEach(function(e,i){ batCard(e,i,t,body); });
-  if(closed.length){ body.append(mk('b',null,'Completed ('+closed.length+')')); closed.sort(function(a,b){ return (b[1].doneAt||0)-(a[1].doneAt||0); }).slice(0,15).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'); c.style.background=RC_BG[i%2]; c.append(mk('div','brow')); c.firstChild.append(mk('span',null,x.name+' · '+fmtN(x.moved||x.qty)+' plants'+(x.st==='moved'?' moved to stock':'')), mk('span','pmeta',SRC_NAME[x.src||'C'])); body.append(c); }); }
+  if(closed.length){ body.append(mk('b',null,'Completed ('+closed.length+')')); closed.sort(function(a,b){ return (b[1].doneAt||0)-(a[1].doneAt||0); }).slice(0,15).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'); c.style.background=RC_BG[i%2]; c.append(mk('div','brow')); c.firstChild.append(mk('span',null,x.name+' · '+fmtN(x.moved||x.qty)+' plants'+(x.st==='moved'?' moved to stock':'')), mk('span','pmeta',(SRC_NAME[x.src||'C']||''))); body.append(c); }); }
 }
 var batRepSrc='';
 function batRepData(n,srcF){
   var o={}, rows=[];
-  Object.keys(batData.b||{}).forEach(function(id){ var x=batData.b[id]; if(!x||(x.nid||'1')!==n) return; if(srcF&&(x.src||'C')!==srcF) return; var k=x.src||'C'; var s=o[k]=o[k]||{n:SRC_NAME[k],b:0,start:0,now:0,lost:0,moved:0}; var q0=x.qty0||x.qty+(x.moved||0); s.b++; s.start+=q0; s.now+=x.st?0:x.qty; s.moved+=x.moved||0; s.lost+=Math.max(0,q0-x.qty-(x.moved||0)); rows.push([id,x]); });
+  Object.keys(batData.b||{}).forEach(function(id){ var x=batData.b[id]; if(!x||(x.nid||'1')!==n) return; if(srcF&&(x.src||'C')!==srcF) return; var k=x.src||'C'; var s=o[k]=o[k]||{n:SRC_NAME[k]||'Source not set',b:0,start:0,now:0,lost:0,moved:0}; var q0=x.qty0||x.qty+(x.moved||0); s.b++; s.start+=q0; s.now+=x.st?0:x.qty; s.moved+=x.moved||0; s.lost+=Math.max(0,q0-x.qty-(x.moved||0)); rows.push([id,x]); });
   rows.sort(function(a,b){ return (a[1].st?1:0)-(b[1].st?1:0)||String(a[1].ready).localeCompare(String(b[1].ready)); });
-  return {sum:['C','S','P'].filter(function(k){ return o[k]; }).map(function(k){ return o[k]; }),rows:rows};
+  return {sum:Object.keys(o).sort().filter(function(k){ return o[k]; }).map(function(k){ return o[k]; }),rows:rows};
 }
 function renderBatR(body,t){
-  var sl=mkSelect([['','All sources'],['C','Cuttings grown'],['S','Seed grown'],['P','Purchased plants']],batRepSrc); sl.setAttribute('aria-label','Filter by source');
+  var sl=mkSelect([['','All sources']].concat(srcOrder().map(function(k){ return [k,SRC_NAME[k]]; })),batRepSrc); sl.setAttribute('aria-label','Filter by source');
   sl.addEventListener('change', function(){ batRepSrc=sl.value; renderBat(); }); body.append(mkLbl('Source',sl)); batPk.push([sl,'Source']);
   var d=batRepData(batN,batRepSrc), c=mk('div','bcard'); c.append(mk('b',null,'Batch Report · '+NURS[batN]));
   if(!d.sum.length) c.append(mk('p','pmeta','No batches yet.'));
@@ -6268,7 +6307,7 @@ function renderBatR(body,t){
   d.rows.forEach(function(e,i){
     var x=e[1], k=mk('div','bcard'), h=batHcList(x), lh=h[h.length-1]; k.style.background=RC_BG[i%2];
     var r=mk('div','brow'); r.append(mk('b',null,x.name), mk('b',null,x.st==='moved'?'In stock':batStages(x)[batStageIx(x)])); k.append(r);
-    k.append(mk('div','pmeta',SRC_NAME[x.src||'C']+' · '+BSRC_DATE[x.src||'C']+' '+fmtIso(x.d)+' · Age '+dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t)+' days · Plants '+fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty)+(x.moved?' · Moved '+fmtN(x.moved):'')));
+    k.append(mk('div','pmeta',(SRC_NAME[x.src||'C']||'')+' · '+(BSRC_DATE[x.src||'C']||'Started on')+' '+fmtIso(x.d)+' · Age '+dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t)+' days · Plants '+fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty)+(x.moved?' · Moved '+fmtN(x.moved):'')));
     k.append(mk('div','pmeta',(x.ready?'Expected ready '+fmtIso(x.ready)+' · ':'')+(lh?'Last health '+fmtIso(lh.d)+' '+HC_TXT[lh.st]:'No health check')+' · '+h.length+' checks'));
     body.append(k);
   });
@@ -6279,7 +6318,7 @@ function pdfBatList(doc,y,n,srcF){
   var d=batRepData(n,srcF), t=todayKey();
   if(!d.rows.length){ doc.text('No batches.', 40, y+14); return y+36; }
   doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:8,cellPadding:3}, head:[['Plant','Source','Started','Age (d)','Stage','Plants','Expected ready','Last health','Checks']],
-    body:d.rows.map(function(e){ var x=e[1], h=batHcList(x), lh=h[h.length-1]; return [x.name,SRC_NAME[x.src||'C'],fmtIso(x.d),dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t),x.st==='moved'?'In stock':batStages(x)[batStageIx(x)],fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty),x.ready?fmtIso(x.ready):'',lh?fmtIso(lh.d)+' '+HC_TXT[lh.st]:'None',h.length]; }), headStyles:{fillColor:[42,127,62]} });
+    body:d.rows.map(function(e){ var x=e[1], h=batHcList(x), lh=h[h.length-1]; return [x.name,(SRC_NAME[x.src||'C']||''),fmtIso(x.d),dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t),x.st==='moved'?'In stock':batStages(x)[batStageIx(x)],fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty),x.ready?fmtIso(x.ready):'',lh?fmtIso(lh.d)+' '+HC_TXT[lh.st]:'None',h.length]; }), headStyles:{fillColor:[42,127,62]} });
   return doc.lastAutoTable.finalY+14;
 }
 async function batPdf(){
@@ -6557,7 +6596,7 @@ function catFill(sel,val,req){
 }
 function catSync(){
   var sel=$('#catSel'), list=catList(), show=!!day&&list.length>0; sel.dataset.cat='1';
-  sel.hidden=!show; $('#catBtn').hidden=!(isOwner&&day);
+  sel.hidden=!show; $('#catBtn').hidden=!(isOwner&&day); $('#srcBtn').hidden=!(isOwner&&day);
   if(catFilter&&catFilter!=='-'&&!catName(catFilter)) catFilter='';
   sel.textContent=''; var o=mk('option',null,'All categories'); o.value=''; sel.append(o);
   list.forEach(function(c){ var x=mk('option',null,catName(c[0])); x.value=c[0]; sel.append(x); });
@@ -6599,6 +6638,49 @@ function catsRender(){
   prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
   ps.value=catMap[cur]&&!catMap[cur].p?cur:''; pickify(ps,'Add under'); ps._sync();
 }
+var sedId='';
+function srcUse(id){ var n=0; ((day&&day.rows)?Object.keys(day.rows):[]).forEach(function(k){ if(day.rows[k]&&day.rows[k].src===id&&!day.rows[k].removed) n++; }); Object.keys(batData.b||{}).forEach(function(k){ var x=batData.b[k]; if(x&&(x.src||'C')===id) n++; }); return n; }
+function srcsCurrent(){ var o={}; Object.keys(srcMap).forEach(function(k){ o[k]={n:srcMap[k].n,o:srcMap[k].o,st:srcMap[k].st}; }); Object.keys(SRC_DEF).forEach(function(k){ if(!srcMap[k]) o[k]={x:true}; }); return o; }
+function srcsRender(){
+  var box=$('#srcsList'); box.textContent='';
+  srcOrder().forEach(function(k,i,all){
+    var row=mk('div','sline'), nm=document.createElement('input'), eb=mk('button','btn small','Edit'), up=mk('button','btn small','Up'), dn=mk('button','btn small','Down'), del=mk('button','delx');
+    row.style.cssText='display:flex;gap:6px;align-items:center'; nm.type='text'; nm.readOnly=true; nm.value=srcMap[k].n; nm.style.cssText='flex:1;min-width:0;min-height:48px;cursor:pointer;background:color-mix(in srgb,#4caf50 24%,var(--card))';
+    [eb,up,dn].forEach(function(b){ b.type='button'; b.style.minHeight='44px'; });
+    up.disabled=i===0; dn.disabled=i===all.length-1;
+    nm.addEventListener('click', function(){ srcEdOpen(k); }); eb.addEventListener('click', function(){ srcEdOpen(k); });
+    function swap(j){ var a=all[i], b=all[j], p={srcs:{}}; p.srcs[a]={o:j+1}; p.srcs[b]={o:i+1}; saveSettings(p).then(function(ok){ if(ok){ srcMap[a].o=j+1; srcMap[b].o=i+1; srcApply({srcs:srcsCurrent()}); srcsRender(); } }); }
+    up.addEventListener('click', function(){ swap(i-1); }); dn.addEventListener('click', function(){ swap(i+1); });
+    del.type='button'; del.setAttribute('aria-label','Delete '+srcMap[k].n); del.style.cssText='min-width:44px;min-height:44px;justify-content:center'; del.innerHTML=CAT_BIN+'<span class="delt" hidden>Tap again</span>';
+    var dt=null; del.addEventListener('click', function(){
+      var t=del.querySelector('.delt'), u=srcUse(k); if(u){ toast(srcMap[k].n+' is used by '+u+(u===1?' item or batch':' items or batches')+'. Change those first.',4500); return; }
+      if(!del.classList.contains('on')){ del.classList.add('on'); t.hidden=false; dt=setTimeout(function(){ del.classList.remove('on'); t.hidden=true; },4000); return; }
+      clearTimeout(dt); var p={srcs:{}}; p.srcs[k]=SRC_DEF[k]?{x:true}:null;
+      saveSettings(p).then(function(ok){ if(ok){ delete srcMap[k]; srcApply({srcs:srcsCurrent()}); srcsRender(); toast('Source deleted'); } });
+    });
+    row.append(nm,up,dn,eb,del); box.append(row);
+  });
+}
+function srcEdOpen(id){ sedId=id; $('#sedName').value=srcMap[id].n; $('#sedStages').value=srcMap[id].st.join('\n'); $('#sedErr').textContent=''; var d=$('#dlgSrcEd'); if(!d.open) d.showModal(); }
+$('#sedCancel').addEventListener('click', function(){ $('#dlgSrcEd').close(); });
+$('#sedSave').addEventListener('click', async function(){
+  var v=$('#sedName').value.trim().replace(/\s+/g,' '), st=$('#sedStages').value.split('\n').map(function(x){ return x.trim().replace(/\s+/g,' '); }).filter(Boolean), err=$('#sedErr'); err.textContent='';
+  if(!v){ err.textContent='Enter a name.'; return; }
+  if(srcOrder().some(function(k){ return k!==sedId&&srcMap[k].n.toLowerCase()===v.toLowerCase(); })){ err.textContent='That source name already exists.'; return; }
+  if(st.length<2){ err.textContent='Enter at least two stages, one per line.'; return; }
+  var seen={}; for(var i=0;i<st.length;i++){ var k=st[i].toLowerCase(); if(seen[k]){ err.textContent='Stage names must be different: '+st[i]; return; } seen[k]=1; }
+  var p={srcs:{}}; p.srcs[sedId]={n:v,st:st};
+  if(await saveSettings(p)){ srcMap[sedId].n=v; srcMap[sedId].st=st; srcApply({srcs:srcsCurrent()}); $('#dlgSrcEd').close(); srcsRender(); renderAll(); toast('Source updated'); }
+});
+$('#srcsAdd').addEventListener('click', async function(){
+  var v=$('#srcsNew').value.trim().replace(/\s+/g,' '); if(!v||!isOwner) return;
+  if(srcOrder().some(function(k){ return srcMap[k].n.toLowerCase()===v.toLowerCase(); })){ toast('"'+v+'" already exists.'); return; }
+  var id='x'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={srcs:{}}; p.srcs[id]={n:v,o:srcOrder().length+1,st:['Started','Growing','Ready to sell']};
+  if(await saveSettings(p)){ srcMap[id]={n:v,o:p.srcs[id].o,st:p.srcs[id].st}; srcApply({srcs:srcsCurrent()}); $('#srcsNew').value=''; srcsRender(); toast('Source added. Tap Edit to set its stages.'); }
+});
+$('#srcsClose').addEventListener('click', function(){ $('#dlgSrcs').close(); });
+$('#srcBtn').addEventListener('click', function(){ if(!isOwner) return; srcsRender(); var d=$('#dlgSrcs'); if(!d.open) d.showModal(); });
+
 var cedId='';
 function catEdOpen(id){
   var c=catMap[id]; if(!c) return; cedId=id;
@@ -6675,6 +6757,7 @@ function applySettings(d){
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
   res = d.res||{};
+  srcApply(d); if($('#dlgSrcs')&&$('#dlgSrcs').open) srcsRender();
   catMap = d.cats||{}; minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
 }
 function applyCachedMeta(){
