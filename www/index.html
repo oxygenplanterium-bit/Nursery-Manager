@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:50 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:05 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -890,6 +890,7 @@ select:not([multiple]){pointer-events:none}
       <h2>Tools and resources</h2>
       <p class="pmeta">Add everything handed to supervisors. Each supervisor ticks the box for every item that is available with them.</p>
       <form class="addtask" id="fRes"><input type="text" id="resIn" maxlength="600" placeholder="Item, or several separated by commas" aria-label="Add tools and resources"><input type="number" id="resQty" min="0" max="99999" value="1" inputmode="numeric" aria-label="Quantity of each item"><select id="resTo" aria-label="Handed to" hidden></select><button class="btn primary" type="submit">Add</button></form>
+      <button class="btn small" id="resBulkBtn" type="button" style="align-self:flex-start;margin-top:8px">Add Many Items</button>
     </section>
     <div class="bar" id="resBar" hidden>
       <span class="tsum" id="rsum"></span>
@@ -1131,6 +1132,17 @@ select:not([multiple]){pointer-events:none}
     <p class="pmeta">If the work is finished, close the task now: add the report and the finish photo and press Mark Done. This is urgent.</p>
     <div class="actions"><button type="button" class="btn" id="tdAlStill">Still In Progress</button><button type="button" class="btn primary" id="tdAlClose">Close The Task Now</button></div>
   </div>
+</dialog>
+<dialog id="dlgResBulk">
+  <form id="fResBulk">
+    <h2>Add Many Items</h2>
+    <p class="pmeta">Type or paste one item per line. Write the quantity after the name, separated by a comma or a tab, for example "Spade, 5". A line with no quantity gets 1. Items already in the list are skipped.</p>
+    <label class="f"><span>Items</span><textarea id="rbText" rows="9" placeholder="Spade, 5&#10;Wheelbarrow, 2&#10;Secateurs, 10"></textarea></label>
+    <label class="f" id="rbToL" hidden><span>Handed to</span><select id="rbTo" aria-label="Handed to"></select></label>
+    <p class="pmeta" id="rbInfo"></p>
+    <p class="pmeta" id="rbErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="rbCancel">Cancel</button><button class="btn primary" type="submit" id="rbOk">Add All</button></div>
+  </form>
 </dialog>
 <dialog id="dlgResTo">
   <div class="dbody">
@@ -4209,6 +4221,49 @@ $('#fRes').addEventListener('submit', async function(e){
   });
   if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter an item first.'); return; }
   if(await saveSettings(patch)){ $('#resIn').value=''; $('#resQty').value='1'; $('#resTo').value=''; fillAssign($('#resTo'),''); toast(added+(added===1?' item added':' items added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):'')); }
+});
+
+
+function rbParse(txt){
+  var out=[];
+  String(txt||'').split(/\r?\n/).forEach(function(line){
+    line=line.trim(); if(!line) return;
+    var n=line, q=1, m=line.match(/^(.*?)\s*[\t,;]\s*(\d{1,5})\s*$/);
+    if(m&&m[1].trim()){ n=m[1]; q=Math.max(0,parseInt(m[2],10)||0); }
+    n=cleanName(n.replace(/[,;\t]+$/,'')); if(n) out.push({n:n,q:q});
+  });
+  return out;
+}
+function rbInfo(){
+  var l=rbParse($('#rbText').value), have={}, seen={}, add=0, skip=0;
+  resList().forEach(function(it){ if((it[1].nid||'1')===nursery) have[normName(it[1].n)]=1; });
+  l.forEach(function(x){ var k=normName(x.n); if(have[k]||seen[k]) skip++; else { seen[k]=1; add++; } });
+  $('#rbInfo').textContent=l.length?(add+(add===1?' item':' items')+' will be added'+(skip?'. '+skip+' skipped as already in the list.':'.')):'';
+  return {add:add,skip:skip};
+}
+$('#resBulkBtn').addEventListener('click', function(){
+  if(!isOwner) return;
+  var sups=teamList('sup'), sel=$('#rbTo'); sel.textContent=''; sups.forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; sel.append(o); });
+  $('#rbToL').hidden=!sups.length; $('#rbText').value=''; $('#rbInfo').textContent=''; $('#rbErr').textContent='';
+  var d=$('#dlgResBulk'); if(!d.open) d.showModal();
+});
+$('#rbText').addEventListener('input', rbInfo);
+$('#rbCancel').addEventListener('click', function(){ $('#dlgResBulk').close(); });
+$('#fResBulk').addEventListener('submit', async function(e){
+  e.preventDefault(); if(!isOwner) return;
+  var l=rbParse($('#rbText').value), have={}, maxO=0, patch={res:{}}, added=0, skipped=[];
+  if(!l.length){ $('#rbErr').textContent='Enter at least one item.'; return; }
+  resList().forEach(function(it){ if((it[1].nid||'1')===nursery) have[normName(it[1].n)]=1; maxO=Math.max(maxO,it[1].o||0); });
+  var to=$('#rbToL').hidden?'':$('#rbTo').value;
+  l.forEach(function(x){
+    var k=normName(x.n); if(have[k]){ skipped.push(x.n); return; }
+    have[k]=1; maxO++; added++;
+    patch.res['r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+added]={n:x.n, o:maxO, to:to, q:x.q, nid:nursery};
+  });
+  if(!added){ $('#rbErr').textContent='All of these items are already in the list.'; return; }
+  $('#rbOk').disabled=true;
+  var ok=await saveSettings(patch); $('#rbOk').disabled=false;
+  if(ok){ $('#dlgResBulk').close(); toast(added+(added===1?' item added':' items added')+(skipped.length?'. Skipped duplicates: '+skipped.slice(0,5).join(', ')+(skipped.length>5?'...':''):''),4000); }
 });
 
 /* ---------- customers and sales ---------- */
