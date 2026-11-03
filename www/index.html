@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:20 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:40 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4202,7 +4202,7 @@ function resLabRender(el,id,r,ed){
   var box=el._r&&el._r.lb; if(!box) return;
   var list=resLabList(r.nid||'1'), lab=r.lab||{};
   box.hidden=!list.length; if(!list.length) return;
-  var ae=document.activeElement; if(ae&&box.contains(ae)&&ae.tagName==='INPUT'&&ae.type==='number') return;
+  var ae=document.activeElement; if(ae&&box.contains(ae)&&ae.tagName==='INPUT'&&(ae.type==='number'||ae.type==='text')) return;
   var hid=!!labHidGet()[id], sig=JSON.stringify([list.map(function(it){ return it[0]+it[1].n; }),lab,!!ed,r.q,hid]); if(box._sig===sig) return; box._sig=sig;
   box.textContent='';
   var out=resLabOut(lab), tot=resLabIssued(lab);
@@ -4211,6 +4211,7 @@ function resLabRender(el,id,r,ed){
   sw.addEventListener('click', function(){ var o=labHidGet(); if(o[id]) delete o[id]; else o[id]=1; labHidSet(o); box._sig=''; resLabRender(el,id,r,ed); });
   box.append(hd);
   if(hid){ box.append(mk('div','pmeta','Issued to me: '+fmtN(r.q||0)+' \u00B7 With labour now: '+fmtN(out)+' \u00B7 Balance with me: '+fmtN(Math.max(0,(r.q||0)-out)))); box.lastChild.style.fontWeight='600'; return; }
+  var need=0;
   list.forEach(function(it){
     var lid=it[0], nm=it[1].n, x=lab[lid]||{}, on=x.i>0, row=mk('div',null), nl=mk('div',null,nm);
     row.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:2px 0;border-top:1px solid var(--line)'; nl.style.cssText='flex:1 1 100%;min-width:0;font-weight:600;overflow-wrap:anywhere';
@@ -4223,15 +4224,23 @@ function resLabRender(el,id,r,ed){
     var room=function(q){ return tot-(on?x.i:0)+q<=(r.q||0); };
     ic.addEventListener('change', function(){
       if(ic.checked){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); ic.checked=false; return; } resLabSave(id,lid,nm,{i:q,r:false,rq:null},r); }
-      else resLabSave(id,lid,nm,{i:0,r:false,rq:null},r);
+      else resLabSave(id,lid,nm,{i:0,r:false,rq:null,nt:null},r);
     });
-    qi.addEventListener('change', function(){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); qi.value=on?x.i:1; return; } resLabSave(id,lid,nm,x.r?{i:q,rq:Math.min(q,typeof x.rq==='number'?x.rq:q)}:{i:q},r); });
-    rc.addEventListener('change', function(){ if(rc.checked){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value===''?x.i:rq.value)))); resLabSave(id,lid,nm,{r:true,rq:q},r); } else resLabSave(id,lid,nm,{r:false,rq:null},r); });
-    rq.addEventListener('change', function(){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value)))); resLabSave(id,lid,nm,{rq:q},r); });
-    row.append(nl,il,qi,rl,rq); box.append(row);
+    qi.addEventListener('change', function(){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); qi.value=on?x.i:1; return; } resLabSave(id,lid,nm,x.r?{i:q,rq:Math.min(q,typeof x.rq==='number'?x.rq:q),nt:null}:{i:q},r); });
+    rc.addEventListener('change', function(){ if(rc.checked){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value===''?x.i:rq.value)))); resLabSave(id,lid,nm,q>=x.i?{r:true,rq:q,nt:null}:{r:true,rq:q},r); } else resLabSave(id,lid,nm,{r:false,rq:null,nt:null},r); });
+    rq.addEventListener('change', function(){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value)))); resLabSave(id,lid,nm,q>=x.i?{rq:q,nt:null}:{rq:q},r); });
+    row.append(nl,il,qi,rl,rq);
+    var short=on&&x.r&&(typeof x.rq==='number'?x.rq:x.i)<x.i;
+    if(short){
+      var nt=document.createElement('input'); nt.type='text'; nt.value=x.nt||''; nt.placeholder='Why not received back? (required)'; nt.disabled=!ed; nt.setAttribute('aria-label','Reason '+nm+' did not return it'); nt.style.cssText='flex:1 1 100%;min-height:32px;height:32px;padding:2px 8px;'+(x.nt?'':'border-color:var(--loss)');
+      nt.addEventListener('change', function(){ resLabSave(id,lid,nm,{nt:nt.value.trim()},r); });
+      row.append(nt); if(!x.nt) need++;
+    }
+    box.append(row);
   });
   var sm=mk('div','pmeta','Issued to me: '+fmtN(r.q||0)+' \u00B7 With labour now: '+fmtN(out)+' \u00B7 Balance with me: '+fmtN(Math.max(0,(r.q||0)-out)));
   sm.style.fontWeight='600'; box.append(sm);
+  if(need){ var w=mk('div','pmeta','Reason needed for '+need+' labour'+(need>1?'s':'')+' who did not return it.'); w.style.cssText='color:var(--loss);font-weight:600'; box.append(w); }
 }
 function updateRes(el,id,r,ed){
   var R=el._r;
