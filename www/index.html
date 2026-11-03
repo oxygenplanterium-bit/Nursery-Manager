@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 6:10 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 6:25 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6899,7 +6899,7 @@ setInterval(function(){
 
 
 /* ---------- calls: contact book, assigned groups, dialer, call reports ---------- */
-var ct={}, cg={}, callSub='ct', callQ='', callG='', callLs='', callSig='', callTimer=0;
+var ct={}, cg={}, callSub='ct', callQ='', callG='', callLs='', callLg='', callSig='', callTimer=0;
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
 function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
@@ -6935,7 +6935,7 @@ function callStart(cid){
   var c=ct[cid]; if(!c) return;
   if(!isOwner&&needSup()){ toast('Choose your name on the home screen first.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
-  callPendSet({id:callId(),c:cid,n:c.n,p:c.p,at:Date.now(),hid:0,by:whoNow(),sid:supId||''});
+  callPendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&cg[c.g]?cg[c.g].n:''),at:Date.now(),hid:0,by:whoNow(),sid:supId||''});
   var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
 }
 function callHidden(){ var p=callPendGet(); if(p&&!p.hid){ p.hid=Date.now(); callPendSet(p); } }
@@ -6944,7 +6944,7 @@ async function callBack(tries){
   if(!p.hid){ if(Date.now()-p.at>600000) callPendSet(null); return; }
   if(!db||!canWrite||!day){ if((tries||0)<20) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
   callPendSet(null);
-  var e={c:p.c,n:p.n,p:p.p,by:p.by||'',sid:p.sid||'',at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
+  var e={c:p.c,n:p.n,p:p.p,g:p.g||'',gn:p.gn||'',by:p.by||'',sid:p.sid||'',at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
   var o={}; o[p.id]=e; await clWrite(o);
   callRepOpen(p.id,e);
 }
@@ -6954,7 +6954,7 @@ window.addEventListener('pageshow', function(){ callBack(0); });
 function callRepOpen(id,e){
   var r=callDlg('dlgCallRep'), d=r[0], b=r[1];
   b.append(mk('h2',null,'Call Report'));
-  b.append(mk('p','pmeta',e.n+' · '+e.p+(e.d?' · About '+callDur(e.d):'')));
+  b.append(mk('p','pmeta',e.n+' · '+e.p+(clGroup(e)?' · '+clGroup(e):'')+(e.d?' · About '+callDur(e.d):'')));
   var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
   CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=e.o||'';
   var tx=document.createElement('textarea'); tx.rows=5; tx.maxLength=600; tx.value=e.r||''; tx.placeholder='Short summary of the conversation';
@@ -6972,6 +6972,7 @@ function callRepOpen(id,e){
   });
   if(!d.open) d.showModal();
 }
+function clGroup(e){ if(e.gn) return e.gn; var c=ct[e.c]; return c&&c.g&&cg[c.g]?cg[c.g].n:''; }
 function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
 /* owner dialogs */
 function ctEdit(id){
@@ -7057,7 +7058,7 @@ function renderCall(){
   var body=$('#callBody'); if(!body) return;
   var ae=document.activeElement; if(ae&&body.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')) return;
   if(!isOwner&&callSub==='gr') callSub='ct';
-  var sig=JSON.stringify([callSub,callQ,callG,callLs,isOwner,supId,needSup(),ct,cg,clData(),selDate,Object.keys(team.sup||{}).map(function(k){ return k+(team.sup[k].n||'')+(team.sup[k].x?1:0); })]);
+  var sig=JSON.stringify([callSub,callQ,callG,callLs,callLg,isOwner,supId,needSup(),ct,cg,clData(),selDate,Object.keys(team.sup||{}).map(function(k){ return k+(team.sup[k].n||'')+(team.sup[k].x?1:0); })]);
   if(sig===callSig) return; callSig=sig;
   var seg=$('#callSeg'); seg.textContent=''; seg.style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
   [['ct','Contacts'],['gr','Groups'],['lg','Call Log']].forEach(function(s){
@@ -7120,6 +7121,12 @@ function callViewLg(body){
     if(callLs) all=all.filter(function(it){ return it[1].by===callLs; });
   }
   all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
+  var gset={}; all.forEach(function(it){ var g=clGroup(it[1]); if(g) gset[g]=1; });
+  var gf=document.createElement('select'), ga=mk('option',null,'All groups'); ga.value=''; gf.append(ga);
+  Object.keys(gset).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; gf.append(o); });
+  var gn0=mk('option',null,'No group'); gn0.value='-'; gf.append(gn0);
+  gf.value=callLg; gf.addEventListener('change', function(){ callLg=gf.value; callSig=''; renderCall(); }); body.append(callFld('Show group',gf));
+  if(callLg) all=all.filter(function(it){ var g=clGroup(it[1]); return callLg==='-' ? !g : g===callLg; });
   var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
   body.append(mk('p','pmeta',fmtIso(selDate)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' report'+(pd===1?'':'s')+' pending'+(isOwner?'. Change the date from the home screen.':'')));
   if(!all.length){ body.append(mk('p','pmeta','No calls on this day.')); return; }
@@ -7127,7 +7134,7 @@ function callViewLg(body){
   all.forEach(function(it){
     var id=it[0], e=it[1], el=mk('div','card'); el.style.cssText='display:flex;flex-direction:column;gap:3px;padding:10px 12px';
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px'; h.append(mk('b',null,e.n),mk('span','pmeta',fmtTime(e.at))); el.append(h);
-    el.append(mk('div','pmeta',[e.p,'By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
+    el.append(mk('div','pmeta',[e.p,clGroup(e)?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ var oc=mk('div',null,callOutName(e.o)); oc.style.fontWeight='600'; el.append(oc); if(e.r) el.append(mk('div',null,e.r)); if(e.nx) el.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
     else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(mine||(isOwner&&e.by===whoNow())) el.append(callBtn('Write Report',function(){ callRepOpen(id,e); })); }
     box.append(el);
