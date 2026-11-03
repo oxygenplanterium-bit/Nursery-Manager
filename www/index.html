@@ -1064,6 +1064,18 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
+<dialog id="dlgCatEd">
+  <div class="dbody">
+    <h2 id="cedHead">Edit Category</h2>
+    <label class="f"><span>Name</span><input type="text" id="cedName" maxlength="40" autocomplete="off"></label>
+    <label class="f" id="cedParL"><span>Under</span><select id="cedPar"></select></label>
+    <p class="pmeta" id="cedNote" hidden>This main category has sub-categories, so it cannot be moved under another category. Move or delete its sub-categories first.</p>
+    <div class="sline" style="display:flex;gap:8px"><button type="button" class="btn small" id="cedUp">Move up</button><button type="button" class="btn small" id="cedDown">Move down</button></div>
+    <p class="pmeta" id="cedErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="cedCancel">Cancel</button><button type="button" class="btn primary" id="cedSave">Save</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgAdd">
   <form id="fAdd">
     <h2 id="addHead">Add New Item</h2>
@@ -6561,7 +6573,7 @@ function catsRender(){
   function line(c,sub,parent,hasSubs){
     var row=mk('div','sline'), inp=document.createElement('input'), del=mk('button','delx'), dt=null;
     row.style.cssText='display:flex;gap:8px;align-items:center'+(sub?';margin-left:20px':'');
-    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0;min-height:48px;background:'+(sub?'color-mix(in srgb,#a0724a 26%,var(--card))':'color-mix(in srgb,#4caf50 24%,var(--card))'); inp.setAttribute('aria-label',sub?'Sub-category name':'Category name');
+    inp.type='text'; inp.maxLength=40; inp.value=c[1].n; inp.style.cssText='flex:1;min-width:0;min-height:48px;background:'+(sub?'color-mix(in srgb,#a0724a 26%,var(--card))':'color-mix(in srgb,#4caf50 24%,var(--card))'); inp.setAttribute('aria-label',sub?'Sub-category name':'Category name'); inp.readOnly=true; inp.style.cursor='pointer'; var eb=mk('button','btn small','Edit'); eb.type='button'; eb.style.cssText='flex:0 0 auto;min-height:44px'; eb.setAttribute('aria-label','Edit '+c[1].n); var openEd=function(){ catEdOpen(c[0]); }; eb.addEventListener('click', openEd); inp.addEventListener('click', openEd);
     inp.addEventListener('change', async function(){ var v=inp.value.trim().replace(/\s+/g,' '); if(!v){ inp.value=c[1].n; return; } var dp=catDup(v,c[0]); if(dp){ toast('"'+dp[1].n+'" already exists'+(dp[1].p?' under '+catMap[dp[1].p].n:' as a main category')+'.',4000); inp.value=c[1].n; return; } var p={cats:{}}; p.cats[c[0]]={n:v}; if(await saveSettings(p)){ catMap[c[0]].n=v; renderAll(); catsRender(); } });
     del.type='button'; del.setAttribute('aria-label','Delete '+c[1].n); del.style.cssText='min-width:44px;min-height:44px;justify-content:center'; del.innerHTML=CAT_BIN+'<span class="delt" hidden>Tap again</span>';
     del.addEventListener('click', function(){
@@ -6577,8 +6589,8 @@ function catsRender(){
       var ar=mk('button','parr catar',catOpen[c[0]]?'\u25be':'\u25b8'); ar.type='button'; ar.style.cssText='flex:0 0 56px';
       ar.setAttribute('aria-expanded',catOpen[c[0]]?'true':'false'); ar.setAttribute('aria-label',(catOpen[c[0]]?'Hide':'Show')+' sub-categories of '+c[1].n);
       ar.addEventListener('click', function(){ catOpen[c[0]]=!catOpen[c[0]]; catsRender(); });
-      row.append(inp,ar,del);
-    } else row.append(inp,del);
+      row.append(inp,ar,eb,del);
+    } else row.append(inp,eb,del);
     (curGrp||box).append(row);
   }
   prim.forEach(function(c){ var subs=catSubs(c[0]); curGrp=mk('div','cgrp'); box.append(curGrp); line(c,false,null,subs.length>0); if(catOpen[c[0]]) subs.forEach(function(x){ line(x,true,c[0],false); }); });
@@ -6587,6 +6599,35 @@ function catsRender(){
   prim.forEach(function(c){ var o=mk('option',null,c[1].n); o.value=c[0]; ps.append(o); });
   ps.value=catMap[cur]&&!catMap[cur].p?cur:''; pickify(ps,'Add under'); ps._sync();
 }
+var cedId='';
+function catEdOpen(id){
+  var c=catMap[id]; if(!c) return; cedId=id;
+  $('#cedHead').textContent='Edit '+(c.p?'Sub-Category':'Category'); $('#cedName').value=c.n; $('#cedErr').textContent='';
+  var par=$('#cedPar'), hasSubs=!c.p&&catSubs(id).length>0; par.textContent='';
+  var o0=mk('option',null,'Nothing (main category)'); o0.value=''; par.append(o0);
+  catPrimaries().forEach(function(x){ if(x[0]!==id){ var o=mk('option',null,x[1].n); o.value=x[0]; par.append(o); } });
+  par.value=c.p||''; par.disabled=hasSubs; $('#cedNote').hidden=!hasSubs;
+  pickify(par,'Under'); par._sync(); var pb=$('#cedParL .pickbtn'); if(pb) pb.disabled=hasSubs;
+  var d=$('#dlgCatEd'); if(!d.open) d.showModal();
+}
+function catSibs(id){ var c=catMap[id]; return c.p?catSubs(c.p):catPrimaries(); }
+async function catMove(dir){
+  var id=cedId, l=catSibs(id), i=-1; l.forEach(function(x,k){ if(x[0]===id) i=k; }); var j=i+dir; if(i<0||j<0||j>=l.length){ toast(dir<0?'Already first.':'Already last.'); return; }
+  var a=l[i][0], b=l[j][0], p={cats:{}}; p.cats[a]={o:j+1}; p.cats[b]={o:i+1};
+  if(await saveSettings(p)){ catMap[a].o=j+1; catMap[b].o=i+1; catsRender(); renderAll(); toast('Moved'); }
+}
+$('#cedUp').addEventListener('click', function(){ catMove(-1); });
+$('#cedDown').addEventListener('click', function(){ catMove(1); });
+$('#cedCancel').addEventListener('click', function(){ $('#dlgCatEd').close(); });
+$('#cedSave').addEventListener('click', async function(){
+  var c=catMap[cedId]; if(!c) return;
+  var v=$('#cedName').value.trim().replace(/\s+/g,' '), np=$('#cedPar').value, err=$('#cedErr'); err.textContent='';
+  if(!v){ err.textContent='Enter a name.'; return; }
+  var dp=catDup(v,cedId); if(dp){ err.textContent='"'+dp[1].n+'" already exists'+(dp[1].p?' under '+catMap[dp[1].p].n:' as a main category')+'.'; return; }
+  var ch={n:v}; if((c.p||'')!==np){ ch.p=np||null; ch.o=(np?catSubs(np):catPrimaries()).length+1; }
+  var p={cats:{}}; p.cats[cedId]=ch;
+  if(await saveSettings(p)){ c.n=v; if('p' in ch){ if(ch.p) c.p=ch.p; else delete c.p; c.o=ch.o; if(np) catOpen[np]=true; } $('#dlgCatEd').close(); catsRender(); renderAll(); toast('Category updated'); }
+});
 $('#catBtn').addEventListener('click', function(){ if(!isOwner) return; catsRender(); $('#catsNew').value=''; var d=$('#dlgCats'); if(!d.open) d.showModal(); });
 $('#catsClose').addEventListener('click', function(){ $('#dlgCats').close(); });
 $('#catsAdd').addEventListener('click', async function(){
