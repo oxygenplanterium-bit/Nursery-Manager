@@ -3779,8 +3779,9 @@ function resMsgUpdate(){
   var bx=$('#resMsg'); if(!bx) return; resAckSubscribe();
   var l=resPending(); bx.hidden=!l.length; if(!l.length) return;
   var t=$('#resMsgTbl'); t.textContent='';
-  var hr=document.createElement('tr'); ['Sl.','Resource','Qty','Nursery'].forEach(function(h){ var th=mk('th',null,h); th.style.cssText='text-align:left;padding:6px 6px;border-bottom:2px solid var(--line)'; hr.append(th); }); t.append(hr);
-  l.forEach(function(it,i){ var r=it[1], tr=document.createElement('tr'); [i+1,r.n,fmtN(r.q||0),NURS[r.nid||'1']||''].forEach(function(v,k){ var td=mk('td',null,String(v)); td.style.cssText='padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top'+(k===2?';text-align:center':''); tr.append(td); }); t.append(tr); });
+  var multi=l.some(function(it){ return (it[1].nid||'1')!==(l[0][1].nid||'1'); });
+  var hr=document.createElement('tr'); ['Sl.','Resource','Qty'].forEach(function(h){ var th=mk('th',null,h); th.style.cssText='text-align:left;padding:6px 6px;border-bottom:2px solid var(--line)'; hr.append(th); }); t.append(hr);
+  l.forEach(function(it,i){ var r=it[1], tr=document.createElement('tr'); [i+1,r.n+(multi?' ('+(NURS[r.nid||'1']||'')+')':''),fmtN(r.q||0)].forEach(function(v,k){ var td=mk('td',null,String(v)); td.style.cssText='padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top'+(k===2?';text-align:center':''); tr.append(td); }); t.append(tr); });
   $('#resMsgSub').textContent=l.length+(l.length===1?' resource has':' resources have')+' been added and assigned to you.';
 }
 $('#resMsgBtn').addEventListener('click', async function(){
