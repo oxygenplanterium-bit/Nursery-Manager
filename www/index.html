@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:55 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2636,7 +2636,7 @@ $('#sopStart').addEventListener('click', async function(){
   if(!usePh.length&&sp.ps!==false){ toast('Take at least one start photo first.'); return; }
   if(labourNames(nursery).length>0&&!sopAsgSel.length){ toast('Select who the task is assigned to.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
-  sopBusy=true;
+  sopBusy=true; alAuto();
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}}, now=Date.now();
   p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), ast:now, re:sp.pe!==false, sop:sv, sn:sp.n, ss:sp.st.slice(), sx:sp.d||''}; if(usePh.length) p.td[id].pb=usePh.length;
   var po={}; usePh.forEach(function(d,i){ po[i===0?'b':'b'+(i+1)]=d; });
@@ -2753,6 +2753,11 @@ function alReqRender(){
     row.append(mk('div',null,(a.n||'Supervisor')+' asked to turn off phone alerts at '+fmtTime(a.at)+'.'),act); box.append(row);
   });
 }
+function alAuto(){
+  if(isOwner||chatNotifOn()||!db) return;
+  if(window.Notification&&Notification.permission==='denied') return;
+  chatNotifEnable().then(alNotifBtn,function(){});
+}
 function alNotifBtn(){
   alReqSub(); var b=$('#alNotifBtn'); if(!b) return; var q=!isOwner&&supId&&alReq[supId];
   b.textContent=chatNotifOn()?(q&&q.st==='p'?'Waiting for owner approval':(isOwner?'Turn off phone alerts':'Ask owner to turn off alerts')):'Turn on phone alerts';
@@ -2821,7 +2826,7 @@ $('#fTd').addEventListener('submit', async function(e){
   var err=$('#tdErr'), pick=$('#tdPick').value, name=cleanName($('#tdName').value);
   if(!name){ err.textContent='Enter the task name or choose an allotted task.'; return; }
   if(needSup()){ err.textContent='Choose your name at the top first.'; return; }
-  err.textContent='';
+  err.textContent=''; alAuto();
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
