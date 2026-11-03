@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:20 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:35 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2292,7 +2292,7 @@ function makeTd(id){
   del.addEventListener('click', function(){ arm(del,'td'+id,'Delete', function(){ if(!editable()) return; var p={td:{}}; p.td[id]=null; save(p); try{ db.doc('photos/'+id).delete().catch(function(){}); }catch(e){} }); });
   var phAs=[], phL=mk('label','btn small'), phI=document.createElement('input'), phT=mk('span',null,'Take photo after finishing'), phV=mk('button','btn small','View photos'), phM=mk('div','phf'), thr=mk('div');
   phI.type='file'; phI.accept='image/*'; phI.setAttribute('capture','environment'); phI.style.display='none'; phL.style.cssText='cursor:pointer;align-self:flex-start'; phL.append(phT,phI);
-  phM.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start'; thr.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin:4px 0'; phV.type='button';
+  phM.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start'; thr.style.cssText='display:flex;flex-direction:column;gap:10px;align-items:stretch;margin:4px 0'; phV.type='button';
   function phDraw(){
     phM.textContent='';
     phAs.forEach(function(d,i){
@@ -2490,11 +2490,13 @@ function phThumbs(box,id,x){
   var key=id+':'+(x.pb||0)+':'+(x.pa||0);
   if(!(x.pb||x.pa)){ box.textContent=''; box._k=''; return; }
   var draw=function(d){
-    box.textContent='';
+    box.textContent=''; box.style.cssText='display:flex;flex-direction:column;gap:10px;flex-wrap:nowrap';
+    var rows={b:null,a:null};
     [['b','Start photo'],['b2','Start photo 2'],['b3','Start photo 3'],['b4','Start photo 4'],['b5','Start photo 5'],['a','Finish photo'],['a2','Finish photo 2'],['a3','Finish photo 3'],['a4','Finish photo 4'],['a5','Finish photo 5']].forEach(function(q){
       if(!d[q[0]]) return;
       var f=mk('figure'), im=document.createElement('img'); im.src=d[q[0]]; im.alt=q[1]; im.addEventListener('click', function(){ zoomOpen(d[q[0]],q[1]); });
-      f.append(im, mk('figcaption',null,q[1])); box.append(f);
+      f.append(im, mk('figcaption',null,q[1]));
+      var g=q[0].charAt(0); if(!rows[g]){ rows[g]=mk('div'); rows[g].style.cssText='display:flex;gap:10px;flex-wrap:wrap'; box.append(rows[g]); } rows[g].append(f);
     });
   };
   if(phCache[key]){ if(box._k!==key){ box._k=key; draw(phCache[key]); } return; }
