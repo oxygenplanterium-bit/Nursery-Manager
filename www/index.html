@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:25 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:45 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -978,7 +978,7 @@ select:not([multiple]){pointer-events:none}
 <dialog id="dlgTagEd">
   <form id="fTagEd">
     <h2>Edit Tag</h2>
-    <p class="pmeta">The new name replaces this tag on every stock item that has it.</p>
+    <p class="pmeta">The new name replaces this tag on every stock item that has it, in all days including past days.</p>
     <label class="f"><span>Tag name</span><input type="text" id="tagEdName" maxlength="24" autocomplete="off"></label>
     <p class="pmeta" id="tagEdErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="tagEdCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
@@ -6848,19 +6848,32 @@ function tagSync(){
 var tagEdOld='';
 function tagEdOpen(t){ tagEdOld=t; $('#tagEdName').value=t; $('#tagEdErr').textContent=''; var d=$('#dlgTagEd'); if(!d.open) d.showModal(); setTimeout(function(){ try{ $('#tagEdName').focus(); $('#tagEdName').select(); }catch(e){} },50); }
 async function tagApply(oldT,newT){
-  if(!isOwner||!day||!editable()){ toast('Tags can only be changed on the current day.'); return false; }
-  var k=oldT.toLowerCase(), p={rows:{}}, n=0;
-  Object.keys(day.rows||{}).forEach(function(id){
-    var r=day.rows[id]; if(!r||!r.tags||!r.tags.length) return;
-    if(!r.tags.some(function(t){ return t.toLowerCase()===k; })) return;
-    var seen={}, out=[];
-    r.tags.forEach(function(t){ var v=t.toLowerCase()===k?newT:t; if(!v) return; var kk=v.toLowerCase(); if(!seen[kk]){ seen[kk]=1; out.push(v); } });
-    p.rows[id]={tags:out}; n++;
-  });
-  if(!n){ toast('No item has that tag.'); return false; }
+  if(!isOwner||!db){ return false; }
+  var k=oldT.toLowerCase(), nd=0, ni=0, fail=false, docs;
+  try{ docs=await db.list('days/'); }catch(e){ toast('Could not load the past days. Check your internet and try again.',4000); return false; }
+  toast('Updating all days...',2000);
+  for(var di=0;di<docs.length;di++){
+    var d=docs[di].data||{}, rows=d.rows||{}, p={rows:{}}, n=0;
+    Object.keys(rows).forEach(function(id){
+      var r=rows[id]; if(!r||!r.tags||!r.tags.length) return;
+      if(!r.tags.some(function(t){ return t.toLowerCase()===k; })) return;
+      var seen={}, out=[];
+      r.tags.forEach(function(t){ var v=t.toLowerCase()===k?newT:t; if(!v) return; var kk=v.toLowerCase(); if(!seen[kk]){ seen[kk]=1; out.push(v); } });
+      p.rows[id]={tags:out}; n++;
+    });
+    if(!n) continue;
+    try{
+      await db.doc(docs[di].path).update(p); nd++; ni+=n;
+      var dk=docs[di].path.slice(5), cd=cache.days&&cache.days[dk]; if(cd&&cd.rows) Object.keys(p.rows).forEach(function(id){ if(cd.rows[id]) cd.rows[id].tags=p.rows[id].tags; });
+    }catch(e){ fail=true; }
+  }
   if(tagFilter&&tagFilter.toLowerCase()===k) tagFilter=newT||'';
-  var ok=await save(p); if(ok){ try{ $('#dlgPick').close(); }catch(e){} toast(newT?'Tag renamed on '+n+(n===1?' item':' items'):'Tag deleted from '+n+(n===1?' item':' items')); }
-  return ok;
+  try{ cacheSave(); }catch(e){}
+  try{ $('#dlgPick').close(); }catch(e){}
+  if(!nd&&!fail){ toast('No item has that tag.'); return false; }
+  renderAll();
+  toast((fail?'Some days could not be updated. ':'')+(newT?'Tag renamed on '+ni+(ni===1?' item':' items'):'Tag deleted from '+ni+(ni===1?' item':' items'))+' in '+nd+(nd===1?' day':' days'),4000);
+  return !fail;
 }
 $('#tagEdCancel').addEventListener('click', function(){ $('#dlgTagEd').close(); });
 $('#fTagEd').addEventListener('submit', async function(e){
