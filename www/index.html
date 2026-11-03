@@ -544,6 +544,7 @@ select:not([multiple]){pointer-events:none}
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button class="tab" id="tabStock" role="tab" aria-selected="true">Stock</button>
     <button class="tab" id="tabTasks" role="tab" aria-selected="false">Tasks</button>
+    <button class="tab" id="tabSop" type="button" role="tab" aria-selected="false">SOP</button>
     <button class="tab" id="tabAtt" role="tab" aria-selected="false">Attendance</button>
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
@@ -615,20 +616,7 @@ select:not([multiple]){pointer-events:none}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
-    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subSop" type="button" role="tab" aria-selected="false">SOP</button><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Start</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Done</button></div>
-    <div id="taskSop" style="display:flex;flex-direction:column;gap:14px" hidden>
-      <section class="card team" id="sopCard">
-        <h2>SOP checklists</h2>
-        <p class="pmeta">Choose a checklist and read its steps, select who is assigned, take the start photo, then start it. Every step must be ticked before the task can be marked done.</p>
-        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
-        <p class="pmeta" id="sopEmpty" hidden>No SOP checklists yet. The owner can add them here.</p>
-        <label class="f" id="tdSopL" hidden><span>SOP checklist</span><select id="tdSop" aria-label="SOP checklist"></select></label>
-        <div id="sopDet" class="bcard" hidden style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:6px"></div>
-        <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="sopAsg" aria-expanded="true">Hide</button></div><div id="sopAsg" class="asgbody"></div></div>
-        <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photos :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><div class="thumbs" id="sopThumbs"></div><p class="pmeta" id="sopPhCnt">No photos yet. You can add up to 5.</p></div></div>
-        <button type="button" class="btn primary" id="sopStart" hidden>Start SOP</button>
-      </section>
-    </div>
+    <div class="tabs" role="tablist" aria-label="Task views" id="taskSubs"><button class="tab" id="subDone" type="button" role="tab" aria-selected="false">Tasks Start</button><button class="tab" id="subAllot" type="button" role="tab" aria-selected="true">Tasks Done</button></div>
     <div id="taskAllot" style="display:flex;flex-direction:column;gap:14px">
     <form class="card addtask" id="fTask" hidden>
       <label for="taskTitle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">New task</label>
@@ -688,6 +676,40 @@ select:not([multiple]){pointer-events:none}
       <p class="pmeta" id="sugEmpty">No suggestions yet.</p>
       <div class="tl" id="sugList"></div>
     </section>
+  </section>
+
+  <section class="pane" id="paneSop" role="tabpanel" aria-labelledby="tabSop" hidden>
+    <label class="f card" style="padding:10px 14px"><span>Nursery</span>
+      <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
+    </label>
+    <div class="tabs" role="tablist" aria-label="SOP views"><button class="tab" id="subSopStart" type="button" role="tab" aria-selected="true">SOP Start</button><button class="tab" id="subSopDone" type="button" role="tab" aria-selected="false">SOP Done</button></div>
+    <div id="sopPStart" style="display:flex;flex-direction:column;gap:14px">
+      <section class="card team" id="sopCard">
+        <h2>SOP start</h2>
+        <p class="pmeta">Choose a checklist and read its steps, select who is assigned, take the start photo, then start it. Every step must be ticked before the task can be marked done.</p>
+        <button type="button" class="btn small" id="sopMng" hidden>Manage SOP checklists</button>
+        <p class="pmeta" id="sopEmpty" hidden>No SOP checklists yet. The owner can add them here.</p>
+        <label class="f" id="tdSopL" hidden><span>SOP checklist</span><select id="tdSop" aria-label="SOP checklist"></select></label>
+        <div id="sopDet" class="bcard" hidden style="border:1px solid var(--line);border-radius:12px;padding:10px;gap:6px"></div>
+        <div class="asgwrap" id="sopAsgWrap" hidden><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="sopAsg" aria-expanded="true">Hide</button></div><div id="sopAsg" class="asgbody"></div></div>
+        <div class="asgwrap" id="sopWrap" hidden><div class="asghead"><b>Start photos :</b><label class="btn small" style="cursor:pointer">Take photo<input type="file" id="sopPh" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><div class="thumbs" id="sopThumbs"></div><p class="pmeta" id="sopPhCnt">No photos yet. You can add up to 5.</p></div></div>
+        <button type="button" class="btn primary" id="sopStart" hidden>Start SOP</button>
+      </section>
+      <section class="card team" id="sopRunBox">
+        <h2>SOPs in progress</h2>
+        <div class="bar" id="sopBar" hidden><span class="tsum" id="sopSum"></span></div>
+        <p class="pmeta" id="sopRunEmpty">No SOP is in progress.</p>
+        <div class="tl" id="sopRunList"></div>
+      </section>
+    </div>
+    <div id="sopPDone" style="display:flex;flex-direction:column;gap:14px" hidden>
+      <section class="card team" id="sopFinBox">
+        <h2>Completed SOPs</h2>
+        <p class="pmeta">SOPs that were started and marked done move here with their time, assigned people, photos, checklist and report.</p>
+        <p class="pmeta" id="sopFinEmpty">No SOP has been completed on this day.</p>
+        <div class="tl" id="sopFinList"></div>
+      </section>
+    </div>
   </section>
 
   <section class="pane" id="paneAtt" role="tabpanel" aria-labelledby="tabAtt" hidden>
@@ -1692,17 +1714,17 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',sop:'#tabSop',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
   $('#tabChat').hidden=false; chatSubscribe(); if(chatSubbed) chatBadge(); else chatPill(0);
   $('#tabTeam').hidden=!isOwner; $('#invRstBtn').hidden=!isOwner; $('#accRstBtn').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
   if(tab==='acc' && !isOwner) tab='';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneSop').hidden=tab!=='sop'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
   $('.acts').hidden=false;
-  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs'));
-  var TT={stock:'Stock',tasks:'Tasks',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
-  var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='att'||tab==='res'||tab==='cs')); }
+  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs'));
+  var TT={stock:'Stock',tasks:'Tasks',sop:'SOP',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
+  var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs')); }
   document.body.style.overflow=(tab||fdOpen)?'hidden':'';
   if(tab && !winPushed){ winPushed=true; try{ history.pushState({win:1},''); }catch(e){} }
   if(!tab && winPushed){ winPushed=false; }
@@ -2070,7 +2092,8 @@ function renderTasks(){
 }
 
 /* ---------- tasks done: start, finish, time taken and report ---------- */
-var taskSub='done', tdEls=new Map(), tdEditing={};
+var taskSub='done', sopSub='start', tdEls=new Map(), tdEditing={};
+function isSopTd(x){ return !!(x&&((x.ss&&x.ss.length)||x.sop)); }
 function fmtDur(ms){
   var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
   return h ? h+' h '+('0'+m).slice(-2)+' min' : (m ? m+' min '+('0'+sec).slice(-2)+' s' : sec+' s');
@@ -2479,7 +2502,7 @@ $('#sopStart').addEventListener('click', async function(){
   p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), ast:now, re:sp.pe!==false, sop:sv, sn:sp.n, ss:sp.st.slice(), sx:sp.d||''}; if(usePh.length) p.td[id].pb=usePh.length;
   var po={}; usePh.forEach(function(d,i){ po[i===0?'b':'b'+(i+1)]=d; });
   try{ if(usePh.length) await phSaveMany(id,po); }catch(e){ toast('The photos could not be saved. Check your internet and try again.'); sopBusy=false; return; }
-  if(await save(p)){ sopPhotos=[]; sopPhotoDraw(); $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; taskSub='done'; renderTasks(); toast('SOP task started'); }
+  if(await save(p)){ sopPhotos=[]; sopPhotoDraw(); $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; sopSub='start'; renderTasks(); toast('SOP task started'); }
   sopBusy=false;
 });
 function tdStartState(){
@@ -2489,9 +2512,12 @@ function tdStartState(){
 }
 function renderTd(){
   var sub=taskSub;
-  $('#subSop').setAttribute('aria-selected', sub==='sop'); $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
-  $('#taskSop').hidden=sub!=='sop'; $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
-  var ed=editable(), allItems=tdItems(), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
+  if(sub==='sop') sub=taskSub='done';
+  $('#subAllot').setAttribute('aria-selected', sub==='allot'); $('#subDone').setAttribute('aria-selected', sub==='done');
+  $('#taskAllot').hidden=sub!=='allot'; $('#taskDone').hidden=sub!=='done';
+  $('#subSopStart').setAttribute('aria-selected', sopSub==='start'); $('#subSopDone').setAttribute('aria-selected', sopSub==='done');
+  $('#sopPStart').hidden=sopSub!=='start'; $('#sopPDone').hidden=sopSub!=='done';
+  var ed=editable(), everyItem=tdItems(), allItems=everyItem.filter(function(it){ return !isSopTd(it[1]); }), sopItems=everyItem.filter(function(it){ return isSopTd(it[1]); }), items=allItems.filter(function(it){ return !it[1].en; }), fin=allItems.filter(function(it){ return !!it[1].en; }), list=$('#tdList'), flist=$('#tdFinList'), seen=new Set(), pos=0, tot=0, run=0, done=0;
   $('#fTd').hidden=!ed; sopFill(); sopUi(ed);
   var pk=$('#tdPick'), cur=pk.value; pk.textContent='';
   var o0=mk('option',null,'Not from the list'); o0.value=''; pk.append(o0);
@@ -2519,12 +2545,25 @@ function renderTd(){
     if(list.children[pos]!==el) list.insertBefore(el, list.children[pos]||null);
     pos++;
   });
+  var sRun=sopItems.filter(function(it){ return !it[1].en; }), sFin=sopItems.filter(function(it){ return !!it[1].en; }), rl=$('#sopRunList'), fl=$('#sopFinList'), sd=0, st=0;
+  sopItems.forEach(function(it){ if(it[1].en){ sd++; st+=it[1].en-(it[1].st||it[1].en); } });
+  $('#sopBar').hidden=!sopItems.length; $('#sopSum').textContent=sRun.length+' running · '+sd+' done · Total time '+fmtDur(st);
+  $('#sopRunEmpty').hidden=sRun.length>0; $('#sopFinEmpty').hidden=sFin.length>0;
+  [[sRun,rl],[sFin,fl]].forEach(function(g){
+    g[0].forEach(function(it,i){
+      var id=it[0]; seen.add(id);
+      var el=tdEls.get(id); if(!el){ el=makeTd(id); el._id=id; tdEls.set(id,el); }
+      el._n=i+1; updateTd(el,it[1],ed);
+      if(g[1].children[i]!==el) g[1].insertBefore(el, g[1].children[i]||null);
+    });
+  });
   tdEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); tdEls.delete(id); } });
 }
-setInterval(function(){ if(tab==='tasks'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
+setInterval(function(){ if(tab==='tasks'||tab==='sop'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
 $('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
 $('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
-$('#subSop').addEventListener('click', function(){ taskSub='sop'; renderTasks(); });
+$('#subSopStart').addEventListener('click', function(){ sopSub='start'; renderTd(); });
+$('#subSopDone').addEventListener('click', function(){ sopSub='done'; renderTd(); });
 $('#tdPick').addEventListener('change', function(){ var t=day&&day.tasks&&day.tasks[this.value]; if(t) $('#tdName').value=t.title; tdStartState(); });
 $('#tdName').addEventListener('input', tdStartState);
 $('#fTd').addEventListener('submit', async function(e){
@@ -5081,6 +5120,7 @@ $('#winClose').addEventListener('click', function(){ closeWin(false); });
 window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
+$('#tabSop').addEventListener('click', function(){ tab='sop'; renderAll(); });
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
 $('#tabRes').addEventListener('click', function(){ tab='res'; renderAll(); });
 $('#tabCs').addEventListener('click', function(){ tab='cs'; renderAll(); });
@@ -6092,6 +6132,7 @@ setInterval(function(){
 
 /* ---------- dock (main icon tabs) and More ---------- */
 var DK_IC={
+ sop:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 11l1.5 1.5 3-3M8.5 17h7"/>',
  tasks:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.6 1.6L8 4.5M3.5 12l1.6 1.6L8 10.5M3.5 18l1.6 1.6L8 16.5"/>',
  att:'<circle cx="10" cy="8" r="3.6"/><path d="M3.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 8.5l2 2 3.5-4"/>',
  more:'<circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>',
@@ -6108,7 +6149,7 @@ var DK_IC={
  chat:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
  dash:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
 };
-var DK_BG={tasks:'linear-gradient(160deg,#6ddc7f,#2e9e4a)',att:'linear-gradient(160deg,#6cb8ff,#2f6fd6)',more:'linear-gradient(160deg,#a9a9b4,#6c6c78)',stock:'linear-gradient(160deg,#ffb36b,#e0731f)',team:'linear-gradient(160deg,#c59bff,#7b4cd6)',res:'linear-gradient(160deg,#9aa7b5,#566472)',cs:'linear-gradient(160deg,#ff9ac1,#d6417f)',sal:'linear-gradient(160deg,#5fd8c8,#1f9c8c)',acc:'linear-gradient(160deg,#ffd76b,#d99a12)',inv:'linear-gradient(160deg,#7fb2ff,#3a64d8)',due:'linear-gradient(160deg,#ff8f8f,#d63a3a)',bat:'linear-gradient(160deg,#9be26a,#4f9d1f)',low:'linear-gradient(160deg,#ffcf5c,#e08a00)',dash:'linear-gradient(160deg,#6ad0e8,#1f8fb0)',chat:'linear-gradient(160deg,#6fe08f,#1e9e56)'};
+var DK_BG={sop:'linear-gradient(160deg,#c58bff,#7b3fd1)',tasks:'linear-gradient(160deg,#6ddc7f,#2e9e4a)',att:'linear-gradient(160deg,#6cb8ff,#2f6fd6)',more:'linear-gradient(160deg,#a9a9b4,#6c6c78)',stock:'linear-gradient(160deg,#ffb36b,#e0731f)',team:'linear-gradient(160deg,#c59bff,#7b4cd6)',res:'linear-gradient(160deg,#9aa7b5,#566472)',cs:'linear-gradient(160deg,#ff9ac1,#d6417f)',sal:'linear-gradient(160deg,#5fd8c8,#1f9c8c)',acc:'linear-gradient(160deg,#ffd76b,#d99a12)',inv:'linear-gradient(160deg,#7fb2ff,#3a64d8)',due:'linear-gradient(160deg,#ff8f8f,#d63a3a)',bat:'linear-gradient(160deg,#9be26a,#4f9d1f)',low:'linear-gradient(160deg,#ffcf5c,#e08a00)',dash:'linear-gradient(160deg,#6ad0e8,#1f8fb0)',chat:'linear-gradient(160deg,#6fe08f,#1e9e56)'};
 function dkTile(key,label,onclick,badge,onlong){
   var b=mk('button','dk'), t=mk('span','dkt'); b.type='button'; b.setAttribute('aria-label',label);
   t.style.background=DK_BG[key]; t.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+DK_IC[key]+'</svg>';
@@ -6130,10 +6171,10 @@ function dkTile(key,label,onclick,badge,onlong){
   b.addEventListener('click', function(e){ if(lp){ lp=false; e.preventDefault(); e.stopPropagation(); return; } onclick(e); }, true);
   return b;
 }
-var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
+var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['sop','SOP','#tabSop'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
 var DK_MAX=12, DK_ROW=4;
 function dkAvail(m){
-  var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='att'||k==='res') return true;
+  var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='sop'||k==='att'||k==='res') return true;
   var src=$(m[2]); return !!(src&&!src.hidden);
 }
 function dkKey(){ return 'nurseryDock'+(isOwner?'O':'S'); }
