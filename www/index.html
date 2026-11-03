@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:35 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 6:10 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -579,6 +579,7 @@ select:not([multiple]){pointer-events:none}
     <button class="tab" id="tabAtt" role="tab" aria-selected="false">Attendance</button>
     <button class="tab" id="tabTeam" role="tab" aria-selected="false" hidden>Team</button>
     <button class="tab" id="tabRes" role="tab" aria-selected="false">Resources</button>
+    <button class="tab" id="tabCall" type="button" role="tab" aria-selected="false">Calls</button>
     <button class="tab" id="tabCs" role="tab" aria-selected="false">Customers</button>
     <button class="tab" id="salBtn" role="tab" aria-selected="false" hidden>Salary</button>
     <button class="tab" id="tabAcc" type="button" role="tab" aria-selected="false" hidden>Accounts</button>
@@ -882,6 +883,10 @@ select:not([multiple]){pointer-events:none}
     </div>
   </section>
 
+  <section class="pane" id="paneCall" role="tabpanel" aria-labelledby="tabCall" hidden>
+    <div class="aseg" id="callSeg"></div>
+    <div id="callBody" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
+  </section>
   <section class="pane" id="paneRes" role="tabpanel" aria-labelledby="tabRes" hidden>
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
@@ -1877,17 +1882,17 @@ function renderTop(){
   }else cb.hidden=true;
   if(tab==='team' && !isOwner) tab='';
   document.querySelectorAll('.nursel').forEach(function(sel){ var v=(accBoth&&sel.querySelector('#accBothOpt'))?'both':nursery; if(sel.value!==v) sel.value=v; });
-  var tb={stock:'#tabStock',tasks:'#tabTasks',sop:'#tabSop',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
+  var tb={stock:'#tabStock',tasks:'#tabTasks',sop:'#tabSop',att:'#tabAtt',team:'#tabTeam',res:'#tabRes',call:'#tabCall',cs:'#tabCs',sal:'#salBtn',inv:'#tabInv',acc:'#tabAcc',chat:'#tabChat'};
   $('#tabChat').hidden=false; chatSubscribe(); if(chatSubbed) chatBadge(); else chatPill(0);
   $('#tabTeam').hidden=!isOwner; $('#invRstBtn').hidden=!isOwner; $('#accRstBtn').hidden=!isOwner;
   $('#salBtn').hidden=false; $('#tabAcc').hidden=!isOwner;
   if(tab==='acc' && !isOwner) tab='';
   Object.keys(tb).forEach(function(k){ $(tb[k]).setAttribute('aria-selected', tab===k); });
-  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneSop').hidden=tab!=='sop'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
+  $('#paneStock').hidden=tab!=='stock'; $('#paneTasks').hidden=tab!=='tasks'; $('#paneSop').hidden=tab!=='sop'; $('#paneAtt').hidden=tab!=='att'; $('#paneTeam').hidden=tab!=='team'; $('#paneRes').hidden=tab!=='res'; $('#paneCall').hidden=tab!=='call'; $('#paneCs').hidden=tab!=='cs'; $('#paneSal').hidden=tab!=='sal'; $('#paneInv').hidden=tab!=='inv'; $('#paneAcc').hidden=tab!=='acc'; $('#paneChat').hidden=tab!=='chat';
   $('.acts').hidden=false;
-  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs'));
-  var TT={stock:'Stock',tasks:'Tasks',sop:'SOP',att:'Attendance',team:'Team',res:'Resources',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
-  var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs')); }
+  $('#supHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs'||tab==='call'));
+  var TT={stock:'Stock',tasks:'Tasks',sop:'SOP',att:'Attendance',team:'Team',res:'Resources',call:'Calls',cs:'Customers',sal:'Salary',inv:'Invoices',acc:'Accounts',chat:'Chat'};
+  var wb=$('#winBar'); wb.hidden=!tab; if(tab){ $('#winTitle').textContent=TT[tab]||''; $('#winHint').hidden=!(needSup() && (tab==='tasks'||tab==='sop'||tab==='att'||tab==='res'||tab==='cs'||tab==='call')); }
   document.body.style.overflow=(tab||fdOpen)?'hidden':'';
   if(tab && !winPushed){ winPushed=true; try{ history.pushState({win:1},''); }catch(e){} }
   if(!tab && winPushed){ winPushed=false; }
@@ -3011,7 +3016,7 @@ function showSent(names,dups){
   var d=$('#dlgSent'); if(!d.open) d.showModal();
 }
 
-function renderAll(){ renderPads(); renderTop(); renderChat(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderInv(); renderAcc(); renderRes(); renderSug(); renderTeam(); renderSal(); renderFull(); }
+function renderAll(){ renderPads(); renderTop(); renderChat(); renderPending(); renderStock(); renderTasks(); renderAtt(); renderCs(); renderInv(); renderAcc(); renderRes(); renderCall(); renderSug(); renderTeam(); renderSal(); renderFull(); }
 
 /* ---------- full sized stock dashboard ---------- */
 var fdOpen=false;
@@ -6893,11 +6898,251 @@ setInterval(function(){
 }, 2000);
 
 
+/* ---------- calls: contact book, assigned groups, dialer, call reports ---------- */
+var ct={}, cg={}, callSub='ct', callQ='', callG='', callLs='', callSig='', callTimer=0;
+var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
+function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
+function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
+function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
+function grList(){ return Object.keys(cg||{}).filter(function(k){ return cg[k]&&cg[k].n; }).map(function(k){ return [k,cg[k]]; }).sort(function(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }); }
+function grSee(g){ if(isOwner) return true; var to=(g&&g.to)||[]; return !to.length || to.indexOf(supId)>=0; }
+function ctAll(){ return Object.keys(ct||{}).filter(function(k){ return ct[k]&&ct[k].n; }).map(function(k){ return [k,ct[k]]; }).sort(function(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }); }
+function ctSee(){ return ctAll().filter(function(it){ return isOwner || (it[1].g && cg[it[1].g] && grSee(cg[it[1].g])); }); }
+function grWho(g){ var to=(g.to||[]).filter(function(id){ return team.sup[id]&&!team.sup[id].x; }); return to.length ? to.map(function(id){ return team.sup[id].n; }).join(', ') : 'All supervisors'; }
+function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function callFld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
+function callGroupSel(cur,withAll,noneLabel){
+  var s=document.createElement('select'); if(withAll){ var a=mk('option',null,'All groups'); a.value=''; s.append(a); }
+  var n=mk('option',null,noneLabel||'No group'); n.value=withAll?'-':''; s.append(n);
+  grList().forEach(function(it){ if(!grSee(it[1])) return; var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
+  s.value=cur||''; return s;
+}
+function callDlg(id){ var d=$('#'+id); if(!d){ d=document.createElement('dialog'); d.id=id; document.body.append(d); d.addEventListener('click', function(e){ if(!e.target.closest('.dbody')) d.close(); }); } d.textContent=''; var b=mk('div','dbody'); d.append(b); return [d,b]; }
+function callPlace(id,at){ return true; }
+async function ctSave(p){ var ok=await saveSettings(p); return ok; }
+/* log */
+function clData(){ return (day&&day.cl)||{}; }
+function clWrite(patch){
+  var k=todayKey();
+  if(selDate===k&&day) return save({cl:patch});
+  return db.doc('days/'+k).update({cl:patch}).then(function(){ return true; }, onWriteErr);
+}
+/* dialer */
+var CALL_KEY='nurseryCallPend';
+function callPendGet(){ try{ return JSON.parse(localStorage.getItem(CALL_KEY)||'null'); }catch(e){ return null; } }
+function callPendSet(o){ try{ if(o) localStorage.setItem(CALL_KEY,JSON.stringify(o)); else localStorage.removeItem(CALL_KEY); }catch(e){} }
+function callStart(cid){
+  var c=ct[cid]; if(!c) return;
+  if(!isOwner&&needSup()){ toast('Choose your name on the home screen first.'); return; }
+  var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
+  callPendSet({id:callId(),c:cid,n:c.n,p:c.p,at:Date.now(),hid:0,by:whoNow(),sid:supId||''});
+  var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
+}
+function callHidden(){ var p=callPendGet(); if(p&&!p.hid){ p.hid=Date.now(); callPendSet(p); } }
+async function callBack(tries){
+  var p=callPendGet(); if(!p) return;
+  if(!p.hid){ if(Date.now()-p.at>600000) callPendSet(null); return; }
+  if(!db||!canWrite||!day){ if((tries||0)<20) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
+  callPendSet(null);
+  var e={c:p.c,n:p.n,p:p.p,by:p.by||'',sid:p.sid||'',at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
+  var o={}; o[p.id]=e; await clWrite(o);
+  callRepOpen(p.id,e);
+}
+document.addEventListener('visibilitychange', function(){ if(document.hidden) callHidden(); else callBack(0); });
+window.addEventListener('pagehide', callHidden);
+window.addEventListener('pageshow', function(){ callBack(0); });
+function callRepOpen(id,e){
+  var r=callDlg('dlgCallRep'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'Call Report'));
+  b.append(mk('p','pmeta',e.n+' · '+e.p+(e.d?' · About '+callDur(e.d):'')));
+  var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
+  CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=e.o||'';
+  var tx=document.createElement('textarea'); tx.rows=5; tx.maxLength=600; tx.value=e.r||''; tx.placeholder='Short summary of the conversation';
+  var nx=document.createElement('input'); nx.type='date'; nx.value=e.nx||'';
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Submit Report'), lt=mk('button','btn','Later'); sv.type=lt.type='button'; row.append(sv,lt);
+  b.append(callFld('Outcome',os),callFld('Conversation report',tx),callFld('Follow-up date (optional)',nx),er,row);
+  lt.addEventListener('click', function(){ d.close(); });
+  sv.addEventListener('click', async function(){
+    var o=os.value, t=cleanName(tx.value);
+    if(!o){ er.textContent='Choose what happened.'; return; }
+    if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
+    var p={}; p[id]={o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now()};
+    if(await clWrite(p)){ d.close(); toast('Report submitted'); }
+  });
+  if(!d.open) d.showModal();
+}
+function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
+/* owner dialogs */
+function ctEdit(id){
+  var c=id?ct[id]:{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
+  var r=callDlg('dlgCallCt'), d=r[0], b=r[1];
+  b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
+  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=callGroupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), er=mk('p','pmeta');
+  nm.maxLength=60; ph.maxLength=20; ph.inputMode='tel'; nt.maxLength=120; er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(callFld('Name',nm),callFld('Phone number',ph),callFld('Group',gs),callFld('Note',nt),er,row);
+  cn.addEventListener('click', function(){ d.close(); });
+  sv.addEventListener('click', async function(){
+    var n=cleanName(nm.value), p=ph.value.trim();
+    if(!n){ er.textContent='Enter a name.'; return; }
+    if(digitsOf(p).length<5){ er.textContent='Enter a valid phone number.'; return; }
+    var dup=ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); });
+    if(dup){ er.textContent='This phone number is already saved.'; return; }
+    var k=id||callId(), pt={ct:{}}; pt.ct[k]={n:n,p:p,g:gs.value||'',nt:cleanName(nt.value)};
+    if(await ctSave(pt)){ d.close(); toast('Contact saved'); }
+  });
+  d.showModal();
+}
+function ctBulk(){
+  var r=callDlg('dlgCallCt'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'Add Many Contacts'));
+  b.append(mk('p','pmeta','One contact per line: name, then phone number. For example: Ravi Kumar, 98765 43210'));
+  var ta=document.createElement('textarea'); ta.rows=8; ta.maxLength=8000; var gs=callGroupSel('',false), er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Add'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(callFld('Contacts',ta),callFld('Group for all',gs),er,row);
+  cn.addEventListener('click', function(){ d.close(); });
+  sv.addEventListener('click', async function(){
+    var seen={}; ctAll().forEach(function(it){ seen[digitsOf(it[1].p)]=1; });
+    var pt={ct:{}}, n=0, skip=0, bad=0;
+    ta.value.split(/\r?\n/).forEach(function(ln){
+      ln=ln.trim(); if(!ln) return;
+      var m=ln.match(/^(.*?)[\s,;\t:|-]+(\+?\d[\d\s-]{4,})$/); if(!m||!cleanName(m[1])){ bad++; return; }
+      var dg=digitsOf(m[2]); if(dg.length<5||seen[dg]){ skip++; return; } seen[dg]=1;
+      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:m[2].trim(),g:gs.value||'',nt:''}; n++;
+    });
+    if(!n){ er.textContent='Nothing to add.'+(bad?' '+bad+' line(s) had no name and phone number.':'')+(skip?' '+skip+' already saved.':''); return; }
+    if(await ctSave(pt)){ d.close(); toast(n+' contact'+(n>1?'s':'')+' added'+(skip||bad?'; '+(skip+bad)+' skipped':'')); }
+  });
+  d.showModal();
+}
+function grEdit(id){
+  var g=id?cg[id]:{n:'',to:[]}; if(id&&!g) return;
+  var r=callDlg('dlgCallGr'), d=r[0], b=r[1];
+  b.append(mk('h2',null,id?'Edit Group':'New Group'));
+  var nm=mkIn('text','Group name',g.n), er=mk('p','pmeta'); nm.maxLength=40; er.style.color='var(--warn)';
+  b.append(callFld('Group name',nm));
+  b.append(mk('p','pmeta','Assigned to. Tick none to give this group to all supervisors.'));
+  var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:6px';
+  teamList('sup').forEach(function(it){
+    var l=mk('label'), c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;min-height:0';
+    l.append(c,mk('span',null,it[1].n)); wrap.append(l); sel[it[0]]=c;
+  });
+  b.append(wrap,er);
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn); b.append(row);
+  cn.addEventListener('click', function(){ d.close(); });
+  sv.addEventListener('click', async function(){
+    var n=cleanName(nm.value); if(!n){ er.textContent='Enter a group name.'; return; }
+    if(grList().some(function(it){ return it[0]!==id && it[1].n.toLowerCase()===n.toLowerCase(); })){ er.textContent='A group with this name already exists.'; return; }
+    var to=Object.keys(sel).filter(function(k){ return sel[k].checked; }), pt={cg:{}}; pt.cg[id||callId()]={n:n,to:to};
+    if(await ctSave(pt)){ d.close(); toast('Group saved'); }
+  });
+  d.showModal();
+}
+/* render */
+function callBtn(label,fn,cls){ var b=mk('button','btn small'+(cls?' '+cls:''),label); b.type='button'; b.addEventListener('click',fn); return b; }
+function callRows(box,list,own){
+  list.forEach(function(it){
+    var id=it[0], c=it[1], el=mk('div','card'), top=mk('div'), ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px';
+    top.append(mk('b',null,c.n)); top.append(mk('div','pmeta',c.p)); 
+    var gn=c.g&&cg[c.g]?cg[c.g].n:''; var meta=[gn,c.nt].filter(Boolean).join(' · '); if(meta) top.append(mk('div','pmeta',meta));
+    var cb=callBtn('Call',function(){ callStart(id); },'primary'); ac.append(cb);
+    if(own){ ac.append(callBtn('Edit',function(){ ctEdit(id); })); var dl=callBtn('Delete',function(){}, 'danger'); dl.addEventListener('click', function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await ctSave(pt)) toast('Contact deleted'); }); }); ac.append(dl); }
+    el.append(top,ac); box.append(el);
+  });
+}
+function renderCall(){
+  if(tab!=='call') return;
+  var body=$('#callBody'); if(!body) return;
+  var ae=document.activeElement; if(ae&&body.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')) return;
+  if(!isOwner&&callSub==='gr') callSub='ct';
+  var sig=JSON.stringify([callSub,callQ,callG,callLs,isOwner,supId,needSup(),ct,cg,clData(),selDate,Object.keys(team.sup||{}).map(function(k){ return k+(team.sup[k].n||'')+(team.sup[k].x?1:0); })]);
+  if(sig===callSig) return; callSig=sig;
+  var seg=$('#callSeg'); seg.textContent=''; seg.style.gridTemplateColumns='repeat('+(isOwner?3:2)+',minmax(0,1fr))';
+  [['ct','Contacts'],['gr','Groups'],['lg','Call Log']].forEach(function(s){
+    if(s[0]==='gr'&&!isOwner) return;
+    var b=mk('button','btn',s[1]); b.type='button'; b.setAttribute('aria-pressed',callSub===s[0]); b.addEventListener('click',function(){ callSub=s[0]; callSig=''; renderCall(); }); seg.append(b);
+  });
+  body.textContent='';
+  if(callSub==='ct') callViewCt(body); else if(callSub==='gr') callViewGr(body); else callViewLg(body);
+}
+function callViewCt(body){
+  if(!isOwner&&needSup()){ var w=mk('p','pmeta','Choose your name on the home screen before calling.'); w.style.color='var(--warn)'; body.append(w); }
+  if(isOwner){
+    var ad=mk('div','sline'); ad.append(callBtn('Add Contact',function(){ ctEdit(''); },'primary'),callBtn('Add Many',ctBulk),callBtn('New Group',function(){ grEdit(''); })); body.append(ad);
+  }
+  var all=ctSee(); 
+  var bar=mk('div','sline'), q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=callQ; q.autocomplete='off'; q.style.cssText='flex:1 1 100%;min-height:44px';
+  q.addEventListener('input', function(){ callQ=q.value; var keep=q.selectionStart; callSig=''; callList(lst); });
+  bar.append(q);
+  var gs=callGroupSel(callG,true); gs.style.flex='1 1 100%'; gs.addEventListener('change', function(){ callG=gs.value; callSig=''; callList(lst); }); bar.append(gs);
+  body.append(bar);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(lst);
+  callList(lst);
+}
+function callList(lst){
+  lst.textContent='';
+  var q=callQ.trim().toLowerCase(), all=ctSee().filter(function(it){
+    if(callG==='-') { if(it[1].g) return false; } else if(callG && it[1].g!==callG) return false;
+    return !q || (it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(q)>=0;
+  });
+  if(!all.length){ lst.append(mk('p','pmeta',ctSee().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to supervisors.'))); return; }
+  lst.append(mk('p','pmeta',all.length+' contact'+(all.length>1?'s':'')));
+  callRows(lst,all,isOwner);
+}
+function callViewGr(body){
+  var ad=mk('div','sline'); ad.append(callBtn('New Group',function(){ grEdit(''); },'primary')); body.append(ad);
+  var l=grList(); if(!l.length){ body.append(mk('p','pmeta','No groups yet. A group collects contacts that go to the same supervisors.')); return; }
+  var box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:8px';
+  l.forEach(function(it){
+    var id=it[0], g=it[1], el=mk('div','card'), n=ctAll().filter(function(x){ return x[1].g===id; }).length, ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px';
+    el.append(mk('b',null,g.n), mk('div','pmeta',n+' contact'+(n===1?'':'s')+' · Assigned to: '+grWho(g)));
+    ac.append(callBtn('Edit / Assign',function(){ grEdit(id); }));
+    var dl=callBtn('Delete',function(){},'danger'); dl.addEventListener('click', function(){ arm(dl,'grd'+id,'Delete',async function(){
+      var pt={cg:{},ct:{}}; pt.cg[id]=null; ctAll().forEach(function(x){ if(x[1].g===id) pt.ct[x[0]]={g:''}; });
+      if(!Object.keys(pt.ct).length) delete pt.ct;
+      if(await ctSave(pt)) toast('Group deleted'); }); }); ac.append(dl);
+    el.append(ac); box.append(el);
+  });
+  body.append(box);
+}
+function callViewLg(body){
+  var all=Object.keys(clData()).map(function(k){ return [k,clData()[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
+  var mine=!isOwner;
+  if(mine) all=all.filter(function(it){ return supId ? it[1].sid===supId : it[1].by===whoNow(); });
+  if(isOwner){
+    var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
+    var fs=document.createElement('select'), a=mk('option',null,'All callers'); a.value=''; fs.append(a);
+    Object.keys(by).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; fs.append(o); }); fs.value=callLs;
+    fs.addEventListener('change', function(){ callLs=fs.value; callSig=''; renderCall(); }); body.append(callFld('Show calls by',fs));
+    if(callLs) all=all.filter(function(it){ return it[1].by===callLs; });
+  }
+  all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
+  var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
+  body.append(mk('p','pmeta',fmtIso(selDate)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' report'+(pd===1?'':'s')+' pending'+(isOwner?'. Change the date from the home screen.':'')));
+  if(!all.length){ body.append(mk('p','pmeta','No calls on this day.')); return; }
+  var box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:8px';
+  all.forEach(function(it){
+    var id=it[0], e=it[1], el=mk('div','card'); el.style.cssText='display:flex;flex-direction:column;gap:3px;padding:10px 12px';
+    var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px'; h.append(mk('b',null,e.n),mk('span','pmeta',fmtTime(e.at))); el.append(h);
+    el.append(mk('div','pmeta',[e.p,'By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
+    if(e.o){ var oc=mk('div',null,callOutName(e.o)); oc.style.fontWeight='600'; el.append(oc); if(e.r) el.append(mk('div',null,e.r)); if(e.nx) el.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
+    else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(mine||(isOwner&&e.by===whoNow())) el.append(callBtn('Write Report',function(){ callRepOpen(id,e); })); }
+    box.append(el);
+  });
+  body.append(box);
+}
+$('#tabCall').addEventListener('click', function(){ tab='call'; callSig=''; renderAll(); });
+$('#paneCall').addEventListener('focusout', function(){ clearTimeout(callTimer); callTimer=setTimeout(renderCall,250); });
+
 /* ---------- dock (main icon tabs) and More ---------- */
 var DK_IC={
  sop:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 11l1.5 1.5 3-3M8.5 17h7"/>',
  tasks:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.6 1.6L8 4.5M3.5 12l1.6 1.6L8 10.5M3.5 18l1.6 1.6L8 16.5"/>',
  att:'<circle cx="10" cy="8" r="3.6"/><path d="M3.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 8.5l2 2 3.5-4"/>',
+ call:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
  more:'<circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>',
  stock:'<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
  team:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14.5c2.6 0 4.5 1.8 4.5 4.5"/>',
@@ -6912,7 +7157,7 @@ var DK_IC={
  chat:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
  dash:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
 };
-var DK_BG={sop:'linear-gradient(160deg,#c58bff,#7b3fd1)',tasks:'linear-gradient(160deg,#6ddc7f,#2e9e4a)',att:'linear-gradient(160deg,#6cb8ff,#2f6fd6)',more:'linear-gradient(160deg,#a9a9b4,#6c6c78)',stock:'linear-gradient(160deg,#ffb36b,#e0731f)',team:'linear-gradient(160deg,#c59bff,#7b4cd6)',res:'linear-gradient(160deg,#9aa7b5,#566472)',cs:'linear-gradient(160deg,#ff9ac1,#d6417f)',sal:'linear-gradient(160deg,#5fd8c8,#1f9c8c)',acc:'linear-gradient(160deg,#ffd76b,#d99a12)',inv:'linear-gradient(160deg,#7fb2ff,#3a64d8)',due:'linear-gradient(160deg,#ff8f8f,#d63a3a)',bat:'linear-gradient(160deg,#9be26a,#4f9d1f)',low:'linear-gradient(160deg,#ffcf5c,#e08a00)',dash:'linear-gradient(160deg,#6ad0e8,#1f8fb0)',chat:'linear-gradient(160deg,#6fe08f,#1e9e56)'};
+var DK_BG={call:'linear-gradient(160deg,#6ddc9f,#1f9c6a)',sop:'linear-gradient(160deg,#c58bff,#7b3fd1)',tasks:'linear-gradient(160deg,#6ddc7f,#2e9e4a)',att:'linear-gradient(160deg,#6cb8ff,#2f6fd6)',more:'linear-gradient(160deg,#a9a9b4,#6c6c78)',stock:'linear-gradient(160deg,#ffb36b,#e0731f)',team:'linear-gradient(160deg,#c59bff,#7b4cd6)',res:'linear-gradient(160deg,#9aa7b5,#566472)',cs:'linear-gradient(160deg,#ff9ac1,#d6417f)',sal:'linear-gradient(160deg,#5fd8c8,#1f9c8c)',acc:'linear-gradient(160deg,#ffd76b,#d99a12)',inv:'linear-gradient(160deg,#7fb2ff,#3a64d8)',due:'linear-gradient(160deg,#ff8f8f,#d63a3a)',bat:'linear-gradient(160deg,#9be26a,#4f9d1f)',low:'linear-gradient(160deg,#ffcf5c,#e08a00)',dash:'linear-gradient(160deg,#6ad0e8,#1f8fb0)',chat:'linear-gradient(160deg,#6fe08f,#1e9e56)'};
 function dkTile(key,label,onclick,badge,onlong){
   var b=mk('button','dk'), t=mk('span','dkt'); b.type='button'; b.setAttribute('aria-label',label);
   t.style.background=DK_BG[key]; t.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+DK_IC[key]+'</svg>';
@@ -6934,10 +7179,10 @@ function dkTile(key,label,onclick,badge,onlong){
   b.addEventListener('click', function(e){ if(lp){ lp=false; e.preventDefault(); e.stopPropagation(); return; } onclick(e); }, true);
   return b;
 }
-var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['sop','SOP','#tabSop'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
+var DK_ALL=[['stock','Stock','#tabStock'],['tasks','Tasks','#tabTasks'],['sop','SOP','#tabSop'],['att','Attendance','#tabAtt'],['acc','Accounts','#tabAcc'],['res','Resources','#tabRes'],['call','Calls','#tabCall'],['chat','Chat','#tabChat'],['cs','Customers','#tabCs'],['inv','Invoices','#tabInv'],['team','Team','#tabTeam'],['sal','Salary','#salBtn'],['due','Money Owed','#tabDue'],['bat','Batches','#tabBat'],['low','Low Stock','#tabLow'],['dash','Dashboard','#fdBtn']];
 var DK_MAX=12, DK_ROW=4;
 function dkAvail(m){
-  var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='sop'||k==='att'||k==='res') return true;
+  var k=m[0]; if(k==='acc') return isOwner; if(k==='chat'||k==='stock'||k==='tasks'||k==='sop'||k==='att'||k==='res'||k==='call') return true;
   var src=$(m[2]); return !!(src&&!src.hidden);
 }
 function dkKey(){ return 'nurseryDock'+(isOwner?'O':'S'); }
@@ -7310,7 +7555,7 @@ function applySettings(d){
   ownerWa = String(d.ownerWa||'');
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
-  res = d.res||{};
+  res = d.res||{}; ct = d.ct||{}; cg = d.cg||{}; if(tab==='call') renderCall();
   srcApply(d); if($('#dlgSrcs')&&$('#dlgSrcs').open) srcsRender();
   catMap = d.cats||{}; minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
 }
