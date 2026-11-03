@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:35 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:50 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1607,6 +1607,19 @@ ap(); b.addEventListener('click', function(){ try{ localStorage.setItem('asgHide
 <script>
 (function(){
 'use strict';
+/* The keyboard must not open by itself: a dialog never puts the cursor in a text box until the user taps it. */
+(function(){
+  var sm=HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal=function(){
+    var d=this; if(!d.hasAttribute('tabindex')) d.setAttribute('tabindex','-1');
+    var r=sm.apply(d,arguments);
+    try{
+      var a=document.activeElement;
+      if(a&&a!==d&&d.contains(a)&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'&&!/^(checkbox|radio|button|submit|file|range|color)$/i.test(a.type)||a.isContentEditable)){ a.blur(); d.focus({preventScroll:true}); }
+    }catch(e){}
+    return r;
+  };
+})();
 var $ = function(s){ return document.querySelector(s); };
 var pad = function(n){ return String(n).padStart(2,'0'); };
 var keyOf = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
@@ -2288,7 +2301,7 @@ function makeTd(id){
     var x=el._x; if(!x||!x.en||!editable()) return;
     if(tdEditing[id]){ if(!ta.value.trim()){ toast('The report cannot be empty.'); return; } delete tdEditing[id]; var p={td:{}}; p.td[id]={note:ta.value.trim().slice(0,600)}; save(p); }
     else{ tdEditing[id]=1; }
-    updateTd(el,x,editable()); if(tdEditing[id]) ta.focus();
+    updateTd(el,x,editable());
   });
   fin.addEventListener('click', async function(){
     var x=el._x; if(!x||x.en||!editable()) return;
@@ -5608,7 +5621,7 @@ async function pinMatches(pin){
 function openPin(){
   $('#pinIn').value=''; $('#pinErr').textContent='';
   var d=$('#dlgPin'); if(!d.open) d.showModal();
-  setTimeout(function(){ $('#pinIn').focus(); }, 50);
+
 }
 $('#modeOwner').addEventListener('click', function(){
   if(!accountOwner) $('#dlgLogin').showModal();
@@ -6855,7 +6868,7 @@ function tagSync(){
 }
 
 var tagEdOld='';
-function tagEdOpen(t){ tagEdOld=t; $('#tagEdName').value=t; $('#tagEdErr').textContent=''; var d=$('#dlgTagEd'); if(!d.open) d.showModal(); setTimeout(function(){ try{ $('#tagEdName').focus(); $('#tagEdName').select(); }catch(e){} },50); }
+function tagEdOpen(t){ tagEdOld=t; $('#tagEdName').value=t; $('#tagEdErr').textContent=''; var d=$('#dlgTagEd'); if(!d.open) d.showModal(); }
 async function tagApply(oldT,newT){
   if(!isOwner||!db){ return false; }
   var k=oldT.toLowerCase(), nd=0, ni=0, fail=false, docs;
