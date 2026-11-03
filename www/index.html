@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:10 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -554,6 +554,11 @@ select:not([multiple]){pointer-events:none}
     <b style="margin:-14px -14px 2px;padding:12px 14px;background:var(--accent);color:#fff;display:block">Resources Accepted</b>
         <div id="resOkTbl" style="display:flex;flex-direction:column;gap:6px;font-weight:600"></div>
     <button class="btn primary" type="button" id="resOkBtn">OK</button>
+  </section>
+
+  <section class="card alertcard" id="alReq" hidden style="flex-direction:column;align-items:stretch;gap:8px;overflow:hidden">
+    <b style="margin:-14px -14px 2px;padding:12px 14px;background:var(--accent);color:#fff;display:block">Phone Alerts Off Request</b>
+    <div id="alReqList" style="display:flex;flex-direction:column;gap:8px"></div>
   </section>
 
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
@@ -2713,8 +2718,47 @@ $('#fRep').addEventListener('submit', async function(e){
   var rep={on:$('#repOn').value!=='0', em:em, wa:wa}, d=db.doc('meta/accounts');
   try{ var s=await d.get(); if(s.exists) await d.update({rep:rep}); else await d.set({rep:rep}); toast('Daily report send saved'); }catch(err){ onWriteErr(err); }
 });
-function alNotifBtn(){ var b=$('#alNotifBtn'); if(b){ b.textContent=chatNotifOn()?'Turn off phone alerts':'Turn on phone alerts'; } }
-$('#alNotifBtn').addEventListener('click', async function(){ if(chatNotifOn()) await chatNotifDisable(); else await chatNotifEnable(); alNotifBtn(); });
+var alReq={}, alReqSubbed=false;
+function alReqSub(){
+  if(alReqSubbed||!db) return; alReqSubbed=true;
+  db.doc('meta/alreq').onSnapshot(function(s){ alReq=s.exists?(s.data()||{}):{}; alReqRender(); alReqMine(); }, function(){ alReqSubbed=false; });
+}
+function alReqSave(patch){
+  var d=db.doc('meta/alreq');
+  return d.update(patch).catch(function(e){ if(e&&e.code==='not_found') return d.set(patch); throw e; }).then(function(){ return true; }, function(){ toast('Could not save. Check your internet and try again.',4000); return false; });
+}
+async function alOffAsk(){
+  if(isOwner){ await chatNotifOff(); alNotifBtn(); return; }
+  if(!supId){ toast('Choose your name at the top first.'); return; }
+  var q=alReq[supId]; if(q&&q.st==='p'){ toast('Your request is waiting for the owner.'); return; }
+  var p={}; p[supId]={n:supName||'Supervisor',at:Date.now(),st:'p'};
+  if(await alReqSave(p)) toast('Request sent. Alerts stay on until the owner approves.',4000);
+  alNotifBtn();
+}
+function alReqMine(){
+  if(isOwner||!supId) return; var q=alReq[supId]; if(!q) return;
+  if(q.st==='ok'){ var p={}; p[supId]=null; alReqSave(p).then(function(){ chatNotifOff().then(alNotifBtn); }); }
+  else if(q.st==='no'){ var p2={}; p2[supId]=null; alReqSave(p2); toast('The owner did not approve turning off alerts.',4000); }
+  alNotifBtn();
+}
+function alReqRender(){
+  var bx=$('#alReq'); if(!bx) return; var l=isOwner?Object.keys(alReq).filter(function(k){ return alReq[k]&&alReq[k].st==='p'; }):[];
+  bx.hidden=!l.length; var box=$('#alReqList'); box.textContent=''; if(!l.length) return;
+  l.forEach(function(k){
+    var a=alReq[k], row=mk('div',null), ok=mk('button','btn primary','Approve'), no=mk('button','btn','Decline');
+    row.style.cssText='display:flex;flex-direction:column;gap:6px'; ok.type=no.type='button';
+    var set=function(v){ var p={}; p[k]=Object.assign({},a,{st:v}); alReqSave(p); };
+    ok.addEventListener('click', function(){ set('ok'); }); no.addEventListener('click', function(){ set('no'); });
+    var act=mk('div',null); act.style.cssText='display:flex;gap:8px'; act.append(ok,no);
+    row.append(mk('div',null,(a.n||'Supervisor')+' asked to turn off phone alerts at '+fmtTime(a.at)+'.'),act); box.append(row);
+  });
+}
+function alNotifBtn(){
+  alReqSub(); var b=$('#alNotifBtn'); if(!b) return; var q=!isOwner&&supId&&alReq[supId];
+  b.textContent=chatNotifOn()?(q&&q.st==='p'?'Waiting for owner approval':(isOwner?'Turn off phone alerts':'Ask owner to turn off alerts')):'Turn on phone alerts';
+}
+setInterval(function(){ alReqMine(); alNotifBtn(); },3000);
+$('#alNotifBtn').addEventListener('click', async function(){ if(chatNotifOn()) await alOffAsk(); else await chatNotifEnable(); alNotifBtn(); });
 setTimeout(alNotifBtn,1500);
 /* ---------- half-hour open task alarm ---------- */
 var TDAL_MS=30*60*1000, tdAlBeep=0, tdAlAudio=null, tdAlTab='tasks';
@@ -4999,7 +5043,7 @@ async function chatNotifEnable(){
   try{ localStorage.setItem('nurseryChatNotif','1'); }catch(e){}
   await chatPushSync(); chatNotifBtn(); toast('Notifications turned on');
 }
-async function chatNotifDisable(){
+async function chatNotifOff(){
   try{ localStorage.setItem('nurseryChatNotif','0'); }catch(e){}
   try{ if('serviceWorker' in navigator){ var reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription(); if(sub){ var j=sub.toJSON(); await sub.unsubscribe(); if(db) await db.doc('push/'+hashStr(j.endpoint)).delete().catch(function(){}); } } }catch(e){}
   chatNotifBtn(); toast('Notifications turned off');
@@ -5022,7 +5066,7 @@ async function chatNotify(cid,c,m){
 }
 $('#homeMsgBtn').addEventListener('click', function(){ tab='chat'; chatOpen=''; renderAll(); });
 $('#homeChatBtn').addEventListener('click', function(){ tab='chat'; chatOpen=this._cid||''; renderAll(); });
-$('#chatNotifBtn').addEventListener('click', function(){ if(chatNotifOn()) chatNotifDisable(); else chatNotifEnable(); });
+$('#chatNotifBtn').addEventListener('click', function(){ if(chatNotifOn()) alOffAsk(); else chatNotifEnable(); });
 /* views */
 function renderChat(){
   if(tab!=='chat') return;
