@@ -530,6 +530,11 @@ select:not([multiple]){pointer-events:none}
     </section>
   </div>
 
+  <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
+    <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
+    <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
+  </div>
+
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
     <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -1672,7 +1677,7 @@ function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.classNam
 function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',label)); return c; }
 
 function renderTop(){
-  $('#backupBtn').hidden=!isOwner;
+  $('#backupBtn').hidden=!isOwner; $('#homeBackup').hidden=!isOwner;
   $('#importBtn').hidden=!(isOwner&&canWrite);
   var mo=$('#modeOwner'), ms=$('#modeSup');
   mo.setAttribute('aria-pressed', isOwner); ms.setAttribute('aria-pressed', !isOwner);
@@ -1732,7 +1737,7 @@ function renderTop(){
   var pendSug=isOwner&&day?sugItems().filter(function(it){ return !it[1].st; }).length:0;
   $('#tabTasks').textContent='Tasks'+(pendSug?' '+pendSug:'');
   $('#pdfBtn').textContent = 'Download full report PDF';
-  $('#pdfBtn').disabled=!day;
+  $('#pdfBtn').disabled=!day; $('#homePdf').disabled=!day;
 }
 
 /* ---------- stock tab ---------- */
@@ -2578,13 +2583,13 @@ $('#fTd').addEventListener('submit', async function(e){
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
   if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
-function pdfTd(doc){
-  var y=secStart(doc,'7. Tasks started and time taken',false);
+function pdfTd(doc,sop){
+  var y=secStart(doc,sop?'8. SOPs started and time taken':'7. Tasks started and time taken',false), nm=sop?'SOP':'task';
   ['1','2'].forEach(function(n){
-    var items=tdItems(n).slice().reverse(), tot=0, done=0;
+    var items=tdItems(n).filter(function(it){ return isSopTd(it[1])===!!sop; }).reverse(), tot=0, done=0;
     items.forEach(function(it){ var x=it[1]; if(x.en){ done++; tot+=x.en-(x.st||x.en); } });
-    y=nurHead(doc,y,n,items.length+(items.length===1?' task':' tasks')+' recorded · '+done+' done · Total time '+fmtDur(tot).replace('·','-'));
-    if(!items.length){ doc.text('No tasks were recorded on this day.', 40, y+14); y+=36; return; }
+    y=nurHead(doc,y,n,items.length+(items.length===1?' '+nm:' '+nm+'s')+' recorded · '+done+' done · Total time '+fmtDur(tot).replace('·','-'));
+    if(!items.length){ doc.text('No '+nm+'s were recorded on this day.', 40, y+14); y+=36; return; }
     doc.autoTable({
       startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4},
       head:[['Sl.No.','Task','Assigned to','By','Started','Ended','Time taken','Report']],
@@ -5544,9 +5549,42 @@ function pdfCs(doc){
     y=padPdf(doc,y,n,'sold');
   });
 }
+function pdfLow(doc){
+  var y=secStart(doc,'9. Low stock',false), l=lowItems();
+  ['1','2'].forEach(function(n){
+    var it=l.filter(function(x){ return x.nid===n; });
+    y=nurHead(doc,y,n,it.length+(it.length===1?' item':' items')+' at or below the minimum');
+    if(!it.length){ doc.text('No item is low on stock.', 40, y+14); y+=36; return; }
+    doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Sl.No.','Item','Balance','Minimum']], body:it.map(function(x,i){ return [i+1,x.name,fmtN(x.bal),fmtN(x.min)]; }), headStyles:{fillColor:[42,127,62]}, columnStyles:{0:{cellWidth:40}} });
+    y=doc.lastAutoTable.finalY+16;
+  });
+}
+function pdfBat(doc){
+  var y=secStart(doc,'10. Batches and losses',false);
+  ['1','2'].forEach(function(n){
+    var b=Object.keys(batData.b||{}).map(function(id){ return batData.b[id]; }).filter(function(x){ return x&&(x.nid||'1')===n&&x.d===selDate; });
+    var l=Object.keys(batData.l||{}).map(function(id){ return batData.l[id]; }).filter(function(x){ return x&&(x.nid||'1')===n&&x.d===selDate; });
+    y=nurHead(doc,y,n,b.length+' batches started, '+l.length+' losses recorded');
+    if(!b.length&&!l.length){ doc.text('No batches or losses on this day.', 40, y+14); y+=36; return; }
+    if(b.length){ doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Batch item','Qty','Ready by','By','Note']], body:b.map(function(x){ return [x.name||'',fmtN(x.qty),x.ready||'',x.by||'',x.note||'']; }), headStyles:{fillColor:[42,127,62]} }); y=doc.lastAutoTable.finalY+14; }
+    if(l.length){ doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Loss item','Qty lost','Reason','By','Note']], body:l.map(function(x){ return [x.name||'',fmtN(x.qty),x.why||'',x.by||'',x.note||'']; }), headStyles:{fillColor:[176,64,48]} }); y=doc.lastAutoTable.finalY+14; }
+    y+=4;
+  });
+}
+function pdfAcc(doc){
+  var y=secStart(doc,'11. Accounts',false), KN={rc:'Receipt',py:'Payment','in':'Income',ex:'Expense'};
+  ['1','2'].forEach(function(n){
+    var it=Object.keys(accData.e||{}).map(function(id){ return accData.e[id]; }).filter(function(x){ return x&&(x.nid||'1')===n&&x.d===selDate; });
+    var tin=0, tout=0; it.forEach(function(x){ var a=Number(x.amt)||0; if(x.k==='rc'||x.k==='in') tin+=a; else tout+=a; });
+    y=nurHead(doc,y,n,it.length+' entries · In Rs. '+fmtMoney(tin)+' · Out Rs. '+fmtMoney(tout));
+    if(!it.length){ doc.text('No account entries on this day.', 40, y+14); y+=36; return; }
+    doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['No.','Type','Party / category','Mode','Amount (Rs.)','Note']], body:it.map(function(x){ return [accLabel(x),KN[x.k]||'',x.party||x.cat||'',x.mode||'',{content:fmtMoney(x.amt),styles:{halign:'right'}},x.note||'']; }), headStyles:{fillColor:[42,127,62]} });
+    y=doc.lastAutoTable.finalY+16;
+  });
+}
 function pdfAll(){
   var doc=pdfBase('Daily Report'); if(!doc) return null;
-  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc); pdfTd(doc);
+  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc); pdfTd(doc,false); pdfTd(doc,true); pdfLow(doc); pdfBat(doc); if(isOwner) pdfAcc(doc);
   return doc.output('arraybuffer');
 }
 $('#pdfBtn').addEventListener('click', async function(){
@@ -5559,14 +5597,17 @@ $('#pdfBtn').addEventListener('click', async function(){
       return;
     }
   }
+  if(!window.jspdf) await ensurePdf();
   var buf=null;
-  try{ buf = pdfAll(); }catch(e){ buf=null; }
+  try{ buf = pdfAll(); }catch(e){ window.__pdfErr=String(e&&e.stack||e); buf=null; }
   if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
   if(!downloads){ toast('Saving files is not available in this view. Use Share on WhatsApp instead.'); return; }
   try{ await downloads.save({filename:'daily-report-'+selDate+'.pdf', data:buf}); }
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 });
 
+$('#homePdf').addEventListener('click', function(){ $('#pdfBtn').click(); });
+$('#homeBackup').addEventListener('click', function(){ $('#backupBtn').click(); });
 $('#attPdfBtn').addEventListener('click', async function(){
   if(!day){ toast('Data not available: no report was saved for this date.'); return; }
   var any=attShown('1').concat(attShown('2')).some(function(it){ return it[1].s; });
