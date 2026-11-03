@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:55 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:10 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4135,7 +4135,7 @@ function resCounts(items){
 var RES_TXT=function(v){ return v===true?'Available':(v===false?'Not available':'Not checked'); };
 function makeRes(id){
   var el=mk('div','card rrow'), top=mk('div','rtop'), chk=document.createElement('input'), nm=mk('div','rname'), meta=mk('div','tmeta');
-  chk.type='checkbox'; chk.className='rchk';
+  chk.type='checkbox'; chk.className='rchk'; chk.hidden=true; chk.style.display='none';
   chk.addEventListener('change', function(){ setRes(id,chk.checked); });
   var iss=mk('div','tmeta'), qrow=mk('label','rqty'), qin=document.createElement('input');
   qin.type='number'; qin.min='0'; qin.max='99999'; qin.inputMode='numeric'; qin.setAttribute('aria-label','Quantity with you');
@@ -4199,6 +4199,7 @@ function resLabSave(id,lid,name,o,rc){
 }
 function resLabRender(el,id,r,ed){
   var box=el._r&&el._r.lb; if(!box) return;
+  box.hidden=true; return;
   var list=resLabList(r.nid||'1'), lab=r.lab||{};
   box.hidden=!list.length; if(!list.length) return;
   var ae=document.activeElement; if(ae&&box.contains(ae)&&ae.tagName==='INPUT'&&(ae.type==='number'||ae.type==='text')) return;
@@ -4257,7 +4258,7 @@ function updateRes(el,id,r,ed){
   if(r.v!==null && (r.who||r.at)) bits.push([r.who,fmtTime(r.at)].filter(Boolean).join(' '));
   if(!isOwner && r.to) bits.push('Handed to you'+(resAck[id]&&resAccepted(id,{to:r.to,q:r.q})?' (accepted)':' (not yet accepted)'));
   if(isOwner && r.to){ var ak=resAck[id]; bits.push(resAccepted(id,{to:r.to,q:r.q})?'Accepted by '+(ak.by||assigneeName(r.to))+' on '+new Date(ak.at).toLocaleDateString('en-GB'):'Awaiting acceptance'); }
-  R.meta.textContent=bits.join(' · ');
+  R.meta.textContent=''; R.meta.hidden=true;
   if(R.inp){
     if(document.activeElement!==R.inp) R.inp.value=(res[id]&&res[id].n)||r.n;
     if(document.activeElement!==R.qi) R.qi.value=(r.qr!==undefined?r.qr:r.q)||0;
@@ -4271,8 +4272,8 @@ function renderRes(){
   $('#resAdd').hidden=!isOwner;
   $('#resTo').hidden=!teamList('sup').length; fillAssign($('#resTo'),$('#resTo').value);
   $('#resBar').hidden=!items.length;
-  $('#rsum').textContent=c.yes+' available · '+c.no+' not available · '+c.none+' not checked';
-  $('#resAll').hidden=!(ed&&c.none>0);
+  $('#rsum').textContent=''; $('#rsum').hidden=true;
+  $('#resAll').hidden=true;
   var mr=$('#mvAllRes'); mr.hidden=!(isOwner&&items.length); mr.textContent='Move all'; undoSync();
   $('#resReset').hidden=!(isOwner&&ed&&(c.yes+c.no)>0);
   var s=$('#rstate'); s.hidden=items.length>0;
