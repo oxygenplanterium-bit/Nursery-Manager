@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:05 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:25 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -974,6 +974,15 @@ select:not([multiple]){pointer-events:none}
     <div id="pickList"></div>
     <div class="actions"><button type="button" class="btn" id="pickCancel">Cancel</button></div>
   </div>
+</dialog>
+<dialog id="dlgTagEd">
+  <form id="fTagEd">
+    <h2>Edit Tag</h2>
+    <p class="pmeta">The new name replaces this tag on every stock item that has it.</p>
+    <label class="f"><span>Tag name</span><input type="text" id="tagEdName" maxlength="24" autocomplete="off"></label>
+    <p class="pmeta" id="tagEdErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="tagEdCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+  </form>
 </dialog>
 <dialog id="dlgNote">
   <form id="fNote">
@@ -4869,7 +4878,14 @@ function openAcc(k,eid){
 }
 function openPick(sel,title,done){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title;
-  var optBtn=function(o,label,parent){ var b=mk('button','pickopt',label); b.type='button'; b.dataset.full=o.textContent; var cc=sel.dataset.cat&&catMap[o.value]; if(cc) b.classList.add(cc.p?'psub':'pmain'); if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); }); parent.append(b); return b; };
+  var optBtn=function(o,label,parent){ var b=mk('button','pickopt',label); b.type='button'; b.dataset.full=o.textContent; var cc=sel.dataset.cat&&catMap[o.value]; if(cc) b.classList.add(cc.p?'psub':'pmain'); if(o.value===sel.value) b.setAttribute('aria-pressed','true'); b.addEventListener('click', function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); if(done) done(); });
+    if(sel.id==='tagSel'&&isOwner&&o.value&&o.value!=='-'){
+      var tr=mk('div','prow trow'), te=mk('button','btn small','Edit'), td=mk('button','btn small danger','Delete'); te.type=td.type='button'; te.style.flex=td.style.flex='0 0 auto';
+      te.addEventListener('click', function(){ tagEdOpen(o.value); });
+      td.addEventListener('click', function(){ arm(td,'tagdel'+o.value,'Delete', function(){ tagApply(o.value,null); }); });
+      tr.append(b,te,td); parent.append(tr); return b;
+    }
+    parent.append(b); return b; };
   if(sel.dataset.cat){
     var opts=Array.prototype.slice.call(sel.options);
     opts.forEach(function(o){
@@ -4888,7 +4904,7 @@ function openPick(sel,title,done){
   } else Array.prototype.forEach.call(sel.options,function(o){ optBtn(o,o.textContent,box); });
   if(!box.children.length) box.append(mk('p','pmeta','Nothing to choose from yet.'));
   var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6;
-  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||(b.dataset.full||b.textContent).toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')&&!b.classList.contains('pmain')&&!b.classList.contains('psub')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); if(q) box.querySelectorAll('.psubs').forEach(function(x){ x.hidden=false; }); var nm=box.querySelector('.pnone'); if(!n&&!nm){ box.append(mk('p','pmeta pnone','No match.')); } else if(n&&nm) nm.remove(); };
+  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||(b.dataset.full||b.textContent).toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(b.parentNode&&b.parentNode.classList.contains('trow')) b.parentNode.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')&&!b.classList.contains('pmain')&&!b.classList.contains('psub')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); if(q) box.querySelectorAll('.psubs').forEach(function(x){ x.hidden=false; }); var nm=box.querySelector('.pnone'); if(!n&&!nm){ box.append(mk('p','pmeta pnone','No match.')); } else if(n&&nm) nm.remove(); };
   var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
 document.addEventListener('click', function(e){
@@ -6828,6 +6844,31 @@ function tagSync(){
   list.forEach(function(t){ var x=mk('option',null,t); x.value=t; sel.append(x); });
   var u=mk('option',null,'No tags'); u.value='-'; sel.append(u); sel.value=tagFilter;
 }
+
+var tagEdOld='';
+function tagEdOpen(t){ tagEdOld=t; $('#tagEdName').value=t; $('#tagEdErr').textContent=''; var d=$('#dlgTagEd'); if(!d.open) d.showModal(); setTimeout(function(){ try{ $('#tagEdName').focus(); $('#tagEdName').select(); }catch(e){} },50); }
+async function tagApply(oldT,newT){
+  if(!isOwner||!day||!editable()){ toast('Tags can only be changed on the current day.'); return false; }
+  var k=oldT.toLowerCase(), p={rows:{}}, n=0;
+  Object.keys(day.rows||{}).forEach(function(id){
+    var r=day.rows[id]; if(!r||!r.tags||!r.tags.length) return;
+    if(!r.tags.some(function(t){ return t.toLowerCase()===k; })) return;
+    var seen={}, out=[];
+    r.tags.forEach(function(t){ var v=t.toLowerCase()===k?newT:t; if(!v) return; var kk=v.toLowerCase(); if(!seen[kk]){ seen[kk]=1; out.push(v); } });
+    p.rows[id]={tags:out}; n++;
+  });
+  if(!n){ toast('No item has that tag.'); return false; }
+  if(tagFilter&&tagFilter.toLowerCase()===k) tagFilter=newT||'';
+  var ok=await save(p); if(ok){ try{ $('#dlgPick').close(); }catch(e){} toast(newT?'Tag renamed on '+n+(n===1?' item':' items'):'Tag deleted from '+n+(n===1?' item':' items')); }
+  return ok;
+}
+$('#tagEdCancel').addEventListener('click', function(){ $('#dlgTagEd').close(); });
+$('#fTagEd').addEventListener('submit', async function(e){
+  e.preventDefault(); var v=tagClean($('#tagEdName').value);
+  if(!v){ $('#tagEdErr').textContent='Enter a tag name.'; return; }
+  if(v.toLowerCase()!==tagEdOld.toLowerCase()&&tagAll().some(function(t){ return t.toLowerCase()===v.toLowerCase(); })){ $('#tagEdErr').textContent='A tag with this name already exists.'; return; }
+  $('#dlgTagEd').close(); await tagApply(tagEdOld,v);
+});
 $('#tagSel').addEventListener('change', function(){ tagFilter=this.value; renderAll(); });
 $('#srcSel').addEventListener('change', function(){ srcFilter=this.value; renderAll(); });
 function tagEditor(box){
