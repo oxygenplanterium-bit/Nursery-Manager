@@ -540,8 +540,8 @@ select:not([multiple]){pointer-events:none}
     <button class="btn small primary" type="button" id="batAlertBtn">View</button>
   </section>
 
-  <section class="card alertcard" id="resMsg" hidden style="flex-direction:column;align-items:stretch;gap:8px">
-    <b id="resMsgHead">Resources Assigned To You</b>
+  <section class="card alertcard" id="resMsg" hidden style="flex-direction:column;align-items:stretch;gap:8px;overflow:hidden">
+    <b id="resMsgHead" style="margin:-14px -14px 2px;padding:12px 14px;background:var(--accent);color:#fff;display:block">Resources Assigned To You</b>
     <p class="pmeta" id="resMsgSub" style="margin:0"></p>
     <div style="overflow-x:auto"><table id="resMsgTbl" style="width:100%;border-collapse:collapse;font-size:.85rem"></table></div>
     <p class="pmeta" id="resMsgNote" style="margin:0;font-size:.75rem">I accept that I have received the material listed above and I shall keep it safe for future use.</p>
