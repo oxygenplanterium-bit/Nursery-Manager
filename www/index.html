@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:20 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:35 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1901,13 +1901,15 @@ function makeRow(id){
   var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
   el._hid=hidApply; top.append(tg); hidApply();
+  var lpFired=false; name.style.cursor='pointer';
+  name.addEventListener('click', function(){ if(lpFired){ lpFired=false; return; } tg.click(); });
   var catEl=mk('div','rcat'); catEl.hidden=true; var tgEl=mk('div','rtags'); tgEl.hidden=true; nm.append(top,catEl); idw.append(sl,nm); el.append(idw);
   var actRow=mk('div','ract'); actRow.append(actL,actR);
   if(isOwner){
     idw.classList.add('lp');
     var lpT=null, lx=0, ly=0;
     var lpStop=function(){ if(lpT){ clearTimeout(lpT); lpT=null; } };
-    idw.addEventListener('pointerdown', function(e){ if(e.target.closest('button')) return; lx=e.clientX; ly=e.clientY; lpStop(); lpT=setTimeout(function(){ lpT=null; selectRow(id); },550); });
+    idw.addEventListener('pointerdown', function(e){ if(e.target.closest('button')) return; lx=e.clientX; ly=e.clientY; lpFired=false; lpStop(); lpT=setTimeout(function(){ lpT=null; lpFired=true; selectRow(id); },550); });
     idw.addEventListener('pointermove', function(e){ if(Math.abs(e.clientX-lx)>10||Math.abs(e.clientY-ly)>10) lpStop(); });
     ['pointerup','pointercancel','pointerleave'].forEach(function(t){ idw.addEventListener(t,lpStop); });
     idw.addEventListener('contextmenu', function(e){ e.preventDefault(); });
