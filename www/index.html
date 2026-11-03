@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:20 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 5:35 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1341,13 +1341,10 @@ select:not([multiple]){pointer-events:none}
       <label class="f"><span>Name</span><input type="text" id="sopName" maxlength="60" autocomplete="off" placeholder="For example, Morning watering"></label>
       <label class="f"><span>Steps (one per line)</span><textarea id="sopSteps" rows="7" maxlength="3000" placeholder="Check water tank&#10;Water section A&#10;Water section B"></textarea></label>
       <div id="sopTg" style="display:flex;flex-direction:column;gap:6px"></div>
-      <button type="button" class="btn small" id="sopAuto">Auto-write explanation from steps</button>
-      <label class="f"><span>Detailed explanation (optional)</span><textarea id="sopNote" rows="6" maxlength="4000" placeholder="Explain the procedure in detail: what to use, how much, how long, what to watch out for"></textarea></label>
       <p class="pmeta" id="sopErr" style="color:var(--warn)"></p>
       <div class="two"><button type="button" class="btn primary" id="sopSave">Save Checklist</button><button type="button" class="btn" id="sopCancel">Clear</button></div>
     </div>
     <button type="button" class="btn small" id="sopSample" hidden>Add Sample Checklists</button>
-    <button type="button" class="btn small" id="sopFillEx" hidden>Auto-Write Missing Explanations</button>
     <div class="actions"><button type="button" class="btn primary" id="sopClose">Close</button></div>
   </div>
 </dialog>
@@ -2452,19 +2449,17 @@ function renderSopList(){
     ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto';
     det.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px'; det.hidden=!sopOpen[id];
     var mode=sopOpen[id];
-    if(mode==='view'){ det.append(mk('div','pmeta','Start photo: '+(it[1].ps===false?'Optional':'Required')+' · Finish photo: '+(it[1].pe===false?'Optional':'Required'))); it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); if(it[1].d) det.append(sopExpl(it[1].d)); }
+    if(mode==='view'){ det.append(mk('div','pmeta','Start photo: '+(it[1].ps===false?'Optional':'Required')+' · Finish photo: '+(it[1].pe===false?'Optional':'Required'))); it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); }
     if(mode==='edit'){
       var ni=mkIn('text','Name',it[1].n), nt=document.createElement('textarea'), ta=document.createElement('textarea'), er=mk('p','pmeta'), row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
       ni.maxLength=60; ni.setAttribute('aria-label','Checklist name'); ta.rows=7; ta.maxLength=3000; ta.value=it[1].st.join('\n'); ta.setAttribute('aria-label','Steps, one per line'); er.style.color='var(--warn)'; sv.type='button'; cn.type='button'; row.append(sv,cn);
-      nt.rows=6; nt.maxLength=4000; nt.value=it[1].d||''; nt.placeholder='Detailed explanation (optional)'; nt.setAttribute('aria-label','Detailed explanation');
-      var au=mk('button','btn small','Auto-write from steps'); au.type='button'; au.addEventListener('click', function(){ if(nt.value.trim()){ toast('Clear the explanation box first, then auto-write.'); return; } var st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x); }).filter(Boolean); if(!st.length){ toast('Add the steps first.'); return; } nt.value=sopAutoText(st); });
-      var tS=sopToggle('Start photo',it[1].ps!==false), tE=sopToggle('Finish photo',it[1].pe!==false); det.append(ni,ta,tS.el,tE.el,au,nt,er,row);
+      var tS=sopToggle('Start photo',it[1].ps!==false), tE=sopToggle('Finish photo',it[1].pe!==false); det.append(ni,ta,tS.el,tE.el,er,row);
       cn.addEventListener('click', function(){ delete sopOpen[id]; renderSopList(); });
       sv.addEventListener('click', async function(){
         var n=cleanName(ni.value), st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x).slice(0,120); }).filter(Boolean).slice(0,30);
         if(!n){ er.textContent='Enter a name for the checklist.'; return; }
         if(!st.length){ er.textContent='Add at least one step.'; return; }
-        var pt={sop:{}}; pt.sop[id]={n:n,st:st,o:it[1].o||1,x:null,d:nt.value.trim().slice(0,4000),ps:tS.get(),pe:tE.get()};
+        var pt={sop:{}}; pt.sop[id]={n:n,st:st,o:it[1].o||1,x:null,d:'',ps:tS.get(),pe:tE.get()};
         if(await saveSettings(pt)){ toast('Checklist saved'); delete sopOpen[id]; renderSopList(); }
       });
     }
@@ -2476,10 +2471,10 @@ function renderSopList(){
     });
     top.append(info,ed,del); r.append(top,det); b.append(r);
   });
-  $('#sopSample').hidden=all.length>0; $('#sopFillEx').hidden=!sopFillable().length;
+  $('#sopSample').hidden=all.length>0;
 }
 $('#sopSearch').addEventListener('input', renderSopList);
-function sopClear(){ if(typeof sopTgS!=='undefined'){ sopTgS.set(true); sopTgE.set(true); } sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopNote').value=''; $('#sopFormHead').textContent='Create New Checklist'; $('#sopErr').textContent=''; }
+function sopClear(){ if(typeof sopTgS!=='undefined'){ sopTgS.set(true); sopTgE.set(true); } sopEdit=''; $('#sopName').value=''; $('#sopSteps').value=''; $('#sopFormHead').textContent='Create New Checklist'; $('#sopErr').textContent=''; }
 $('#sopMng').addEventListener('click', function(){ if(!isOwner) return; sopClear(); renderSopList(); var d=$('#dlgSop'); if(!d.open) d.showModal(); });
 $('#sopClose').addEventListener('click', function(){ $('#dlgSop').close(); });
 $('#sopCancel').addEventListener('click', sopClear);
@@ -2488,7 +2483,7 @@ $('#sopSave').addEventListener('click', async function(){
   if(!n){ $('#sopErr').textContent='Enter a name for the checklist.'; return; }
   if(!st.length){ $('#sopErr').textContent='Add at least one step.'; return; }
   var id=sopEdit||'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), o=sopEdit&&sopMap[sopEdit]?sopMap[sopEdit].o:Object.keys(sopMap||{}).length+1, pt={sop:{}};
-  pt.sop[id]={n:n,st:st,o:o,x:null,d:$('#sopNote').value.trim().slice(0,4000),ps:sopTgS.get(),pe:sopTgE.get()};
+  pt.sop[id]={n:n,st:st,o:o,x:null,d:'',ps:sopTgS.get(),pe:sopTgE.get()};
   if(await saveSettings(pt)){ toast('Checklist saved'); sopClear(); }
 });
 
@@ -2523,16 +2518,10 @@ var SOP_SAMPLES=[
   "1. Count the plants against the bill\nCount each type of plant by hand and match it with the quantities on the bill. If anything is short, tell the owner before loading.\n\n2. Check plant health\nCheck every plant for healthy leaves, no pests, no broken stems and no dry soil. Replace any unhealthy plant with a good one. Water lightly the day before so the soil is moist but not dripping.\n\n3. Pack and cover safely\nGroup plants by size and keep them upright. Tie tall plants loosely. Put small plants in crates. Cover the load with a net or sheet in transit to protect it from wind and sun. Keep heavier pots at the bottom and delicate ones on top without crushing the leaves.\n\n4. Load the vehicle\nLoad carefully and never throw pots. Load big plants first and small ones on top. Pack them tightly so they cannot tip or slide. Give the driver the bill and the customer's phone number.\n\n5. Take a photo of the loaded order\nTake a clear photo of the loaded vehicle showing all the plants before it leaves. Keep it with the task as proof. It helps settle any later question about quantity or condition."]];
 function sopFillable(){ return sopList().filter(function(it){ return !it[1].d; }); }
 var sopTgS=sopToggle('Start photo',true), sopTgE=sopToggle('Finish photo',true); $('#sopTg').append(sopTgS.el,sopTgE.el);
-$('#sopAuto').addEventListener('click', function(){ if($('#sopNote').value.trim()){ toast('Clear the explanation box first, then auto-write.'); return; } var st=$('#sopSteps').value.split(/\r?\n/).map(function(x){ return cleanName(x); }).filter(Boolean); if(!st.length){ toast('Add the steps first.'); return; } $('#sopNote').value=sopAutoText(st); });
 $('#sopSample').addEventListener('click', async function(){
   var pt={sop:{}};
   SOP_SAMPLES.forEach(function(x,i){ pt.sop['s'+Date.now().toString(36)+i]={n:x[0],st:x[1],o:i+1,d:x[2]}; });
   if(await saveSettings(pt)) toast('Sample checklists added');
-});
-$('#sopFillEx').addEventListener('click', async function(){
-  var pt={sop:{}}, n=0;
-  sopFillable().forEach(function(it){ var nm=it[1].n.toLowerCase(), x=SOP_SAMPLES.find(function(y){ return y[0].toLowerCase()===nm&&y[1].length===it[1].st.length; }); pt.sop[it[0]]={d:x?x[2]:sopAutoText(it[1].st)}; n++; });
-  if(n&&await saveSettings(pt)) toast('Explanations written. Check them and edit if needed.');
 });
 
 /* ---------- task photo thumbnails and full screen view ---------- */
