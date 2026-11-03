@@ -6155,10 +6155,7 @@ function dockBuild(){
   var pref=dkPrefGet(), extra=0;
   pref.forEach(function(k){
     var m=DK_ALL.filter(function(x){ return x[0]===k; })[0];
-    d.append(dkTile(k,m[1],function(){ dkGo(m); },dkBadge(k),function(){
-      if(pref.length<=1){ toast('Keep at least one icon on the home page.'); return; }
-      dkPrefSet(pref.filter(function(x){ return x!==k; })); dockSig=''; dockUpdate(); toast(m[1]+' moved to More');
-    }));
+    d.append(dkTile(k,m[1],function(){ dkGo(m); },dkBadge(k),function(){ dkMenu(k,true); }));
   });
   DK_ALL.forEach(function(m){ if(pref.indexOf(m[0])<0&&dkAvail(m)) extra+=dkBadge(m[0]); });
   var tiles=Array.prototype.slice.call(d.children); d.textContent='';
@@ -6167,13 +6164,32 @@ function dockBuild(){
   rows[0].push(tiles[tiles.length-1]);
   for(var r=rows.length-1;r>=0;r--){ var rw=mk('div','dkr'); rows[r].forEach(function(t){ rw.append(t); }); d.append(rw); }
 }
+function dkMoreList(){
+  var pref=dkPrefGet(), ord=[]; try{ ord=JSON.parse(localStorage.getItem(dkKey()+'M')||'[]')||[]; }catch(e){}
+  var l=DK_ALL.filter(function(m){ return pref.indexOf(m[0])<0&&dkAvail(m); });
+  return l.sort(function(a,b){ var x=ord.indexOf(a[0]), y=ord.indexOf(b[0]); x=x<0?999:x; y=y<0?999:y; return x-y; });
+}
+function dkMoreSet(keys){ try{ localStorage.setItem(dkKey()+'M', JSON.stringify(keys)); }catch(e){} }
+function dkMenu(k,inHome){
+  var m=DK_ALL.filter(function(x){ return x[0]===k; })[0]; if(!m) return;
+  var d=$('#dlgDkm'); if(!d){ d=document.createElement('dialog'); d.id='dlgDkm'; document.body.append(d); d.addEventListener('click', function(e){ if(!e.target.closest('.dbody')) d.close(); }); }
+  d.textContent=''; var b=mk('div','dbody'); d.append(b);
+  b.append(mk('h2',null,m[1]));
+  var pref=dkPrefGet(), list=inHome?pref.slice():dkMoreList().map(function(x){ return x[0]; }), i=list.indexOf(k);
+  function done(){ dockSig=''; dockUpdate(); if($('#dlgMore').open) openMore(); }
+  function act(label,fn,off){ var bt=mk('button','btn',label); bt.type='button'; bt.disabled=!!off; bt.style.cssText='width:100%;margin-top:8px'; bt.addEventListener('click', function(){ d.close(); fn(); done(); }); b.append(bt); }
+  function swap(j){ var t=list[i]; list[i]=list[j]; list[j]=t; if(inHome) dkPrefSet(list); else dkMoreSet(list); }
+  act(inHome?'Move left / earlier':'Move earlier',function(){ swap(i-1); },i<=0);
+  act(inHome?'Move right / later':'Move later',function(){ swap(i+1); },i>=list.length-1);
+  if(inHome) act('Move to More',function(){ if(pref.length<=1){ toast('Keep at least one icon on the home page.'); return; } dkPrefSet(pref.filter(function(x){ return x!==k; })); toast(m[1]+' moved to More'); });
+  else act('Move to the home page',function(){ dkPrefSet(pref.concat([k])); toast(m[1]+' moved to the home page'); });
+  var c=mk('button','btn','Cancel'); c.type='button'; c.style.cssText='width:100%;margin-top:8px'; c.addEventListener('click', function(){ d.close(); }); b.append(c);
+  d.showModal();
+}
 function openMore(){
   var g=$('#moreGrid'), pref=dkPrefGet(); g.textContent='';
-  DK_ALL.forEach(function(m){
-    if(pref.indexOf(m[0])>=0||!dkAvail(m)) return;
-    g.append(dkTile(m[0],m[1],function(){ dkGo(m); },dkBadge(m[0]),function(){
-      dkPrefSet(pref.concat([m[0]])); dockSig=''; dockUpdate(); openMore(); toast(m[1]+' moved to the home page');
-    }));
+  dkMoreList().forEach(function(m){
+    g.append(dkTile(m[0],m[1],function(){ dkGo(m); },dkBadge(m[0]),function(){ dkMenu(m[0],false); }));
   });
   var d=$('#dlgMore'); if(!d.open) d.showModal();
 }
