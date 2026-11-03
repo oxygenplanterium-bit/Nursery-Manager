@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 5:45 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 5:55 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2268,7 +2268,9 @@ function makeTd(id){
   var phA='', phL=mk('label','btn small'), phI=document.createElement('input'), phT=mk('span',null,'Take photo after finishing'), phV=mk('button','btn small','View photos'), phM=mk('img');
   phI.type='file'; phI.accept='image/*'; phI.setAttribute('capture','environment'); phI.style.display='none'; phL.style.cssText='cursor:pointer;align-self:flex-start'; phL.append(phT,phI);
   phM.hidden=true; phM.alt='Photo after finishing'; phM.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--line)'; phV.type='button';
-  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phA||(el._x&&el._x.re===false))); });
+  var phD=mk('button','btn small danger','Delete photo'); phD.type='button'; phD.hidden=true; phD.style.alignSelf='flex-start';
+  phD.addEventListener('click', function(){ phA=''; phM.removeAttribute('src'); phM.hidden=true; phD.hidden=true; phT.textContent='Take photo after finishing'; fin.disabled=!(ta.value.trim()&&(el._x&&el._x.re===false)); });
+  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; try{ phA=await phCompress(f); phM.src=phA; phM.hidden=false; phD.hidden=false; phT.textContent='Retake photo'; }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phA||(el._x&&el._x.re===false))); });
   phV.addEventListener('click', function(){ var x=el._x; phView(id,(x&&x.title)||'Task'); });
   phM.style.cursor='pointer'; phM.addEventListener('click', function(){ if(phM.src) zoomOpen(phM.src,'Finish photo'); });
   var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.className='tdasg'; asB.append(asV,asE,asC,asP);
@@ -2297,8 +2299,8 @@ function makeTd(id){
   var head=mk('div','tdhead'), arr=mk('button','btn tdarr','\u25BE'), bd=mk('div','tdbd'); arr.type='button'; arr.setAttribute('aria-label','Show or hide task details');
   arr.addEventListener('click', function(){ var x=el._x; if(!x||!x.en) return; tdOpen[id]=!tdOpen[id]; updateTd(el,x,editable()); });
   var th=mk('div','thumbs'); var sb=mk('div'); sb.hidden=true; sb.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0;padding:8px;border:1px solid var(--line);border-radius:10px';
-  head.append(t,arr); bd.append(meta,th,sb,asB,phL,phM,phV,ta,row); el.append(head,bd);
-  el._r={th:th,sb:sb,arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT}; return el;
+  head.append(t,arr); bd.append(meta,th,sb,asB,phL,phM,phD,phV,ta,row); el.append(head,bd);
+  el._r={th:th,sb:sb,arr:arr,bd:bd,t:t,meta:meta,ta:ta,fin:fin,ed:ed,del:del,asV:asV,asE:asE,asP:asP,asC:asC,phL:phL,phV:phV,phM:phM,phT:phT,phD:phD}; return el;
 }
 function tdMeta(x){
   var run=!x.en;
@@ -2312,7 +2314,7 @@ function updateTd(el,x,ed){
   R.bd.hidden=collapsed; R.arr.hidden=!x.en; R.arr.textContent=collapsed?'\u25BE':'\u25B4'; R.arr.setAttribute('aria-expanded',!collapsed);
   R.t.textContent=(el._n?el._n+'. ':'')+x.title+(x.en?'':' (in progress)');
   sopRender(R.sb,el._id,x,ed); phThumbs(R.th,el._id,x);
-  R.phL.hidden=!(ed&&!x.en); R.phV.hidden=true; if(x.en) R.phM.hidden=true;
+  R.phL.hidden=!(ed&&!x.en); R.phV.hidden=true; if(x.en) R.phM.hidden=true; R.phD.hidden=!(ed&&!x.en&&!R.phM.hidden);
   R.meta.textContent=tdMeta(x);
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
   if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; R.asE.disabled=false; if(R.asC) R.asC.hidden=true; }
