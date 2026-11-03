@@ -158,8 +158,8 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .bar select#sortSel{flex:0 0 75%; width:75%; margin-left:auto; font-weight:600; background:color-mix(in srgb,#4f8cff 20%,var(--card)); border-color:color-mix(in srgb,#4f8cff 45%,var(--line))}
 .bar select#catSel,.bar select#tagSel,.bar select#srcSel{flex:1 1 45%; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
 #catBtn{flex:1 1 0; min-width:0}
-#stockTools{flex:1 1 100%; display:flex; gap:8px}
-#stockTools .btn{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#stockTools{flex:1 1 100%; display:flex; flex-wrap:wrap; gap:8px}
+#stockTools .btn{flex:1 1 auto; min-width:0; white-space:nowrap; padding-left:10px; padding-right:10px; text-align:center}
 .tglbl{display:block; font-size:.85rem; font-weight:700; margin:8px 0 4px}
 .tgchips,.tgsug,.rtags{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0}
 .tgchip{border:1px solid #4f8cff; background:color-mix(in srgb,#4f8cff 18%,var(--card)); color:inherit; border-radius:999px; padding:6px 12px; font:inherit; font-size:.85rem; cursor:pointer}
@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:50 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:05 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
