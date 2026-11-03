@@ -3865,7 +3865,23 @@ function makeRes(id){
         if(await saveSettings(p)) toast('Removed');
       });
     });
-    own.append(inp,qi,sel,mvb,rm); el.append(own);
+    var stb=mk('button','btn small','Add to stock'); stb.type='button';
+    stb.addEventListener('click', function(){ arm(stb,'stk'+id,'Add to stock',stkGo); });
+    var stkGo=async function(){
+      var r=res[id]; if(!r) return;
+      if(!editable()){ toast('Stock can be changed only on the open (latest) day.'); return; }
+      var nid=r.nid||'1', qty=Math.max(0,Math.round(Number(r.q)||0)), rows=(day&&day.rows)||{}, ex=null;
+      Object.keys(rows).forEach(function(k){ if(!rows[k].removed&&(rows[k].nid||'1')===nid&&normName(rows[k].name)===normName(r.n)) ex=k; });
+      var pr={rows:{}};
+      if(ex){ pr.rows[ex]={purchase:(rows[ex].purchase||0)+qty}; }
+      else{
+        var maxO=0; Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
+        var rid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        pr.rows[rid]={order:maxO+1,name:r.n,total:0,purchase:qty,sales:0,damages:0,nid:nid,addedAt:Date.now(),tags:['Resource']};
+      }
+      if(await save(pr)) toast(r.n+(ex?' quantity added to the existing stock item (+'+qty+')':' added to stock with quantity '+qty)+' in '+NURS[nid]);
+    };
+    own.append(inp,qi,sel,stb,mvb,rm); el.append(own);
     R.mv=mvb; R.inp=inp; R.sel=sel; R.rm=rm; R.qi=qi;
   }
   el._r=R;
