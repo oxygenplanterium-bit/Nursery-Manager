@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:05 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -690,7 +690,7 @@ select:not([multiple]){pointer-events:none}
         <form class="team" id="fTd" hidden novalidate>
           <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
-          <div class="asgwrap"><div class="asghead"><b>Start photos :</b><label class="btn small" id="tdPhBL" style="cursor:pointer"><span id="tdPhBT">Take photo</span><input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><div class="thumbs" id="tdPhBThumbs"></div><p class="pmeta" id="tdPhBCnt" style="margin:4px 0 0"></p></div></div>
+          <div class="asgwrap"><div class="asghead"><b>Start photos :</b><label class="btn small" id="tdPhBL" style="cursor:pointer"><span id="tdPhBT">Take photo</span><input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><div class="thumbs" id="tdPhBThumbs"></div><p class="pmeta" id="tdPhBCnt" style="margin:4px 0 0"></p><div id="tdPhBFoot" style="display:flex;justify-content:flex-end;margin-top:6px"></div></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
@@ -2511,7 +2511,8 @@ function tdPhDraw(){
     f.append(im,rm); b.append(f);
   });
   $('#tdPhBCnt').textContent=tdPhotos.length?tdPhotos.length+' of '+PH_MAX+' photos added.':'At least 1 photo is required. You can add up to '+PH_MAX+'.';
-  $('#tdPhBL').hidden=tdPhotos.length>=PH_MAX; $('#tdPhBT').textContent=tdPhotos.length?'Add another photo':'Take photo';
+  var L=$('#tdPhBL'), dest; if(!L._head) L._head=L.parentNode; dest=tdPhotos.length?$('#tdPhBFoot'):L._head; if(L.parentNode!==dest) dest.appendChild(L);
+  L.hidden=tdPhotos.length>=PH_MAX; $('#tdPhBT').textContent=tdPhotos.length?'Add another photo':'Take photo';
 }
 function phCompress(file){
   return new Promise(function(res,rej){
