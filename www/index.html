@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:30 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:45 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4178,7 +4178,7 @@ function makeRes(id){
 
 /* ---------- resources handed to labour: issued in the morning, received in the evening ---------- */
 function resLabList(nid){ return teamList('staff').filter(function(it){ return (it[1].nid||'1')===nid; }); }
-function resLabOut(lab){ var n=0; Object.keys(lab||{}).forEach(function(k){ var x=lab[k]; if(x&&x.i>0&&!x.r) n+=x.i; }); return n; }
+function resLabOut(lab){ var n=0; Object.keys(lab||{}).forEach(function(k){ var x=lab[k]; if(!x||!(x.i>0)) return; n+=x.r?Math.max(0,x.i-(typeof x.rq==='number'?x.rq:x.i)):x.i; }); return n; }
 function resLabIssued(lab,skip){ var n=0; Object.keys(lab||{}).forEach(function(k){ var x=lab[k]; if(k!==skip&&x&&x.i>0) n+=x.i; }); return n; }
 function labHidGet(){ try{ return JSON.parse(localStorage.getItem('nurseryLabHid')||'{}')||{}; }catch(e){ return {}; } }
 function labHidSet(o){ try{ localStorage.setItem('nurseryLabHid',JSON.stringify(o)); }catch(e){} }
@@ -4203,20 +4203,22 @@ function resLabRender(el,id,r,ed){
   if(hid){ box.append(mk('div','pmeta','Issued to me: '+fmtN(r.q||0)+' \u00B7 With labour now: '+fmtN(out)+' \u00B7 Balance with me: '+fmtN(Math.max(0,(r.q||0)-out)))); box.lastChild.style.fontWeight='600'; return; }
   list.forEach(function(it){
     var lid=it[0], nm=it[1].n, x=lab[lid]||{}, on=x.i>0, row=mk('div',null), nl=mk('div',null,nm);
-    row.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:2px 0;border-top:1px solid var(--line)'; nl.style.cssText='flex:1 1 70px;min-width:0;font-weight:600;overflow-wrap:anywhere';
+    row.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:2px 0;border-top:1px solid var(--line)'; nl.style.cssText='flex:1 1 100%;min-width:0;font-weight:600;overflow-wrap:anywhere';
     var il=mk('label'), ic=document.createElement('input'), qi=document.createElement('input'), rl=mk('label'), rc=document.createElement('input');
     il.style.cssText=rl.style.cssText='display:flex;flex-direction:row;align-items:center;gap:4px;margin:0;min-height:0'; ic.type=rc.type='checkbox'; ic.style.cssText=rc.style.cssText='width:18px;height:18px;flex:none;margin:0';
     ic.checked=on; rc.checked=on&&!!x.r; ic.disabled=!ed; rc.disabled=!ed||!on;
     il.append(ic,mk('span',null,'Issued')); rl.append(rc,mk('span',null,'Received'));
     qi.type='number'; qi.min='1'; qi.step='1'; qi.inputMode='numeric'; qi.value=on?x.i:1; qi.style.cssText='width:48px;min-height:30px;height:30px;padding:2px 4px;text-align:center'; qi.disabled=!ed||!on; qi.setAttribute('aria-label','Quantity issued to '+nm);
+    var rq=document.createElement('input'); rq.type='number'; rq.min='0'; rq.step='1'; rq.inputMode='numeric'; rq.value=on?(typeof x.rq==='number'?x.rq:x.i):''; rq.style.cssText=qi.style.cssText; rq.disabled=!ed||!on||!x.r; rq.setAttribute('aria-label','Quantity received back from '+nm);
     var room=function(q){ return tot-(on?x.i:0)+q<=(r.q||0); };
     ic.addEventListener('change', function(){
-      if(ic.checked){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); ic.checked=false; return; } resLabSave(id,lid,nm,{i:q,r:false},r); }
-      else resLabSave(id,lid,nm,{i:0,r:false},r);
+      if(ic.checked){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); ic.checked=false; return; } resLabSave(id,lid,nm,{i:q,r:false,rq:null},r); }
+      else resLabSave(id,lid,nm,{i:0,r:false,rq:null},r);
     });
-    qi.addEventListener('change', function(){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); qi.value=on?x.i:1; return; } resLabSave(id,lid,nm,{i:q},r); });
-    rc.addEventListener('change', function(){ resLabSave(id,lid,nm,{r:rc.checked},r); });
-    row.append(nl,il,qi,rl); box.append(row);
+    qi.addEventListener('change', function(){ var q=Math.max(1,Math.round(num(qi.value)||1)); if(!room(q)){ toast('Only '+fmtN(Math.max(0,(r.q||0)-tot+(on?x.i:0)))+' left with you.',4000); qi.value=on?x.i:1; return; } resLabSave(id,lid,nm,x.r?{i:q,rq:Math.min(q,typeof x.rq==='number'?x.rq:q)}:{i:q},r); });
+    rc.addEventListener('change', function(){ if(rc.checked){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value===''?x.i:rq.value)))); resLabSave(id,lid,nm,{r:true,rq:q},r); } else resLabSave(id,lid,nm,{r:false,rq:null},r); });
+    rq.addEventListener('change', function(){ var q=Math.min(x.i,Math.max(0,Math.round(num(rq.value)))); resLabSave(id,lid,nm,{rq:q},r); });
+    row.append(nl,il,qi,rl,rq); box.append(row);
   });
   var sm=mk('div','pmeta','Issued to me: '+fmtN(r.q||0)+' \u00B7 With labour now: '+fmtN(out)+' \u00B7 Balance with me: '+fmtN(Math.max(0,(r.q||0)-out)));
   sm.style.fontWeight='600'; box.append(sm);
