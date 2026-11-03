@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:35 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:00 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1154,9 +1154,9 @@ select:not([multiple]){pointer-events:none}
 </dialog>
 <dialog id="dlgResStk">
   <div class="dbody">
-    <h2>Add To Stock</h2>
+    <h2 id="rsHead">Add To Stock</h2>
     <p class="pmeta" id="rsInfo"></p>
-    <label class="f"><span>Quantity to add</span><input type="number" id="rsQty" min="1" step="1" inputmode="numeric"></label>
+    <label class="f"><span id="rsQtyT">Quantity to add</span><input type="number" id="rsQty" min="1" step="1" inputmode="numeric"></label>
     <label class="f" id="rsCatL"><span>Category or sub-category</span><select id="rsCat"></select></label>
     <p class="pmeta" id="rsErr" style="color:var(--warn)"></p>
     <div class="actions"><button type="button" class="btn" id="rsCancel">Cancel</button><button type="button" class="btn primary" id="rsOk">Add To Stock</button></div>
@@ -4066,28 +4066,34 @@ $('#resMsgBtn').addEventListener('click', async function(){
   if(await resAckSave(p)){ Object.keys(p).forEach(function(k){ resAck[k]=p[k]; }); resMsgUpdate(); toast('Accepted. Thank you.'); if(tab==='res') renderRes(); }
 });
 var rsId='';
-function resStkOpen(id){
-  var r=res[id]; if(!r) return;
+var rsEdit=false;
+function resStkOpen(id,edit){
+  var r=res[id]; if(!r) return; rsEdit=!!edit;
   if(!editable()){ toast('Stock can be changed only on the open (latest) day.'); return; }
-  rsId=id; $('#rsInfo').textContent=r.n+' \u00B7 '+NURS[r.nid||'1']; $('#rsQty').value=Math.max(1,Math.round(Number(r.q)||1)); $('#rsErr').textContent='';
-  var has=catList().length>0; $('#rsCatL').hidden=!has; if(has) catFill($('#rsCat'),'',true);
+  rsId=id; $('#rsInfo').textContent=r.n+' \u00B7 '+NURS[r.nid||'1']; $('#rsQty').value=rsEdit?0:Math.max(1,Math.round(Number(r.q)||1)); $('#rsErr').textContent='';
+  $('#rsHead').textContent=rsEdit?'Edit Category':'Add To Stock'; $('#rsQtyT').textContent=rsEdit?'Quantity to add (leave 0 to only change the category)':'Quantity to add'; $('#rsOk').textContent=rsEdit?'Save':'Add To Stock';
+  var has=catList().length>0; $('#rsCatL').hidden=!has; if(has) catFill($('#rsCat'),rsEdit?(r.sc||''):'',true);
   var d=$('#dlgResStk'); if(!d.open) d.showModal();
 }
 $('#rsCancel').addEventListener('click', function(){ $('#dlgResStk').close(); });
 $('#rsOk').addEventListener('click', async function(){
   var r=res[rsId]; if(!r) return; var err=$('#rsErr'); err.textContent='';
   if(!editable()){ err.textContent='Stock can be changed only on the open (latest) day.'; return; }
-  var qty=Math.round(Number($('#rsQty').value)||0); if(!(qty>0)){ err.textContent='Enter the quantity to add.'; return; }
+  var qty=Math.round(Number($('#rsQty').value)||0); if(!(qty>0)&&!rsEdit){ err.textContent='Enter the quantity to add.'; return; }
   var cat=$('#rsCatL').hidden?'':$('#rsCat').value; if(!$('#rsCatL').hidden&&!cat){ err.textContent='Select the category or sub-category.'; return; }
   var nid=r.nid||'1', rows=(day&&day.rows)||{}, ex=null, pr={rows:{}};
   Object.keys(rows).forEach(function(k){ if(!rows[k].removed&&(rows[k].nid||'1')===nid&&normName(rows[k].name)===normName(r.n)) ex=k; });
-  if(ex){ pr.rows[ex]={purchase:(rows[ex].purchase||0)+qty}; if(cat) pr.rows[ex].cat=cat; }
+  if(!ex&&!(qty>0)){ err.textContent='This item is not in the stock list now. Enter a quantity to add it.'; return; }
+  if(ex){ pr.rows[ex]={}; if(qty>0) pr.rows[ex].purchase=(rows[ex].purchase||0)+qty; if(cat) pr.rows[ex].cat=cat; }
   else{
     var maxO=0; Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
     var rid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     pr.rows[rid]={order:maxO+1,name:r.n,total:0,purchase:qty,sales:0,damages:0,nid:nid,addedAt:Date.now(),tags:['Resource']}; if(cat) pr.rows[rid].cat=cat;
   }
-  if(await save(pr)){ $('#dlgResStk').close(); toast(r.n+(ex?' added to the existing stock item (+'+qty+')':' added to stock with quantity '+qty)+(cat?' under '+catName(cat):'')); }
+  if(await save(pr)){
+    var rp={res:{}}; rp.res[rsId]={sk:true,sc:cat||''}; await saveSettings(rp);
+    $('#dlgResStk').close(); toast(rsEdit?(r.n+(cat?' category changed to '+catName(cat):' saved')+(qty>0?' and +'+qty+' added':'')):(r.n+(ex?' added to the existing stock item (+'+qty+')':' added to stock with quantity '+qty)+(cat?' under '+catName(cat):'')));
+  }
 });
 function resShown(n){
   n=n||nursery;
@@ -4096,7 +4102,7 @@ function resShown(n){
   if(selDate===latest()){
     resList().filter(function(it){ return (it[1].nid||'1')===n && (isOwner || !supId || !it[1].to || it[1].to===supId); }).forEach(function(it){
       var r=rs[it[0]]||{};
-      out.push([it[0],{n:it[1].n, nid:n, to:it[1].to||'', q:it[1].q||0, v:(typeof r.v==='boolean')?r.v:null, qty:(typeof r.qty==='number')?r.qty:null, who:r.who||'', at:r.at||0}]);
+      out.push([it[0],{n:it[1].n, nid:n, to:it[1].to||'', q:it[1].q||0, sk:!!it[1].sk, sc:it[1].sc||'', v:(typeof r.v==='boolean')?r.v:null, qty:(typeof r.qty==='number')?r.qty:null, who:r.who||'', at:r.at||0}]);
     });
   } else {
     Object.keys(rs).forEach(function(id){
@@ -4122,8 +4128,9 @@ function makeRes(id){
   qrow.append(mk('span',null,'Qty with me'),qin);
   var nb=mk('button','btn small','Not available with me'); nb.type='button';
   nb.addEventListener('click', function(){ setRes(id,false); });
-  top.append(chk,nm,iss); el.append(top,qrow,nb,meta);
-  var R={nb:nb,chk:chk,nm:nm,iss:iss,qrow:qrow,qin:qin,meta:meta,inp:null,sel:null,rm:null,qi:null};
+  var scEl=mk('div','pmeta'); scEl.hidden=true; scEl.style.fontWeight='600';
+  top.append(chk,nm,iss); el.append(top,scEl,qrow,nb,meta);
+  var R={sc:scEl,stb:null,edb:null,nb:nb,chk:chk,nm:nm,iss:iss,qrow:qrow,qin:qin,meta:meta,inp:null,sel:null,rm:null,qi:null};
   if(isOwner){
     var own=mk('div','rown'), inp=document.createElement('input'), qi=document.createElement('input'), sel=document.createElement('select'), rm=mk('button','btn small danger','Remove'), mvb=mk('button','btn small','Move');
     mvb.type='button'; mvb.addEventListener('click', function(){ moveRes(id,mvb); });
@@ -4144,10 +4151,10 @@ function makeRes(id){
         if(await saveSettings(p)) toast('Removed');
       });
     });
-    var stb=mk('button','btn small','Add to stock'); stb.type='button';
-    stb.addEventListener('click', function(){ resStkOpen(id); });
-    own.append(inp,qi,sel,stb,mvb,rm); el.append(own);
-    R.mv=mvb; R.inp=inp; R.sel=sel; R.rm=rm; R.qi=qi;
+    var stb=mk('button','btn small','Add to stock'), edb=mk('button','btn small','Edit'); stb.type=edb.type='button';
+    stb.addEventListener('click', function(){ resStkOpen(id,false); }); edb.addEventListener('click', function(){ resStkOpen(id,true); });
+    own.append(inp,qi,sel,stb,edb,mvb,rm); el.append(own);
+    R.stb=stb; R.edb=edb; R.mv=mvb; R.inp=inp; R.sel=sel; R.rm=rm; R.qi=qi;
   }
   el._r=R;
   return el;
@@ -4155,6 +4162,8 @@ function makeRes(id){
 function updateRes(el,id,r,ed){
   var R=el._r;
   R.nm.textContent=r.n;
+  var scn=r.sk&&r.sc?catName(r.sc):''; R.sc.textContent=scn?'Category: '+scn:''; R.sc.hidden=!scn;
+  if(R.stb){ R.stb.disabled=!!r.sk; R.edb.disabled=!r.sk; }
   R.chk.checked=(r.v===true); R.chk.disabled=!ed;
   R.iss.textContent='Qty issued: '+fmtN(r.q||0);
   R.qrow.hidden=!(ed || r.qty!==null);
