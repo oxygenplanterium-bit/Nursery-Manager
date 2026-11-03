@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:55 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:10 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2727,8 +2727,12 @@ function alReqSave(patch){
   var d=db.doc('meta/alreq');
   return d.update(patch).catch(function(e){ if(e&&e.code==='not_found') return d.set(patch); throw e; }).then(function(){ return true; }, function(){ toast('Could not save. Check your internet and try again.',4000); return false; });
 }
+function alRunning(){
+  if(!day||selDate!==todayKey()) return -1;
+  return Object.keys(day.td||{}).filter(function(id){ var x=day.td[id]; return x&&!x.en&&(x.nid||'1')===nursery; }).length;
+}
 async function alOffAsk(){
-  if(isOwner){ await chatNotifOff(); alNotifBtn(); return; }
+  if(isOwner||alRunning()===0){ await chatNotifOff(); alNotifBtn(); return; }
   if(!supId){ toast('Choose your name at the top first.'); return; }
   var q=alReq[supId]; if(q&&q.st==='p'){ toast('Your request is waiting for the owner.'); return; }
   var p={}; p[supId]={n:supName||'Supervisor',at:Date.now(),st:'p'};
@@ -2736,7 +2740,9 @@ async function alOffAsk(){
   alNotifBtn();
 }
 function alReqMine(){
-  if(isOwner||!supId) return; var q=alReq[supId]; if(!q) return;
+  if(isOwner) return;
+  if(alRunning()===0&&chatNotifOn()){ if(supId&&alReq[supId]){ var p0={}; p0[supId]=null; alReqSave(p0); } chatNotifOff().then(alNotifBtn); toast('All tasks are done. Phone alerts turned off.',4000); return; }
+  if(!supId) return; var q=alReq[supId]; if(!q) return;
   if(q.st==='ok'){ var p={}; p[supId]=null; alReqSave(p).then(function(){ chatNotifOff().then(alNotifBtn); }); }
   else if(q.st==='no'){ var p2={}; p2[supId]=null; alReqSave(p2); toast('The owner did not approve turning off alerts.',4000); }
   alNotifBtn();
@@ -2763,7 +2769,7 @@ function alNotifBtn(){
   b.textContent=chatNotifOn()?(q&&q.st==='p'?'Waiting for owner approval':(isOwner?'Turn off phone alerts':'Ask owner to turn off alerts')):'Turn on phone alerts';
 }
 setInterval(function(){ alReqMine(); alNotifBtn(); },3000);
-$('#alNotifBtn').addEventListener('click', async function(){ if(chatNotifOn()) await alOffAsk(); else await chatNotifEnable(); alNotifBtn(); });
+$('#alNotifBtn').addEventListener('click', async function(){ if(chatNotifOn()) await alOffAsk(); else if(!isOwner&&alRunning()===0) toast('Alerts turn on by themselves when you start a task or SOP.',4000); else await chatNotifEnable(); alNotifBtn(); });
 setTimeout(alNotifBtn,1500);
 /* ---------- half-hour open task alarm ---------- */
 var TDAL_MS=30*60*1000, tdAlBeep=0, tdAlAudio=null, tdAlTab='tasks';
