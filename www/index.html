@@ -535,7 +535,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:00 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:15 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -692,7 +692,7 @@ select:not([multiple]){pointer-events:none}
         <form class="team" id="fTd" hidden novalidate>
           <label class="f" hidden style="display:none"><span>Task allotted by the owner (optional)</span><select id="tdPick" aria-label="Allotted task"></select></label>
           <label class="f"><span>Task name</span><input type="text" id="tdName" maxlength="120" autocomplete="off" placeholder="What are you starting?"></label>
-          <div class="asgwrap"><div class="asghead"><b>Start photo :</b><span style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn small" style="cursor:pointer"><span id="tdPhBT">Take photo</span><input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label><button type="button" class="btn small danger" id="tdPhBDel" hidden>Delete photo</button></span></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"></div></div>
+          <div class="asgwrap"><div class="asghead"><b>Start photo :</b><label class="btn small" id="tdPhBL" style="cursor:pointer"><span id="tdPhBT">Take photo</span><input type="file" id="tdPhB" accept="image/*" capture="environment" style="display:none"></label></div><div class="asgbody"><img id="tdPhBImg" alt="Start photo" hidden style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)"><div id="tdPhBRow" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button type="button" class="btn small" id="tdPhBRe">Retake photo</button><button type="button" class="btn small danger" id="tdPhBDel">Delete photo</button></div></div></div>
           <div class="asgwrap"><div class="asghead"><b>Task assigned to :</b><button type="button" class="btn small asgtog" data-t="tdAsg" aria-expanded="true">Hide</button></div><div id="tdAsg" class="asgbody"></div></div>
           <p class="pmeta" id="tdErr" style="color:var(--warn)"></p>
           <button class="btn primary" type="submit" id="tdStart" disabled>Start task</button>
@@ -2522,10 +2522,11 @@ async function phView(id,title){
   }catch(e){ body.textContent=''; body.append(mk('p','pmeta','The photos could not be loaded. Check your internet and try again.')); }
 }
 $('#phClose').addEventListener('click', function(){ $('#dlgPh').close(); });
-$('#tdPhBDel').addEventListener('click', function(){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBImg').removeAttribute('src'); $('#tdPhBT').textContent='Take photo'; this.hidden=true; tdStartState(); });
+$('#tdPhBDel').addEventListener('click', function(){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBImg').removeAttribute('src'); $('#tdPhBL').hidden=false; tdStartState(); });
+$('#tdPhBRe').addEventListener('click', function(){ $('#tdPhB').click(); });
 $('#tdPhB').addEventListener('change', async function(){
   var f=this.files&&this.files[0]; this.value=''; if(!f) return;
-  try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; $('#tdPhBT').textContent='Retake photo'; $('#tdPhBDel').hidden=false; }catch(e){ toast('That photo could not be read. Try again.'); }
+  try{ tdPhotoB=await phCompress(f); var im=$('#tdPhBImg'); im.src=tdPhotoB; im.hidden=false; $('#tdPhBL').hidden=true; }catch(e){ toast('That photo could not be read. Try again.'); }
   tdStartState();
 });
 var sopPhotos=[], sopAsgSel=[], sopBusy=false, SOP_MAX=5;
@@ -2841,7 +2842,7 @@ $('#fTd').addEventListener('submit', async function(e){
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}};
   p.td[id]={title:name, nid:nursery, tid:pick||'', by:whoNow(), st:Date.now(), en:null, note:'', as:tdAsgSel.slice(), pb:1}; p.td[id].ast=p.td[id].st;
   try{ await phSave(id,'b',tdPhotoB); }catch(e){ err.textContent='The photo could not be saved. Check your internet and try again.'; return; }
-  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBT').textContent='Take photo'; $('#tdPhBDel').hidden=true; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
+  if(await save(p)){ tdPhotoB=''; $('#tdPhBImg').hidden=true; $('#tdPhBL').hidden=false; $('#tdName').value=''; $('#tdPick').value=''; tdAsgSel=[]; $('#tdAsg')._k=''; renderTd(); tdStartState(); toast('Task started'); }
 });
 function pdfTd(doc,sop){
   var y=secStart(doc,sop?'8. SOPs started and time taken':'7. Tasks started and time taken',false), nm=sop?'SOP':'task';
