@@ -156,7 +156,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .bar input[type=search]{flex:1 1 180px}
 #stockBar input[type=search]{flex:1 1 100%}
 .bar select#sortSel{flex:0 0 75%; width:75%; margin-left:auto; font-weight:600; background:color-mix(in srgb,#4f8cff 20%,var(--card)); border-color:color-mix(in srgb,#4f8cff 45%,var(--line))}
-.bar select#catSel,.bar select#tagSel{flex:1 1 45%; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
+.bar select#catSel,.bar select#tagSel,.bar select#srcSel{flex:1 1 45%; width:auto; min-width:0; font-weight:600; text-overflow:ellipsis}
 #catBtn{flex:1 1 0; min-width:0}
 #stockTools{flex:1 1 100%; display:flex; gap:8px}
 #stockTools .btn{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -535,6 +535,11 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
   </div>
 
+  <section class="card alertcard" id="batAlert" hidden>
+    <div id="batAlertText"></div>
+    <button class="btn small primary" type="button" id="batAlertBtn">View</button>
+  </section>
+
   <section class="card alertcard" id="homeChat" hidden style="flex-direction:column;align-items:stretch;gap:8px">
     <b id="homeChatHead">New messages</b>
     <div id="homeChatList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -589,9 +594,11 @@ select:not([multiple]){pointer-events:none}
           <option value="damages-desc">Damages: high to low</option>
         <option value="cat-asc">Category: A to Z</option>
         <option value="tag-asc">Tag: A to Z</option>
+        <option value="src-asc">Source: A to Z</option>
         </select>
         <select id="catSel" aria-label="Filter by category" hidden></select>
         <select id="tagSel" aria-label="Filter by tag" hidden></select>
+        <select id="srcSel" aria-label="Filter by source"><option value="">All sources</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option><option value="-">Source not set</option></select>
         <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="grpBtn" type="button">Group Report</button></div>
         <div id="stockActs">
           <button class="btn small" id="mvAllStock" hidden></button>
@@ -917,7 +924,7 @@ select:not([multiple]){pointer-events:none}
 <dialog id="dlgBat">
   <div class="dbody">
     <h2>Batches And Losses</h2>
-    <div class="seg2"><button type="button" class="btn" id="batTabB" aria-pressed="true">Batches</button><button type="button" class="btn" id="batTabL" aria-pressed="false">Losses</button></div>
+    <div class="seg2"><button type="button" class="btn" id="batTabB" aria-pressed="true">Batches</button><button type="button" class="btn" id="batTabL" aria-pressed="false">Losses</button><button type="button" class="btn" id="batTabR" aria-pressed="false">Report</button></div>
     <label class="f"><span>Nursery</span><select id="batNurs"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select></label>
     <div id="batBody" style="display:flex;flex-direction:column;gap:10px"></div>
     <div class="actions"><button type="button" class="btn primary" id="batClose">Close</button></div>
@@ -1015,6 +1022,7 @@ select:not([multiple]){pointer-events:none}
       <input type="text" id="editName" required maxlength="120">
     </label>
     <label id="editCatL">Category<select id="editCat"></select></label>
+    <label id="editSrcL">Source<select id="editSrc"><option value="">Not set</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option></select></label>
     <div id="editTagsL"><span class="tglbl">Tags (optional)</span><div id="editTagsBox"></div></div>
     <div class="actions">
       <button type="button" class="btn danger" id="editRemove">Delete</button>
@@ -1038,7 +1046,7 @@ select:not([multiple]){pointer-events:none}
   <div class="dbody">
     <h2>Stock Report</h2>
     <p class="pmeta" id="grpSub"></p>
-    <label>Group by<select id="grpBy"><option value="cat">Category</option><option value="main">Main Category</option><option value="tag">Tag</option></select></label>
+    <label>Group by<select id="grpBy"><option value="cat">Category</option><option value="main">Main Category</option><option value="tag">Tag</option><option value="src">Source</option></select></label>
     <div id="grpOut" style="overflow-x:auto;margin:10px 0"></div>
     <p class="pmeta" id="grpNote"></p>
     <div class="actions"><button type="button" class="btn" id="grpClose">Close</button><button type="button" class="btn primary" id="grpPdf">PDF / Share</button></div>
@@ -1063,6 +1071,7 @@ select:not([multiple]){pointer-events:none}
     <input type="file" id="addFile" accept=".csv,.xlsx,.xls,text/csv" hidden>
     <button type="button" class="btn" id="addFileBtn" style="width:100%">Upload CSV or Excel file</button>
     <p id="addFileInfo" style="color:var(--muted); font-size:.85rem; margin:6px 0 10px">Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.</p>
+    <label id="addSrcL">Source (optional)<select id="addSrc"><option value="">Not set</option><option value="P">Purchased plants</option><option value="C">Cuttings grown</option><option value="S">Seed grown</option></select></label>
     <label id="addCatL">Category (required)<select id="addCat"></select></label>
     <p id="addCatErr" style="color:var(--warn);font-weight:700;margin:4px 0" hidden></p>
     <div><span class="tglbl">Tags (optional, applied to every item added)</span><div id="addTagsBox"></div></div>
@@ -1608,7 +1617,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.src) rows[id].src=r.src; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -1684,7 +1693,7 @@ function renderTop(){
   mo.classList.toggle('cur', isOwner); ms.classList.toggle('cur', !isOwner);
   mo.classList.toggle('sw', !isOwner); ms.classList.toggle('sw', isOwner);
   mo.textContent='Owner Mode'; ms.textContent='Supervisor Mode';
-  $('#tabDue').hidden=!isOwner; $('#homeSup').hidden=isOwner; lowUpdate(); dockUpdate();
+  $('#tabDue').hidden=!isOwner; $('#homeSup').hidden=isOwner; lowUpdate(); batAlertUpdate(); dockUpdate();
   var pn=day ? sortedPending().length : 0, ab=$('#alertBox');
   ab.hidden=!(isOwner && pn>0);
   if(!ab.hidden) $('#alertText').textContent=''+pn+(pn===1?' new item request is':' new item requests are')+' waiting for your approval';
@@ -1848,7 +1857,7 @@ function noteEl(id,r,f,ed){
 }
 function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
-  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=catName(r.cat); R.cat.hidden=!R.cat.textContent; R.tg.textContent=''; (r.tags||[]).forEach(function(t){ R.tg.append(mk('span','rtag',t)); }); R.tg.hidden=!(r.tags&&r.tags.length);
+  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=[catName(r.cat),SRC_NAME[r.src]||''].filter(Boolean).join(' \u00B7 '); R.cat.hidden=!R.cat.textContent; R.tg.textContent=''; (r.tags||[]).forEach(function(t){ R.tg.append(mk('span','rtag',t)); }); R.tg.hidden=!(r.tags&&r.tags.length);
   if(R.edit) R.edit.hidden=!ed;
   if(R.xf) R.xf.hidden=!(ed&&canWrite);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
@@ -1889,7 +1898,8 @@ function xferEntries(r){
   var x=(r&&r.x)||{};
   return Object.keys(x).map(function(k){ return Object.assign({xid:k},x[k]); }).filter(function(e){ return e&&e.q>0; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
 }
-function sortKeyOf(key,r){ return key==='cat'?catName(r.cat):((r.tags||[]).slice().sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); })[0]||''); }
+var SRC_NAME={P:'Purchased plants',C:'Cuttings grown',S:'Seed grown'};
+function sortKeyOf(key,r){ return key==='src'?(SRC_NAME[r.src]||''):key==='cat'?catName(r.cat):((r.tags||[]).slice().sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); })[0]||''); }
 function sortItems(items){
   if(!sortMode) return items;
   var m=sortMode.split('-'), key=m[0], dir=m[1]==='desc'?-1:1;
@@ -1897,7 +1907,7 @@ function sortItems(items){
   return items.map(function(it,i){ return {it:it,i:i}; }).sort(function(a,b){
     var c;
     if(key==='name') c=(a.it[1].name||'').localeCompare(b.it[1].name||'',undefined,{numeric:true,sensitivity:'base'})*dir;
-    else if(key==='cat'||key==='tag'){ var A=sortKeyOf(key,a.it[1]), B=sortKeyOf(key,b.it[1]); c=(!A&&!B)?0:(!A?1:(!B?-1:A.localeCompare(B,undefined,{sensitivity:'base'})*dir)); }
+    else if(key==='cat'||key==='tag'||key==='src'){ var A=sortKeyOf(key,a.it[1]), B=sortKeyOf(key,b.it[1]); c=(!A&&!B)?0:(!A?1:(!B?-1:A.localeCompare(B,undefined,{sensitivity:'base'})*dir)); }
     else c=(val(a.it[1])-val(b.it[1]))*dir;
     return c || a.i-b.i;
   }).map(function(x){ return x.it; });
@@ -1975,7 +1985,7 @@ function renderStock(){
       var b2=mk('button','btn primary addwide','Add New Item'); b2.type='button'; b2.addEventListener('click', openAdd); s.append(b2);
     }else s.textContent='The owner has not added any stock yet.';
   }
-  else if((q||catFilter||tagFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && rowMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items match this filter.';
+  else if((q||catFilter||tagFilter||srcFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && rowMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items match this filter.';
   else s.hidden=true;
   if(show){
     var serial={}; items.forEach(function(it,i){ serial[it[0]]=i+1; });
@@ -2898,7 +2908,7 @@ function openEdit(kind,id){
   $('#editLabel').textContent = kind==='item' ? 'Item name' : 'Task';
   $('#editName').value = kind==='item' ? o.name : o.title;
   $('#editRemove').textContent = kind==='item' ? 'Remove item' : 'Delete task';
-  $('#editCatL').hidden=kind!=='item'; $('#editTagsL').hidden=kind!=='item'; if(kind==='item'){ catFill($('#editCat'),o.cat||''); editTags.set(o.tags||[]); }
+  $('#editCatL').hidden=kind!=='item'; $('#editTagsL').hidden=kind!=='item'; $('#editSrcL').hidden=kind!=='item'; if(kind==='item'){ $('#editSrc').value=o.src||''; pickify($('#editSrc'),'Source'); $('#editSrc')._sync(); catFill($('#editCat'),o.cat||''); editTags.set(o.tags||[]); }
   var d=$('#dlgEdit'); if(!d.open) d.showModal();
 }
 $('#fEdit').addEventListener('submit', async function(e){
@@ -2907,7 +2917,7 @@ $('#fEdit').addEventListener('submit', async function(e){
   if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
   var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
   patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
-  if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; patch[key][edCtx.id].tags=editTags.get(); }
+  if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; patch[key][edCtx.id].tags=editTags.get(); patch[key][edCtx.id].src=$('#editSrc').value||null; }
   $('#dlgEdit').close(); await save(patch);
 });
 $('#editCancel').addEventListener('click', function(){ $('#dlgEdit').close(); });
@@ -2933,7 +2943,7 @@ function openAdd(){
   $('#addHead').textContent = 'Add New Item \u2013 '+NURS[nursery];
   $('#addHelp').textContent = isOwner ? 'One item per line: the name, a comma, then the opening quantity. A line with no quantity starts at 0.' : 'One item per line: the name, a comma, then the opening quantity. The owner approves these before they appear in the list.';
   $('#addSubmit').textContent = isOwner ? 'Add to register' : 'Send for approval';
-  addTags.set([]); catFill($('#addCat'),'',true); $('#addCat').dataset.primOnly=''; $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
+  addTags.set([]); $('#addSrc').value=''; pickify($('#addSrc'),'Source'); $('#addSrc')._sync(); catFill($('#addCat'),'',true); $('#addCat').dataset.primOnly=''; $('#addCatL').hidden=false; $('#addCatErr').hidden=true; var cpb=$('#addCatL .pickbtn'); if(cpb) cpb.style.borderColor='';
   $('#addText').value=''; $('#addCount').textContent=''; $('#addWarn').textContent='';
   $('#addFileInfo').style.color='var(--muted)'; $('#addFileInfo').textContent='Columns: Item Name, then Total Qty. A header row and a Sl.No. column are fine.';
   var d=$('#dlgAdd'); if(!d.open) d.showModal();
@@ -3048,6 +3058,7 @@ $('#fAdd').addEventListener('submit', async function(e){
     var id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     var base={order:maxO, name:it.name, total:it.qty, purchase:0, sales:0, damages:0, nid:nursery, addedAt:Date.now()};
     if($('#addCat').value) base.cat=$('#addCat').value;
+    if($('#addSrc').value) base.src=$('#addSrc').value;
     var atg=addTags.get(); if(atg.length) base.tags=atg;
     if(!isOwner){ base.order=0; base.pending=true; base.by=nameNow()||'A supervisor'; base.reqAt=Date.now(); newNames.push(it.name); }
     patch.rows[id]=base;
@@ -5564,11 +5575,10 @@ function pdfBat(doc){
   ['1','2'].forEach(function(n){
     var b=Object.keys(batData.b||{}).map(function(id){ return batData.b[id]; }).filter(function(x){ return x&&(x.nid||'1')===n&&x.d===selDate; });
     var l=Object.keys(batData.l||{}).map(function(id){ return batData.l[id]; }).filter(function(x){ return x&&(x.nid||'1')===n&&x.d===selDate; });
-    y=nurHead(doc,y,n,b.length+' batches started, '+l.length+' losses recorded');
-    if(!b.length&&!l.length){ doc.text('No batches or losses on this day.', 40, y+14); y+=36; return; }
-    if(b.length){ doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Batch item','Qty','Ready by','By','Note']], body:b.map(function(x){ return [x.name||'',fmtN(x.qty),x.ready||'',x.by||'',x.note||'']; }), headStyles:{fillColor:[42,127,62]} }); y=doc.lastAutoTable.finalY+14; }
+    y=nurHead(doc,y,n,b.length+' batches started, '+l.length+' losses recorded on this day');
     if(l.length){ doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:9,cellPadding:4}, head:[['Loss item','Qty lost','Reason','By','Note']], body:l.map(function(x){ return [x.name||'',fmtN(x.qty),x.why||'',x.by||'',x.note||'']; }), headStyles:{fillColor:[176,64,48]} }); y=doc.lastAutoTable.finalY+14; }
-    y+=4;
+    if(y>650){ doc.addPage(); y=50; }
+    doc.setFontSize(10); doc.text('All batches (journey and health)', 40, y); y=pdfBatList(doc,y+6,n,'');
   });
 }
 function pdfAcc(doc){
@@ -6089,7 +6099,7 @@ $('#dueClose').addEventListener('click', function(){ $('#dlgDue').close(); });
 /* batches and losses */
 function batSubscribe(){
   if(batSubbed||!db) return; batSubbed=true;
-  db.doc('meta/batches').onSnapshot(function(s){ batData=s.exists?(s.data()||{}):{}; batData.b=batData.b||{}; batData.l=batData.l||{}; if(fdOpen) renderFull(); if($('#dlgBat').open) renderBat(); }, function(){ batSubbed=false; });
+  db.doc('meta/batches').onSnapshot(function(s){ batData=s.exists?(s.data()||{}):{}; batData.b=batData.b||{}; batData.l=batData.l||{}; if(fdOpen) renderFull(); batAlertUpdate(); if($('#dlgBat').open) renderBat(); }, function(){ batSubbed=false; });
 }
 function batSave(patch){
   var d=db.doc('meta/batches');
@@ -6100,37 +6110,183 @@ function batSave(patch){
 }
 var LOSS_WHY=[['Disease','Disease'],['Pest','Pests'],['Heat or cold','Heat or cold'],['Overwatering','Overwatering'],['Underwatering','Underwatering'],['Transport damage','Transport damage'],['Other','Other']];
 function batItemSel(){ var sl=mkSelect([['','Select item']].concat(rowsOf(batN).map(function(it){ return [it[0],it[1].name+' (Qty '+fmtN(bal(it[1]))+')']; }))); sl.setAttribute('aria-label','Item'); return sl; }
+/* ---- batch journey: stages, health checks, transfer to stock, report ---- */
+var BSTG={C:['Planted','Rooting','Hardening','Potted','Ready to sell'],S:['Sown','Germinated','Seedling','Transplanted','Ready to sell'],P:['Received','Acclimatising','Ready to sell']};
+var BSRC_DATE={C:'Planted on',S:'Sown on',P:'Received on'};
+var HC_TXT={good:'Good',watch:'Needs attention',poor:'Poor'}, HC_COL={good:'var(--accent)',watch:'#c98a00',poor:'var(--warn)'};
+var batPk=[], batOpen={}, batHcOpen={}, batDraft={}, batPhP={}, batXfer=null;
+function batStages(x){ return BSTG[x.src||'C']; }
+function batStageIx(x){ var l=batStages(x), i=l.indexOf(x.stage); return i<0?0:i; }
+function batFinal(x){ return batStageIx(x)>=batStages(x).length-1; }
+function batHcList(x){ return Object.keys(x.hc||{}).map(function(k){ return Object.assign({id:k},x.hc[k]); }).sort(function(a,b){ return (a.at||0)-(b.at||0); }); }
+function batShList(x){ return Object.keys(x.sh||{}).map(function(k){ return Object.assign({id:k},x.sh[k]); }).sort(function(a,b){ return (a.at||0)-(b.at||0); }); }
+function batLastStageDate(x){ var l=batShList(x); return l.length?l[l.length-1].d:x.d; }
+function batNeeds(x,t){
+  if(!x||x.st) return '';
+  var h=batHcList(x), last=h[h.length-1], r=[];
+  if(x.ready&&!batFinal(x)&&dayDiff(t,x.ready)<0) r.push('Past its ready date');
+  if(last&&last.st==='poor') r.push('Last health check: Poor'); else if(last&&last.st==='watch') r.push('Last health check: Needs attention');
+  if(dayDiff(last?last.d:x.d,t)>=7) r.push('Health check due');
+  return r.join(' · ');
+}
+function batAlertUpdate(){
+  var bx=$('#batAlert'); if(!bx) return; batSubscribe();
+  var t=todayKey(), n=0; Object.keys(batData.b||{}).forEach(function(id){ var x=batData.b[id]; if(x&&batNeeds(x,t)) n++; });
+  bx.hidden=!n; if(n) $('#batAlertText').textContent=n+(n===1?' batch needs':' batches need')+' attention';
+}
+function batPhotos(bid){ if(!batPhP[bid]) batPhP[bid]=db.doc('photos/'+bid).get().then(function(s){ return s.exists?(s.data()||{}):{}; }).catch(function(){ delete batPhP[bid]; return {}; }); return batPhP[bid]; }
+function batCard(e,i,t,body){
+  var id=e[0], x=e[1], c=mk('div','bcard'), r=mk('div','brow'), stg=batStages(x), ix=batStageIx(x), dd=x.ready?dayDiff(t,x.ready):null;
+  c.style.background=RC_BG[i%2];
+  r.append(mk('b',null,x.name), mk('b',null,fmtN(x.qty)+' plants')); c.append(r);
+  c.append(mk('div','pmeta',(SRC_NAME[x.src||'C'])+' · Age '+dayDiff(x.d,t)+' days · '+BSRC_DATE[x.src||'C']+' '+fmtIso(x.d)+((x.qty0&&x.qty0>0)?' · Survival '+Math.round(x.qty/x.qty0*100)+'%':'')));
+  var ch=mk('div',null); ch.style.cssText='display:flex;flex-wrap:wrap;gap:4px;margin:4px 0';
+  stg.forEach(function(sn,k){ var s=mk('span',null,sn); s.style.cssText='font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:10px;border:1px solid var(--line);'+(k<ix?'background:var(--accent);color:#fff;opacity:.75':(k===ix?'background:var(--accent);color:#fff':'color:var(--muted)')); ch.append(s); });
+  c.append(ch);
+  c.append(mk('div','pmeta','In '+stg[ix]+' since '+fmtIso(batLastStageDate(x))+' ('+dayDiff(batLastStageDate(x),t)+' days)'));
+  if(dd!==null){ var st=dd>0?'Ready in '+dd+(dd===1?' day':' days'):(dd===0?'Ready today':'Ready date passed '+(-dd)+(dd===-1?' day':' days')+' ago'); var sm=mk('div','pmeta',st+' · Expected '+fmtIso(x.ready)); if(dd<0&&!batFinal(x)) sm.style.color='var(--warn)'; c.append(sm); }
+  var hl=batHcList(x), lh=hl[hl.length-1];
+  var hs=mk('div','pmeta',lh?'Last health check '+fmtIso(lh.d)+': '+HC_TXT[lh.st]+(lh.note?' · '+lh.note:''):'No health check yet'); if(lh) hs.style.color=HC_COL[lh.st]; c.append(hs);
+  var nd=batNeeds(x,t); if(nd){ var nb=mk('div','pmeta','Needs attention: '+nd); nb.style.color='var(--warn)'; nb.style.fontWeight='700'; c.append(nb); }
+  if(x.note) c.append(mk('div','pmeta',x.note));
+  var ac=mk('div','sline');
+  if(!batFinal(x)){ var nx=mk('button','btn small primary','Move to '+stg[ix+1]); nx.type='button'; nx.addEventListener('click', function(){
+    var sid='s'+Date.now().toString(36), pt={b:{}}; pt.b[id]={stage:stg[ix+1],sh:{}}; pt.b[id].sh[sid]={s:stg[ix+1],d:t,by:nameNow()||(isOwner?'Owner':''),at:Date.now()}; batSave(pt); }); ac.append(nx); }
+  var hb=mk('button','btn small',batHcOpen[id]?'Close health check':'Health check'); hb.type='button'; hb.addEventListener('click', function(){ batHcOpen[id]=!batHcOpen[id]; renderBat(); }); ac.append(hb);
+  var hist=mk('button','btn small',batOpen[id]?'Hide history':'History'); hist.type='button'; hist.addEventListener('click', function(){ batOpen[id]=!batOpen[id]; renderBat(); }); ac.append(hist);
+  if(batFinal(x)){ var tr=mk('button','btn small primary','Transfer to stock'); tr.type='button'; tr.addEventListener('click', function(){ if(!isOwner){ toast('The owner transfers ready batches to stock.'); return; } batXferOpen(id); }); ac.append(tr); }
+  if(isOwner){ var dl=mk('button','btn small danger','Delete'); dl.type='button'; dl.addEventListener('click', function(){ arm(dl,'bdel'+id,'Delete',function(){ var pt={b:{}}; pt.b[id]=null; batSave(pt); try{ db.doc('photos/'+id).delete().catch(function(){}); }catch(z){} }); }); ac.append(dl); }
+  c.append(ac);
+  if(batHcOpen[id]){
+    var d=batDraft[id]=batDraft[id]||{st:'good',note:'',lost:'',ph:''}, f=mk('div','bcard'); f.style.cssText='border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px';
+    var sl=mkSelect([['good','Good'],['watch','Needs attention'],['poor','Poor']],d.st), nt=mkIn('text','Note (optional)',d.note), lo=mkIn('number','Plants lost since last check (optional)',d.lost), pl=mk('label','btn small'), pi=document.createElement('input'), pm=mk('img'), sv=mk('button','btn small primary','Save health check');
+    nt.maxLength=80; lo.min='0'; lo.step='1'; lo.inputMode='numeric'; sv.type='button'; pi.type='file'; pi.accept='image/*'; pi.setAttribute('capture','environment'); pi.style.display='none';
+    pl.style.cssText='cursor:pointer;align-self:flex-start'; pl.append(mk('span',null,d.ph?'Retake photo':'Take photo (optional)'),pi); pm.style.cssText='max-width:110px;max-height:110px;border-radius:10px;border:1px solid var(--line)'; pm.hidden=!d.ph; if(d.ph) pm.src=d.ph;
+    sl.addEventListener('change', function(){ d.st=sl.value; }); nt.addEventListener('input', function(){ d.note=nt.value; }); lo.addEventListener('input', function(){ d.lost=lo.value; });
+    pi.addEventListener('change', async function(){ var fl=pi.files&&pi.files[0]; pi.value=''; if(!fl) return; try{ d.ph=await phCompress(fl); renderBat(); }catch(z){ toast('That photo could not be read. Try again.'); } });
+    sv.addEventListener('click', async function(){
+      if(needSup()){ toast('Choose your name at the top first.'); return; }
+      var n=Math.max(0,Math.round(Number(d.lost)||0)); if(n>x.qty){ toast('Only '+fmtN(x.qty)+' plants in this batch.'); return; }
+      var hid='h'+Date.now().toString(36), pt={b:{}}, who=nameNow()||(isOwner?'Owner':'');
+      pt.b[id]={hc:{}}; pt.b[id].hc[hid]={d:t,st:d.st,note:d.note.trim(),lost:n,by:who,at:Date.now()};
+      if(d.ph){ try{ await phSave(id,hid,d.ph); pt.b[id].hc[hid].ph=1; delete batPhP[id]; }catch(z){ toast('The photo could not be saved. Check your internet and try again.'); return; } }
+      if(n>0){ pt.b[id].qty=x.qty-n; var lid='l'+Date.now().toString(36)+Math.random().toString(36).slice(2,4); pt.l={}; pt.l[lid]={item:x.item||'',bid:id,name:x.name,nid:x.nid||'1',qty:n,why:d.st==='poor'?'Disease':'Other',d:t,note:'Batch health check'+(d.note.trim()?': '+d.note.trim():''),by:who,at:Date.now(),nostock:true}; }
+      if(await batSave(pt)){ delete batDraft[id]; batHcOpen[id]=false; toast('Health check saved'); }
+    });
+    f.append(mk('b',null,'Health check · '+x.name), mkLbl('Condition',sl), nt, lo, pl, pm, sv); c.append(f); batPk.push([sl,'Condition']);
+  }
+  if(batOpen[id]){
+    var h=mk('div',null); h.style.cssText='display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:6px';
+    h.append(mk('b',null,'Journey'));
+    var ev=[{at:x.at||0,t:fmtIso(x.d)+' · '+BSRC_DATE[x.src||'C']+' · '+fmtN(x.qty0||x.qty)+' plants'+(x.by?' · By '+x.by:'')}];
+    batShList(x).slice(1).forEach(function(s){ ev.push({at:s.at||0,t:fmtIso(s.d)+' · Moved to '+s.s+(s.by?' · By '+s.by:'')}); });
+    hl.forEach(function(q){ ev.push({at:q.at||0,t:fmtIso(q.d)+' · Health: '+HC_TXT[q.st]+(q.lost?' · Lost '+q.lost:'')+(q.note?' · '+q.note:'')+(q.by?' · By '+q.by:''),ph:q.ph?q:null}); });
+    ev.sort(function(a,b){ return a.at-b.at; }).forEach(function(q){ var l=mk('div','pmeta',q.t); h.append(l);
+      if(q.ph){ var tb=mk('button','btn small','View photo'); tb.type='button'; tb.style.alignSelf='flex-start'; tb.addEventListener('click', function(){ batPhotos(id).then(function(o){ if(o[q.ph.id]) zoomOpen(o[q.ph.id],'Health check photo'); else toast('Photo not found.'); }); }); h.append(tb); } });
+    c.append(h);
+  }
+  body.append(c);
+}
+function batXferOpen(id){ batXfer={id:id}; renderBat(); }
+function batXferCard(body,t){
+  var id=batXfer.id, x=(batData.b||{})[id]; if(!x){ batXfer=null; return; }
+  var f=mk('div','bcard'); f.style.cssText='border:2px solid var(--accent);border-radius:12px;padding:10px;gap:8px';
+  var rows=rowsOf(x.nid||batN), opts=[['','Create new stock item "'+x.name+'"']].concat(rows.map(function(it){ return [it[0],it[1].name+' (Qty '+fmtN(bal(it[1]))+')']; }));
+  var sl=mkSelect(opts), q=mkIn('number','Plants to move',x.qty), cs=mkIn('number','Cost per plant (optional)',x.cost||''), go=mk('button','btn primary','Transfer to stock'), cn=mk('button','btn','Cancel');
+  var nm=normName(x.name), m=rows.filter(function(it){ return normName(it[1].name)===nm; })[0]; sl.value=x.item&&day&&day.rows&&day.rows[x.item]?x.item:(m?m[0]:'');
+  q.min='1'; q.step='1'; q.max=x.qty; q.inputMode='numeric'; cs.min='0'; cs.step='any'; go.type='button'; cn.type='button';
+  f.append(mk('b',null,'Transfer to stock · '+x.name), mk('div','pmeta','Moves the plants into the stock register as saleable items, marked '+SRC_NAME[x.src||'C']+'.'), mkLbl('Stock item',sl), mkLbl('Plants to move (up to '+fmtN(x.qty)+')',q), mkLbl('Cost per plant (Rs.)',cs), mk('div','sline')); f.lastChild.append(go,cn);
+  batPk.push([sl,'Stock item']);
+  cn.addEventListener('click', function(){ batXfer=null; renderBat(); });
+  go.addEventListener('click', async function(){
+    if(!editable()){ toast('Stock can be changed only on the open (latest) day.'); return; }
+    var n=Math.round(Number(q.value)||0); if(!(n>0)||n>x.qty){ toast('Enter 1 to '+fmtN(x.qty)+' plants.'); return; }
+    var cp=Number(cs.value)||0, pr={rows:{}}, rid=sl.value, row=rid&&day.rows[rid];
+    if(rid&&row){ pr.rows[rid]={purchase:(row.purchase||0)+n}; if(cp>0&&!(row.cost>0)) pr.rows[rid].cost=cp; if(!row.src) pr.rows[rid].src=x.src||'C'; }
+    else{
+      var maxO=0; Object.keys(day.rows||{}).forEach(function(k){ maxO=Math.max(maxO,(day.rows[k].order||0)); });
+      if(rowClash(x.name,x.nid||batN,'')){ toast(x.name+' is already in the stock list. Choose it from the list.'); return; }
+      rid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      pr.rows[rid]={order:maxO+1,name:x.name,total:0,purchase:n,sales:0,damages:0,nid:x.nid||batN,addedAt:Date.now(),src:x.src||'C'}; if(cp>0) pr.rows[rid].cost=cp;
+    }
+    if(!(await save(pr))) return;
+    var pt={b:{}}, rest=x.qty-n; pt.b[id]={qty:rest,moved:(x.moved||0)+n,item:rid};
+    if(rest<=0){ pt.b[id].st='moved'; pt.b[id].doneAt=Date.now(); }
+    if(await batSave(pt)){ batXfer=null; toast(n+' plants moved to stock'); }
+  });
+  body.append(f);
+}
+function renderBatB(body,t){
+  var f=mk('div','bcard'), src=mkSelect([['','Select source'],['C','Cuttings grown'],['S','Seed grown'],['P','Purchased plants']]), nmI=mkIn('text','Plant name (for example Rose)'), q=mkIn('number','Number of plants'), d1=mkIn('date',null,t), d2=mkIn('date'), cs=mkIn('number','Cost per plant (optional)'), nt=mkIn('text','Note (optional)'), ad=mk('button','btn primary','Start Batch'), dl=mkLbl('Planted on',d1);
+  src.setAttribute('aria-label','Source'); nmI.maxLength=60; nmI.autocomplete='off'; q.min='1'; q.step='1'; q.inputMode='numeric'; cs.min='0'; cs.step='any'; nt.maxLength=60; ad.type='button';
+  var lst=document.createElement('datalist'); lst.id='batNames'; rowsOf(batN).forEach(function(it){ var o=document.createElement('option'); o.value=it[1].name; lst.append(o); }); nmI.setAttribute('list','batNames');
+  src.addEventListener('change', function(){ dl.firstChild.textContent=BSRC_DATE[src.value||'C']; });
+  f.append(mk('b',null,'New Batch'), mkLbl('Source',src), mkLbl('Plant name',nmI), lst, q, dl, mkLbl('Expected Ready On',d2), cs, nt, ad); body.append(f); batPk.push([src,'Source']);
+  ad.addEventListener('click', async function(){
+    var n=Math.round(Number(q.value)||0), nm=nmI.value.trim().replace(/\s+/g,' ');
+    if(!src.value){ toast('Select the source: cuttings, seeds or purchased.'); return; } if(!nm){ toast('Enter the plant name.'); return; } if(!(n>0)){ toast('Enter the number of plants.'); return; } if(!d2.value){ toast('Pick the expected ready date.'); return; }
+    var link=rowsOf(batN).filter(function(it){ return normName(it[1].name)===normName(nm); })[0];
+    var id='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), pt={b:{}}, sid='s'+Date.now().toString(36), stg=BSTG[src.value][0], dd=d1.value||t, who=nameNow()||(isOwner?'Owner':'');
+    pt.b[id]={item:link?link[0]:'',name:nm,nid:batN,qty:n,qty0:n,src:src.value,stage:stg,d:dd,ready:d2.value,note:nt.value.trim(),by:who,at:Date.now(),st:'',sh:{}}; if(Number(cs.value)>0&&isOwner) pt.b[id].cost=Number(cs.value);
+    pt.b[id].sh[sid]={s:stg,d:dd,by:who,at:Date.now()};
+    if(await batSave(pt)) toast('Batch started');
+  });
+  if(batXfer) batXferCard(body,t);
+  var bs=Object.keys(batData.b||{}).map(function(id){ return [id,batData.b[id]]; }).filter(function(e){ return e[1]&&(e[1].nid||'1')===batN; });
+  var open=bs.filter(function(e){ return !e[1].st; }).sort(function(a,b){ return String(a[1].ready).localeCompare(String(b[1].ready)); }), closed=bs.filter(function(e){ return e[1].st; });
+  body.append(mk('b',null,'Growing ('+open.length+')'));
+  if(!open.length) body.append(mk('p','pmeta','No batches are growing.'));
+  open.forEach(function(e,i){ batCard(e,i,t,body); });
+  if(closed.length){ body.append(mk('b',null,'Completed ('+closed.length+')')); closed.sort(function(a,b){ return (b[1].doneAt||0)-(a[1].doneAt||0); }).slice(0,15).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'); c.style.background=RC_BG[i%2]; c.append(mk('div','brow')); c.firstChild.append(mk('span',null,x.name+' · '+fmtN(x.moved||x.qty)+' plants'+(x.st==='moved'?' moved to stock':'')), mk('span','pmeta',SRC_NAME[x.src||'C'])); body.append(c); }); }
+}
+var batRepSrc='';
+function batRepData(n,srcF){
+  var o={}, rows=[];
+  Object.keys(batData.b||{}).forEach(function(id){ var x=batData.b[id]; if(!x||(x.nid||'1')!==n) return; if(srcF&&(x.src||'C')!==srcF) return; var k=x.src||'C'; var s=o[k]=o[k]||{n:SRC_NAME[k],b:0,start:0,now:0,lost:0,moved:0}; var q0=x.qty0||x.qty+(x.moved||0); s.b++; s.start+=q0; s.now+=x.st?0:x.qty; s.moved+=x.moved||0; s.lost+=Math.max(0,q0-x.qty-(x.moved||0)); rows.push([id,x]); });
+  rows.sort(function(a,b){ return (a[1].st?1:0)-(b[1].st?1:0)||String(a[1].ready).localeCompare(String(b[1].ready)); });
+  return {sum:['C','S','P'].filter(function(k){ return o[k]; }).map(function(k){ return o[k]; }),rows:rows};
+}
+function renderBatR(body,t){
+  var sl=mkSelect([['','All sources'],['C','Cuttings grown'],['S','Seed grown'],['P','Purchased plants']],batRepSrc); sl.setAttribute('aria-label','Filter by source');
+  sl.addEventListener('change', function(){ batRepSrc=sl.value; renderBat(); }); body.append(mkLbl('Source',sl)); batPk.push([sl,'Source']);
+  var d=batRepData(batN,batRepSrc), c=mk('div','bcard'); c.append(mk('b',null,'Batch Report · '+NURS[batN]));
+  if(!d.sum.length) c.append(mk('p','pmeta','No batches yet.'));
+  d.sum.forEach(function(s){ c.append(mk('div','pmeta',s.n+': '+s.b+' batches · Started '+fmtN(s.start)+' · Growing now '+fmtN(s.now)+' · Moved to stock '+fmtN(s.moved)+' · Lost '+fmtN(s.lost)+(s.start?' · Survival '+Math.round((s.start-s.lost)/s.start*100)+'%':''))); });
+  body.append(c);
+  d.rows.forEach(function(e,i){
+    var x=e[1], k=mk('div','bcard'), h=batHcList(x), lh=h[h.length-1]; k.style.background=RC_BG[i%2];
+    var r=mk('div','brow'); r.append(mk('b',null,x.name), mk('b',null,x.st==='moved'?'In stock':batStages(x)[batStageIx(x)])); k.append(r);
+    k.append(mk('div','pmeta',SRC_NAME[x.src||'C']+' · '+BSRC_DATE[x.src||'C']+' '+fmtIso(x.d)+' · Age '+dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t)+' days · Plants '+fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty)+(x.moved?' · Moved '+fmtN(x.moved):'')));
+    k.append(mk('div','pmeta',(x.ready?'Expected ready '+fmtIso(x.ready)+' · ':'')+(lh?'Last health '+fmtIso(lh.d)+' '+HC_TXT[lh.st]:'No health check')+' · '+h.length+' checks'));
+    body.append(k);
+  });
+  var pb=mk('button','btn','Download batch report PDF'); pb.type='button'; pb.addEventListener('click', batPdf); body.append(pb);
+}
+function todayKeyOf(ms){ var d=new Date(ms); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function pdfBatList(doc,y,n,srcF){
+  var d=batRepData(n,srcF), t=todayKey();
+  if(!d.rows.length){ doc.text('No batches.', 40, y+14); return y+36; }
+  doc.autoTable({ startY:y, theme:'grid', styles:{fontSize:8,cellPadding:3}, head:[['Plant','Source','Started','Age (d)','Stage','Plants','Expected ready','Last health','Checks']],
+    body:d.rows.map(function(e){ var x=e[1], h=batHcList(x), lh=h[h.length-1]; return [x.name,SRC_NAME[x.src||'C'],fmtIso(x.d),dayDiff(x.d,x.doneAt?todayKeyOf(x.doneAt):t),x.st==='moved'?'In stock':batStages(x)[batStageIx(x)],fmtN(x.qty0||x.qty)+' to '+fmtN(x.qty),x.ready?fmtIso(x.ready):'',lh?fmtIso(lh.d)+' '+HC_TXT[lh.st]:'None',h.length]; }), headStyles:{fillColor:[42,127,62]} });
+  return doc.lastAutoTable.finalY+14;
+}
+async function batPdf(){
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+  var doc=new J({unit:'pt',format:'a4'}), y=letterhead(doc)+26; doc.setFontSize(15); doc.text('Batch Report', 40, y); doc.setFontSize(10); doc.text(NURS[batN]+' · '+fmtIso(todayKey())+(batRepSrc?' · '+SRC_NAME[batRepSrc]:''), 40, y+16);
+  var d=batRepData(batN,batRepSrc); y+=34;
+  d.sum.forEach(function(s){ doc.text(s.n+': '+s.b+' batches, started '+fmtN(s.start)+', growing '+fmtN(s.now)+', moved to stock '+fmtN(s.moved)+', lost '+fmtN(s.lost), 40, y); y+=14; });
+  pdfBatList(doc,y+6,batN,batRepSrc);
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
+  try{ await downloads.save({filename:'batch-report-'+todayKey()+'.pdf', data:doc.output('arraybuffer')}); }catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+}
 function renderBat(){
   var body=$('#batBody'); body.textContent='';
-  $('#batTabB').setAttribute('aria-pressed',batTab==='B'); $('#batTabL').setAttribute('aria-pressed',batTab==='L'); $('#batNurs').value=batN;
+  $('#batTabB').setAttribute('aria-pressed',batTab==='B'); $('#batTabL').setAttribute('aria-pressed',batTab==='L'); $('#batTabR').setAttribute('aria-pressed',batTab==='R'); $('#batNurs').value=batN;
   var t=todayKey();
-  if(batTab==='B'){
-    var f=mk('div','bcard'), it=batItemSel(), q=mkIn('number','Plants in this batch'), d1=mkIn('date'), d2=mkIn('date'), nt=mkIn('text','Note (optional)'), ad=mk('button','btn primary','Add Batch');
-    q.min='1'; q.step='1'; q.inputMode='numeric'; d1.value=t; nt.maxLength=60; ad.type='button';
-    f.append(mk('b',null,'New Batch'), it, q, mkLbl('Potted Or Sown On',d1), mkLbl('Expected Ready On',d2), nt, ad); body.append(f);
-    ad.addEventListener('click', async function(){
-      var n=Math.round(Number(q.value)||0), row=(day&&day.rows&&day.rows[it.value]);
-      if(!it.value||!row){ toast('Select an item.'); return; } if(!(n>0)){ toast('Enter the number of plants.'); return; } if(!d2.value){ toast('Pick the expected ready date.'); return; }
-      var id='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), pt={b:{}};
-      pt.b[id]={item:it.value,name:row.name,nid:batN,qty:n,d:d1.value||t,ready:d2.value,note:nt.value.trim(),by:nameNow()||(isOwner?'Owner':''),at:Date.now(),st:''};
-      if(await batSave(pt)) toast('Batch added');
-    });
-    var bs=Object.keys(batData.b||{}).map(function(id){ return [id,batData.b[id]]; }).filter(function(e){ return e[1]&&(e[1].nid||'1')===batN; });
-    var open=bs.filter(function(e){ return !e[1].st; }).sort(function(a,b){ return String(a[1].ready).localeCompare(String(b[1].ready)); }), closed=bs.filter(function(e){ return e[1].st; });
-    body.append(mk('b',null,'Growing ('+open.length+')'));
-    if(!open.length) body.append(mk('p','pmeta','No batches are growing.'));
-    open.forEach(function(e,i){
-      var x=e[1], c=mk('div','bcard'), r=mk('div','brow'), dd=dayDiff(t,x.ready); c.style.background=RC_BG[i%2];
-      r.append(mk('b',null,x.name), mk('b',null,fmtN(x.qty)+' plants')); c.append(r);
-      var st=dd>0?'Ready in '+dd+(dd===1?' day':' days'):(dd===0?'Ready today':'Ready '+(-dd)+(dd===-1?' day':' days')+' ago'); var sm=mk('div','pmeta',st+' · Ready on '+fmtIso(x.ready)); if(dd<=0) sm.style.color='var(--warn)'; c.append(sm);
-      c.append(mk('div','pmeta','Started '+fmtIso(x.d)+(x.by?' · By '+x.by:'')+(x.note?' · '+x.note:'')));
-      var ac=mk('div','sline'), done=mk('button','btn small primary','Mark Ready Or Sold'); done.type='button';
-      done.addEventListener('click', function(){ var pt={b:{}}; pt.b[e[0]]={st:'done',doneAt:Date.now()}; batSave(pt); }); ac.append(done);
-      if(isOwner){ var dl=mk('button','btn small danger','Delete'); dl.type='button'; dl.addEventListener('click', function(){ arm(dl,'bdel'+e[0],'Delete',function(){ var pt={b:{}}; pt.b[e[0]]=null; batSave(pt); }); }); ac.append(dl); }
-      c.append(ac); body.append(c);
-    });
-    if(closed.length){ body.append(mk('b',null,'Completed ('+closed.length+')')); closed.sort(function(a,b){ return (b[1].doneAt||0)-(a[1].doneAt||0); }).slice(0,15).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'); c.style.background=RC_BG[i%2]; c.append(mk('div','brow')); c.firstChild.append(mk('span',null,x.name+' · '+fmtN(x.qty)+' plants'), mk('span','pmeta','Ready '+fmtIso(x.ready))); body.append(c); }); }
-  } else {
+  batPk=[];
+  if(batTab==='B'){ renderBatB(body,t); }
+  else if(batTab==='R'){ renderBatR(body,t); }
+  else {
     var f2=mk('div','bcard'), it2=batItemSel(), q2=mkIn('number','Plants lost'), why=mkSelect(LOSS_WHY), d3=mkIn('date',null,t), nt2=mkIn('text','Note (optional)'), ad2=mk('button','btn primary','Record Loss');
     q2.min='1'; q2.step='1'; q2.inputMode='numeric'; nt2.maxLength=60; ad2.type='button'; d3.max=t; why.setAttribute('aria-label','Reason');
     f2.append(mk('b',null,'Record A Loss'), it2, q2, mkLbl('Reason',why), mkLbl('Date',d3), nt2, ad2, mk('p','pmeta','The lost plants are also deducted from the stock balance (damages) on today\'s open register.')); body.append(f2);
@@ -6157,10 +6313,13 @@ function renderBat(){
     ls.slice(0,40).forEach(function(e,i){ var x=e[1], c=mk('div','bcard'), r=mk('div','brow'); c.style.background=RC_BG[i%2]; r.append(mk('b',null,x.name), mk('b',null,'-'+fmtN(x.qty))); c.append(r, mk('div','pmeta',fmtIso(x.d)+' · '+x.why+(x.by?' · By '+x.by:'')+(x.note?' · '+x.note:''))); body.append(c); });
   }
 }
+var renderBat0=renderBat; renderBat=function(){ renderBat0(); batPk.forEach(function(q){ if(q[0].parentNode) { pickify(q[0],q[1]); q[0]._sync(); } }); };
 function openBat(){ batSubscribe(); batN=nursery; renderBat(); var d=$('#dlgBat'); if(!d.open) d.showModal(); }
 $('#tabBat').addEventListener('click', openBat);
+$('#batAlertBtn').addEventListener('click', openBat);
 $('#batTabB').addEventListener('click', function(){ batTab='B'; renderBat(); });
 $('#batTabL').addEventListener('click', function(){ batTab='L'; renderBat(); });
+$('#batTabR').addEventListener('click', function(){ batTab='R'; renderBat(); });
 $('#batNurs').addEventListener('change', function(){ batN=this.value; renderBat(); });
 $('#batClose').addEventListener('click', function(){ $('#dlgBat').close(); });
 setInterval(function(){
@@ -6291,7 +6450,9 @@ function tagAll(){
   return out.sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); });
 }
 function tagMatch(r){ if(!tagFilter) return true; if(tagFilter==='-') return !(r.tags&&r.tags.length); var k=tagFilter.toLowerCase(); return (r.tags||[]).some(function(t){ return t.toLowerCase()===k; }); }
-function rowMatch(r){ return catMatch(r)&&tagMatch(r); }
+var srcFilter='';
+function srcMatch(r){ return !srcFilter||(srcFilter==='-'?!r.src:r.src===srcFilter); }
+function rowMatch(r){ return catMatch(r)&&tagMatch(r)&&srcMatch(r); }
 function tagSync(){
   var sel=$('#tagSel'), list=tagAll(), show=!!day&&list.length>0;
   sel.hidden=!show; if(tagFilter&&tagFilter!=='-'&&!list.some(function(t){ return t.toLowerCase()===tagFilter.toLowerCase(); })) tagFilter='';
@@ -6300,6 +6461,7 @@ function tagSync(){
   var u=mk('option',null,'No tags'); u.value='-'; sel.append(u); sel.value=tagFilter;
 }
 $('#tagSel').addEventListener('change', function(){ tagFilter=this.value; renderAll(); });
+$('#srcSel').addEventListener('change', function(){ srcFilter=this.value; renderAll(); });
 function tagEditor(box){
   var st={tags:[]}, chips=mk('div','tgchips'), row=mk('div','sline'), inp=document.createElement('input'), add=mk('button','btn small','Add tag'), sg=mk('div','tgsug');
   row.style.cssText='display:flex;gap:8px;align-items:center'; inp.type='text'; inp.maxLength=24; inp.placeholder='Type a tag, then Add'; inp.style.cssText='flex:1;min-width:0'; inp.setAttribute('aria-label','New tag'); add.type='button';
@@ -6320,7 +6482,8 @@ function grpData(by){
   function put(name,r){ var k=name.toLowerCase(); if(!g[k]){ g[k]={n:name,items:0,total:0,bal:0,val:0,cost:0}; order.push(k); } var o=g[k], b=bal(r); o.items++; o.total+=r.total||0; o.bal+=b; o.val+=b*(Number(r.sp)||0); o.cost+=b*(Number(r.cost)||0); }
   items.forEach(function(it){
     var r=it[1];
-    if(by==='tag'){ if(r.tags&&r.tags.length) r.tags.forEach(function(t){ put(t,r); }); else put('No tags',r); }
+    if(by==='src'){ put(SRC_NAME[r.src]||'Source not set',r); }
+    else if(by==='tag'){ if(r.tags&&r.tags.length) r.tags.forEach(function(t){ put(t,r); }); else put('No tags',r); }
     else{ var c=catMap[r.cat], nm=catName(r.cat); if(by==='main'&&c&&c.p) nm=catName(c.p); put(nm||'No category',r); }
   });
   var rows=order.map(function(k){ return g[k]; }).sort(function(a,b){ return a.n.localeCompare(b.n); });
