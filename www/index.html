@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 6:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 9:55 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1108,6 +1108,15 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
+<dialog id="dlgTdAlarm">
+  <div class="dbody">
+    <h2>Task Still In Progress?</h2>
+    <p class="pmeta">These tasks have been open for more than half an hour.</p>
+    <div id="tdAlList" style="display:flex;flex-direction:column;gap:6px"></div>
+    <p class="pmeta">If the work is finished, close the task now: add the report and the finish photo and press Mark Done. This is urgent.</p>
+    <div class="actions"><button type="button" class="btn" id="tdAlStill">Still In Progress</button><button type="button" class="btn primary" id="tdAlClose">Close The Task Now</button></div>
+  </div>
+</dialog>
 <dialog id="dlgResTo">
   <div class="dbody">
     <h2>Select Supervisor</h2>
@@ -2672,6 +2681,55 @@ function renderTd(){
   });
   tdEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); tdEls.delete(id); } });
 }
+
+/* ---------- half-hour open task alarm ---------- */
+var TDAL_MS=30*60*1000, tdAlBeep=0, tdAlAudio=null, tdAlTab='tasks';
+function tdAlGet(){ try{ return JSON.parse(localStorage.getItem('nurseryTdAck')||'{}')||{}; }catch(e){ return {}; } }
+function tdAlSet(m){ try{ localStorage.setItem('nurseryTdAck',JSON.stringify(m)); }catch(e){} }
+function tdAlDue(){
+  if(isOwner||!canWrite||!day||!day.td) return [];
+  var ack=tdAlGet(), now=Date.now();
+  return Object.keys(day.td).map(function(id){ return [id,day.td[id]]; }).filter(function(q){
+    var x=q[1]; if(!x||x.en||!x.st||(x.nid||'1')!==nursery) return false;
+    return now-Math.max(x.st,ack[q[0]]||0)>=TDAL_MS;
+  });
+}
+function tdAlSound(){
+  try{
+    var A=window.AudioContext||window.webkitAudioContext; if(!A) return;
+    if(!tdAlAudio) tdAlAudio=new A(); if(tdAlAudio.state==='suspended') tdAlAudio.resume();
+    [0,0.35,0.7].forEach(function(t){ var o=tdAlAudio.createOscillator(), g=tdAlAudio.createGain(); o.type='square'; o.frequency.value=880; g.gain.value=0.15; o.connect(g); g.connect(tdAlAudio.destination); var s=tdAlAudio.currentTime+t; o.start(s); o.stop(s+0.22); });
+  }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate([400,200,400,200,400]); }catch(e){}
+}
+function tdAlStop(){ if(tdAlBeep){ clearInterval(tdAlBeep); tdAlBeep=0; } try{ if(navigator.vibrate) navigator.vibrate(0); }catch(e){} }
+async function tdAlNotify(n){
+  if(!document.hidden) return;
+  var title='Task still in progress?', body=n+' task'+(n>1?'s are':' is')+' open for more than half an hour. If finished, close it now.';
+  try{
+    var nat=null; try{ nat=await window.claude.use('notify'); }catch(e){}
+    if(nat&&nat.native){ await nat.show(title,body); return; }
+    if(window.Notification&&Notification.permission==='granted'){
+      var reg=('serviceWorker' in navigator)?await navigator.serviceWorker.getRegistration():null;
+      if(reg&&reg.showNotification) reg.showNotification(title,{body:body,tag:'td-alarm',icon:'icon-192.png',vibrate:[400,200,400,200,400],requireInteraction:true,data:{url:'./'}});
+      else new Notification(title,{body:body,tag:'td-alarm'});
+    }
+  }catch(e){}
+}
+function tdAlCheck(){
+  var d=$('#dlgTdAlarm'); if(!d||d.open) return;
+  var l=tdAlDue(); if(!l.length) return;
+  var box=$('#tdAlList'); box.textContent='';
+  tdAlTab=l.some(function(q){ return !isSopTd(q[1]); })?'tasks':'sop';
+  l.forEach(function(q){ box.append(mk('b',null,(isSopTd(q[1])?'SOP: ':'')+q[1].title+' · open '+fmtDur(Date.now()-q[1].st))); });
+  d._ids=l.map(function(q){ return q[0]; });
+  d.showModal(); tdAlSound(); tdAlStop(); tdAlBeep=setInterval(tdAlSound,6000); tdAlNotify(l.length);
+}
+function tdAlAck(){ var m=tdAlGet(), d=$('#dlgTdAlarm'); (d._ids||[]).forEach(function(id){ m[id]=Date.now(); }); tdAlSet(m); tdAlStop(); }
+$('#tdAlStill').addEventListener('click', function(){ tdAlAck(); $('#dlgTdAlarm').close(); toast('Okay. You will be asked again in half an hour.'); });
+$('#tdAlClose').addEventListener('click', function(){ tdAlAck(); $('#dlgTdAlarm').close(); tab=tdAlTab; renderAll(); });
+$('#dlgTdAlarm').addEventListener('cancel', function(e){ e.preventDefault(); });
+setInterval(tdAlCheck, 20000); setTimeout(tdAlCheck, 4000);
 setInterval(function(){ if(tab==='tasks'||tab==='sop'){ tdEls.forEach(function(el){ if(el._x&&!el._x.en) el._r.meta.textContent=tdMeta(el._x); }); } }, 1000);
 $('#subAllot').addEventListener('click', function(){ taskSub='allot'; renderTd(); });
 $('#subDone').addEventListener('click', function(){ taskSub='done'; renderTasks(); });
