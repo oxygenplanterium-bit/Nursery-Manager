@@ -180,7 +180,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 
 #ledger{padding:8px; background:none; border:1.5px solid var(--line); border-radius:16px; display:flex; flex-direction:column; gap:3mm}
 #list,#tlist{display:flex; flex-direction:column; gap:3mm}
-.head,.row{display:grid; grid-template-columns:52px minmax(0,1fr) repeat(5,86px); column-gap:8px; align-items:center; padding:8px 12px}
+.head,.row{display:grid; grid-template-columns:52px minmax(0,1fr) repeat(6,86px); column-gap:8px; align-items:center; padding:8px 12px}
 .head{padding:0 13px; font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .head .r{text-align:center; padding:0}
 .row{background:var(--card); border:1px solid var(--line); border-radius:14px}
@@ -197,7 +197,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .c input:disabled{background:transparent; border-color:transparent; opacity:1; -webkit-text-fill-color:currentColor}
 .c.purchase input:not(:disabled),.c.purchase .val{color:var(--buy)}
 .c.sales input:not(:disabled),.c.sales .val{color:var(--sell)}
-.c.damages input:not(:disabled),.c.damages .val{color:var(--loss)}
+.c.damages input:not(:disabled),.c.damages .val,.c.nr .val{color:var(--loss)}
 .val{text-align:center; padding:0 8px; font-variant-numeric:tabular-nums; min-height:42px; display:flex; align-items:center; justify-content:center}
 .bal .val{font-weight:400; font-size:16px; height:42px; padding:0 8px; color:var(--bal-ink); background:var(--bal-bg); border:1px solid var(--bal-line); border-radius:10px}
 .bal .val.zero{color:var(--bal-zero)}
@@ -297,7 +297,7 @@ dialog p{margin:0; color:var(--muted); font-size:.9rem}
 
 @media (max-width:640px){
   .head{display:none}
-  .row{grid-template-columns:repeat(5,minmax(0,1fr)); column-gap:6px; row-gap:6px; padding:12px 12px}
+  .row{grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:6px; row-gap:6px; padding:12px 12px}
   .id{display:flex; gap:10px; grid-column:1/-1; align-items:flex-start}
   .nm{flex:1}
   .notes{grid-column:1/-1}
@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 3:45 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 4:05 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -632,7 +632,7 @@ select:not([multiple]){pointer-events:none}
     <div class="card state" id="state">Loading register…</div>
     <section class="card" id="ledger" hidden>
       <div class="head" role="presentation">
-        <span>Sl.No.</span><span>Item Name</span><span class="r">Total Qty</span><span class="r">Purchases</span><span class="r">Sales</span><span class="r">Damages</span><span class="r">Bal Qty</span>
+        <span>Sl.No.</span><span>Item Name</span><span class="r">Total Qty</span><span class="r">Purchases</span><span class="r">Sales</span><span class="r">Damages</span><span class="r">Not Returned</span><span class="r">Bal Qty</span>
       </div>
       <div id="list"></div>
       <div class="row totals" id="totals"></div>
@@ -1646,10 +1646,10 @@ function xferOf(r){
   Object.keys(x).forEach(function(k){ var e=x[k]; if(e&&e.q>0){ if(e.k==='in') o.in+=e.q; else if(e.k==='out') o.out+=e.q; } });
   return o;
 }
-var bal = function(r){ var t=xferOf(r); return (r.total||0)+(r.purchase||0)-(r.sales||0)-(r.damages||0)+t.in-t.out; };
+var bal = function(r){ var t=xferOf(r); return (r.total||0)+(r.purchase||0)-(r.sales||0)-(r.damages||0)-(r.nr||0)+t.in-t.out; };
 var fmtN = function(n){ return Number(n).toLocaleString('en-IN'); };
-var FIELDS = ['total','purchase','sales','damages'];
-var LABELS = {total:'Total Qty',purchase:'Purchases',sales:'Sales',damages:'Damages'};
+var FIELDS = ['total','purchase','sales','damages','nr'];
+var LABELS = {total:'Total Qty',purchase:'Purchases',sales:'Sales',damages:'Damages',nr:'Not Returned'};
 var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
 
 var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
@@ -1760,7 +1760,7 @@ async function ensureToday(){
             if(lost0+u>0) rsNew[rid]={lost:lost0+u};
             if(u>0&&rr.n){
               var rowId=null; Object.keys(pr).forEach(function(k){ var q=pr[k]; if(q&&!q.removed&&!q.pending&&(q.nid||'1')===(rr.nid||'1')&&normName(q.name)===normName(rr.n)) rowId=k; });
-              if(rowId){ pr[rowId].damages=(Number(pr[rowId].damages)||0)+u; stkP.rows[rowId]={damages:pr[rowId].damages}; stkN++; }
+              if(rowId){ pr[rowId].nr=(Number(pr[rowId].nr)||0)+u; stkP.rows[rowId]={nr:pr[rowId].nr}; stkN++; }
             }
           });
           if(stkN) await db.doc('days/'+prev).update(stkP);
@@ -1959,7 +1959,7 @@ function makeRow(id){
   var R={cat:catEl,tg:tgEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
-    if(canWrite && (f!=='total'||isOwner)){
+    if(canWrite && f!=='nr' && (f!=='total'||isOwner)){
       var inp=document.createElement('input');
       inp.type='number'; inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.placeholder='0';
       inp.addEventListener('change', function(){ commit(id,f,inp); });
@@ -2117,7 +2117,7 @@ function renderRows(items,serial){
 }
 var totalsBuilt=null;
 function sums(items){
-  var s={total:0,purchase:0,sales:0,damages:0,bal:0};
+  var s={total:0,purchase:0,sales:0,damages:0,nr:0,bal:0};
   items.forEach(function(it){ var r=it[1]; FIELDS.forEach(function(f){ s[f]+=r[f]||0; }); s.bal+=bal(r); });
   return s;
 }
@@ -3137,6 +3137,7 @@ function renderFull(){
     if(r.purchase) bits.push('Purchases +'+fmtN(r.purchase));
     if(r.sales) bits.push('Sales '+fmtN(r.sales));
     if(r.damages) bits.push('Damages '+fmtN(r.damages));
+    if(r.nr) bits.push('Not returned '+fmtN(r.nr));
     if(x.in) bits.push('Transferred in '+fmtN(x.in));
     if(x.out) bits.push('Transferred out '+fmtN(x.out));
     if(r.modAt) bits.push('Edited by owner');
@@ -3712,7 +3713,7 @@ function undoXfer(xid,btn){
     hit.forEach(function(i){
       var r=rows[i], left=Object.keys(r.x).filter(function(k){ return k!==xid&&r.x[k]&&r.x[k].q>0; }).length;
       patch.rows[i]={x:{}}; patch.rows[i].x[xid]=null;
-      if(r.auto && !left && !(r.total||0) && !(r.purchase||0) && !(r.sales||0) && !(r.damages||0)) patch.rows[i].removed=true;
+      if(r.auto && !left && !(r.total||0) && !(r.purchase||0) && !(r.sales||0) && !(r.damages||0) && !(r.nr||0)) patch.rows[i].removed=true;
     });
     if(await save(patch)) toast('Transfer undone');
   });
@@ -5923,10 +5924,10 @@ var STATUS_TXT={done:'Done',notdone:'Not done','':'Pending'};
 function stockText(){
   var items=sortedRows(), s=sums(items);
   var L=['Nursery Manager - Stock Report','Date: '+fmtLong(selDate)+(day&&day.supervisor?' | Supervisor: '+day.supervisor:''),
-    'Total '+s.total+' | Purchases '+s.purchase+' | Sales '+s.sales+' | Damages '+s.damages+' | Balance '+s.bal, ''];
+    'Total '+s.total+' | Purchases '+s.purchase+' | Sales '+s.sales+' | Damages '+s.damages+' | Not returned '+s.nr+' | Balance '+s.bal, ''];
   items.forEach(function(it,i){
     var r=it[1];
-    L.push((i+1)+'. '+r.name+': total '+(r.total||0)+', purchases '+(r.purchase||0)+', sales '+(r.sales||0)+', damages '+(r.damages||0)+', balance '+bal(r));
+    L.push((i+1)+'. '+r.name+': total '+(r.total||0)+', purchases '+(r.purchase||0)+', sales '+(r.sales||0)+', damages '+(r.damages||0)+', not returned '+(r.nr||0)+', balance '+bal(r));
     var n=r.notes||{};
     ['purchase','sales','damages'].forEach(function(f){
       if(n[f]&&(n[f].text||n[f].reason)) L.push('   '+NOTE_LABELS[f]+': '+[n[f].reason,n[f].text].filter(Boolean).join(' - '));
@@ -5990,9 +5991,9 @@ function pdfStock(d0,first){
     if(!items.length){ doc.text('No items in this nursery.', 40, y+16); y+=36; return; }
     doc.autoTable({
       startY:y+6, theme:'grid', styles:{fontSize:9,cellPadding:4},
-      head:[['Sl.No.','Item Name','Total Qty','Purchases','Sales','Damages','Transfers (net)','Bal Qty']],
-      body:items.map(function(it,i){ var r=it[1], t=xferOf(r); return [i+1,r.name,r.total||0,r.purchase||0,r.sales||0,r.damages||0,t.in-t.out,bal(r)]; }),
-      foot:[['','Totals',s.total,s.purchase,s.sales,s.damages,items.reduce(function(a,it){ var t=xferOf(it[1]); return a+t.in-t.out; },0),s.bal]],
+      head:[['Sl.No.','Item Name','Total Qty','Purchases','Sales','Damages','Not Returned','Transfers (net)','Bal Qty']],
+      body:items.map(function(it,i){ var r=it[1], t=xferOf(r); return [i+1,r.name,r.total||0,r.purchase||0,r.sales||0,r.damages||0,r.nr||0,t.in-t.out,bal(r)]; }),
+      foot:[['','Totals',s.total,s.purchase,s.sales,s.damages,s.nr,items.reduce(function(a,it){ var t=xferOf(it[1]); return a+t.in-t.out; },0),s.bal]],
       headStyles:{fillColor:[42,127,62]}, footStyles:{fillColor:[228,237,230],textColor:20},
       columnStyles:{0:{cellWidth:40},2:R(),3:R(),4:R(),5:R(),6:R(),7:R()}
     });
