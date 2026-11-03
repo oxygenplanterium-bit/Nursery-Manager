@@ -534,7 +534,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:10 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 12:35 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2741,7 +2741,7 @@ async function alOffAsk(){
 }
 function alReqMine(){
   if(isOwner) return;
-  if(alRunning()===0&&chatNotifOn()){ if(supId&&alReq[supId]){ var p0={}; p0[supId]=null; alReqSave(p0); } chatNotifOff().then(alNotifBtn); toast('All tasks are done. Phone alerts turned off.',4000); return; }
+  if(alRunning()===0&&chatNotifOn()&&Date.now()>alHold){ if(supId&&alReq[supId]){ var p0={}; p0[supId]=null; alReqSave(p0); } chatNotifOff().then(alNotifBtn); toast('All tasks are done. Phone alerts turned off.',4000); return; }
   if(!supId) return; var q=alReq[supId]; if(!q) return;
   if(q.st==='ok'){ var p={}; p[supId]=null; alReqSave(p).then(function(){ chatNotifOff().then(alNotifBtn); }); }
   else if(q.st==='no'){ var p2={}; p2[supId]=null; alReqSave(p2); toast('The owner did not approve turning off alerts.',4000); }
@@ -2759,8 +2759,10 @@ function alReqRender(){
     row.append(mk('div',null,(a.n||'Supervisor')+' asked to turn off phone alerts at '+fmtTime(a.at)+'.'),act); box.append(row);
   });
 }
+var alHold=0;
 function alAuto(){
-  if(isOwner||chatNotifOn()||!db) return;
+  if(isOwner) return; alHold=Date.now()+120000;
+  if(chatNotifOn()||!db) return;
   if(window.Notification&&Notification.permission==='denied') return;
   chatNotifEnable().then(alNotifBtn,function(){});
 }
@@ -5046,10 +5048,13 @@ async function chatPushSync(){
   }catch(e){}
 }
 async function chatNotifEnable(){
-  var ok=false, nat=null;
-  try{ nat=await window.claude.use('notify'); }catch(e){}
-  if(nat&&nat.native){ try{ ok=await nat.enable(); }catch(e){} }
-  else if(window.Notification){ try{ ok=(await Notification.requestPermission())==='granted'; }catch(e){} }
+  var ok=false, nat=null, isNat=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+  if(!isNat&&window.Notification){ try{ ok=(await Notification.requestPermission())==='granted'; }catch(e){} }
+  else{
+    try{ nat=await window.claude.use('notify'); }catch(e){}
+    if(nat&&nat.native){ try{ ok=await nat.enable(); }catch(e){} }
+    else if(window.Notification){ try{ ok=(await Notification.requestPermission())==='granted'; }catch(e){} }
+  }
   if(!ok){ toast('Notifications are blocked. Allow them in your phone settings for this app.'); return; }
   try{ localStorage.setItem('nurseryChatNotif','1'); }catch(e){}
   await chatPushSync(); chatNotifBtn(); toast('Notifications turned on');
