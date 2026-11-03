@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:45 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 2:05 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2266,7 +2266,7 @@ function makeTd(id){
   var el=mk('div','pitem'), t=mk('div','pname'), meta=mk('div','pmeta'), ta=document.createElement('textarea'), row=mk('div','sline');
   ta.rows=3; ta.maxLength=600; ta.placeholder='Report of the task (notes)'; ta.setAttribute('aria-label','Task report');
   var fin=mk('button','btn small primary','Mark done'), ed=mk('button','btn small','Edit report'), del=mk('button','btn small danger','Delete'); fin.type='button'; ed.type='button'; del.type='button'; row.append(fin,ed,del);
-  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!(ta.value.trim()&&(phAs.length||x.pa)); });
+  ta.addEventListener('input', function(){ var x=el._x; if(x&&!x.en) fin.disabled=!(ta.value.trim()&&(phAs.length||x.pa||x.re===false)); });
   ta.addEventListener('change', function(){
     var x=el._x; if(!editable()||!x) return;
     if(x.en && !ta.value.trim()){ toast('The report cannot be empty.'); ta.value=x.note||''; return; }
@@ -2282,7 +2282,7 @@ function makeTd(id){
     var x=el._x; if(!x||x.en||!editable()) return;
     if(x.ss&&x.ss.length&&sopDone(x)<x.ss.length){ toast('Tick every step of the checklist before marking the task done.'); return; }
     if(!ta.value.trim()){ toast('Fill the report in the notes box before marking the task done.'); return; }
-    if(!phAs.length&&!x.pa){ toast('Take at least 1 photo after finishing before marking the task done.'); return; }
+    if(!phAs.length&&!x.pa&&x.re!==false){ toast('Take at least 1 photo after finishing before marking the task done.'); return; }
     if(needSup()){ toast('Choose your name at the top first.'); return; }
     try{ if(phAs.length){ var po={}; phAs.forEach(function(d,i){ po[i===0?'a':'a'+(i+1)]=d; }); await phSaveMany(id,po); } }catch(e){ toast('The photo could not be saved. Check your internet and try again.'); return; }
     var p={td:{}}; p.td[id]={en:Date.now(), doneBy:whoNow(), note:ta.value.trim().slice(0,600)}; if(phAs.length) p.td[id].pa=phAs.length; phAs=[]; phDraw();
@@ -2299,14 +2299,14 @@ function makeTd(id){
       var f=mk('figure'), im=document.createElement('img'), rm=mk('button','btn small danger','Delete'), cp=mk('figcaption',null,'Finish photo '+(i+1)); rm.type='button';
       f.style.cssText='margin:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start'; cp.style.cssText='font-size:.75rem;color:var(--muted)'; rm.style.cssText='min-height:0;padding:2px 8px;font-size:.75rem';
       im.src=d; im.alt='Finish photo '+(i+1); im.style.cssText='width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;cursor:pointer'; im.addEventListener('click', function(){ zoomOpen(d,'Finish photo '+(i+1)); });
-      rm.addEventListener('click', function(){ phAs.splice(i,1); phDraw(); var x=el._x; fin.disabled=!(ta.value.trim()&&(phAs.length||(x&&x.pa))); });
+      rm.addEventListener('click', function(){ phAs.splice(i,1); phDraw(); var x=el._x; fin.disabled=!(ta.value.trim()&&(phAs.length||(x&&(x.pa||x.re===false)))); });
       f.append(im,cp,rm); phM.append(f);
     });
     var x=el._x, n=phAs.length+((x&&x.pa)||0);
     phT.textContent=n?'Add another photo':'Take photo after finishing'; phL.hidden=!(el._ed&&n<PH_MAX);
   }
   el._phDraw=phDraw; el._phN=function(){ return phAs.length; };
-  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; var x=el._x; if(phAs.length+((x&&x.pa)||0)>=PH_MAX){ toast('You can add up to 5 photos.'); return; } try{ phAs.push(await phCompress(f)); phDraw(); }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phAs.length||(x&&x.pa))); });
+  phI.addEventListener('change', async function(){ var f=phI.files&&phI.files[0]; phI.value=''; if(!f) return; var x=el._x; if(phAs.length+((x&&x.pa)||0)>=PH_MAX){ toast('You can add up to 5 photos.'); return; } try{ phAs.push(await phCompress(f)); phDraw(); }catch(e){ toast('That photo could not be read. Try again.'); } fin.disabled=!(ta.value.trim()&&(phAs.length||(x&&(x.pa||x.re===false)))); });
   phV.addEventListener('click', function(){ var x=el._x; phView(id,(x&&x.title)||'Task'); });
   var asB=mk('div'), asV=mk('div','pmeta'), asE=mk('button','btn small','Change assigned to'), asP=mk('div'); asE.type='button'; asP.hidden=true; asP.style.cssText='display:flex;flex-direction:column;gap:6px;margin:4px 0'; var asC=mk('button','btn small','Cancel'); asC.type='button'; asC.hidden=true; asB.className='tdasg'; asB.append(asV,asE,asC,asP);
   asC.addEventListener('click', function(){ asPend=null; asP.hidden=true; asC.hidden=true; asE.disabled=false; asE.textContent='Change assigned to'; });
@@ -2354,7 +2354,7 @@ function updateTd(el,x,ed){
   R.asV.textContent='Assigned to: '+((x.as&&x.as.length)?x.as.join(', '):'Not assigned')+(tdWork(x).length>1||(x.seg&&x.seg.length)?'\nTime worked: '+tdWork(x).join('\n'):''); R.asV.style.whiteSpace='pre-line'; R.asE.hidden=!ed||!!x.en;
   if(!ed||x.en){ R.asP.hidden=true; R.asE.textContent='Change assigned to'; R.asE.disabled=false; if(R.asC) R.asC.hidden=true; }
   if(document.activeElement!==R.ta) R.ta.value=x.note||'';
-  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&((el._phN&&el._phN())||x.pa));
+  R.ta.disabled=!ed||(!!x.en&&!tdEditing[el._id]); R.fin.hidden=!(ed&&!x.en); R.fin.disabled=!(R.ta.value.trim()&&((el._phN&&el._phN())||x.pa||x.re===false));
   R.ed.hidden=!(ed&&x.en); R.ed.textContent=tdEditing[el._id]?'Finish editing':'Edit report'; R.del.hidden=!(isOwner&&ed);
 }
 
@@ -2398,13 +2398,13 @@ function renderSopList(){
     ed.type='button'; del.type='button'; del.innerHTML=TRASH; del.setAttribute('aria-label','Delete checklist'); del.style.cssText='flex:0 0 auto;padding:6px 10px'; ed.style.flex='0 0 auto';
     det.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px'; det.hidden=!sopOpen[id];
     var mode=sopOpen[id];
-    if(mode==='view'){ det.append(mk('div','pmeta','Start photo and finish photo: at least 1 each, up to 5')); it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); if(it[1].d) det.append(sopExpl(it[1].d)); }
+    if(mode==='view'){ det.append(mk('div','pmeta','Start photo: '+(it[1].ps===false?'Optional':'Required')+' · Finish photo: '+(it[1].pe===false?'Optional':'Required'))); it[1].st.forEach(function(x,i){ det.append(mk('div',null,(i+1)+'. '+x)); }); if(it[1].d) det.append(sopExpl(it[1].d)); }
     if(mode==='edit'){
       var ni=mkIn('text','Name',it[1].n), nt=document.createElement('textarea'), ta=document.createElement('textarea'), er=mk('p','pmeta'), row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel');
       ni.maxLength=60; ni.setAttribute('aria-label','Checklist name'); ta.rows=7; ta.maxLength=3000; ta.value=it[1].st.join('\n'); ta.setAttribute('aria-label','Steps, one per line'); er.style.color='var(--warn)'; sv.type='button'; cn.type='button'; row.append(sv,cn);
       nt.rows=6; nt.maxLength=4000; nt.value=it[1].d||''; nt.placeholder='Detailed explanation (optional)'; nt.setAttribute('aria-label','Detailed explanation');
       var au=mk('button','btn small','Auto-write from steps'); au.type='button'; au.addEventListener('click', function(){ if(nt.value.trim()){ toast('Clear the explanation box first, then auto-write.'); return; } var st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x); }).filter(Boolean); if(!st.length){ toast('Add the steps first.'); return; } nt.value=sopAutoText(st); });
-      var tS=sopToggle('Start photo',it[1].ps!==false), tE=sopToggle('Finish photo',it[1].pe!==false); det.append(ni,ta,au,nt,er,row);
+      var tS=sopToggle('Start photo',it[1].ps!==false), tE=sopToggle('Finish photo',it[1].pe!==false); det.append(ni,ta,tS.el,tE.el,au,nt,er,row);
       cn.addEventListener('click', function(){ delete sopOpen[id]; renderSopList(); });
       sv.addEventListener('click', async function(){
         var n=cleanName(ni.value), st=ta.value.split(/\r?\n/).map(function(x){ return cleanName(x).slice(0,120); }).filter(Boolean).slice(0,30);
@@ -2615,12 +2615,12 @@ function sopToggle(label,on){
   b.addEventListener('click', function(){ st=!st; draw(); }); draw();
   return {el:b, get:function(){ return st; }, set:function(v){ st=!!v; draw(); }};
 }
-function sopStartPh(){ var v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null; var show=true; var l=$('#sopWrap .asghead b'); if(l) l.textContent='Start photos :'; return show; }
+function sopStartPh(){ var v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null; var show=!(sp&&sp.ps===false&&sp.pe===false); var l=$('#sopWrap .asghead b'); if(l) l.textContent=(sp&&sp.ps===false)?'Start photos (optional) :':'Start photos :'; return show; }
 function sopDetail(){
   var b=$('#sopDet'), v=$('#tdSop').value, sp=v&&sopMap[v]&&!sopMap[v].x?sopMap[v]:null;
   b.hidden=!sp; b.textContent=''; if(!sp) return;
   b.append(mk('b',null,sp.n+' ('+sp.st.length+(sp.st.length===1?' step':' steps')+')'));
-  b.append(mk('div','pmeta','Start photo and finish photo: at least 1 each, up to 5'));
+  b.append(mk('div','pmeta','Start photo: '+(sp.ps===false?'Optional':'Required')+' · Finish photo: '+(sp.pe===false?'Optional':'Required')));
   sp.st.forEach(function(t,i){ b.append(mk('div',null,(i+1)+'. '+t)); });
   if(sp.d) b.append(sopExpl(sp.d));
 }
@@ -2653,13 +2653,13 @@ function phSaveMany(id,o){
 $('#sopStart').addEventListener('click', async function(){
   if(!editable()||sopBusy) return;
   var sv=$('#tdSop').value, sp=sv&&sopMap[sv]&&!sopMap[sv].x?sopMap[sv]:null; if(!sp){ toast('Choose an SOP checklist first.'); return; }
-  var usePh=sopPhotos;
-  if(!usePh.length){ toast('Take at least one start photo first.'); return; }
+  var usePh=(sp.ps===false&&sp.pe===false)?[]:sopPhotos;
+  if(!usePh.length&&sp.ps!==false){ toast('Take at least one start photo first.'); return; }
   if(labourNames(nursery).length>0&&!sopAsgSel.length){ toast('Select who the task is assigned to.'); return; }
   if(needSup()){ toast('Choose your name at the top first.'); return; }
   sopBusy=true; alAuto();
   var id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={td:{}}, now=Date.now();
-  p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), ast:now, re:true, sop:sv, sn:sp.n, ss:sp.st.slice(), sx:sp.d||''}; if(usePh.length) p.td[id].pb=usePh.length;
+  p.td[id]={title:sp.n, nid:nursery, tid:'', by:whoNow(), st:now, en:null, note:'', as:sopAsgSel.slice(), ast:now, re:sp.pe!==false, sop:sv, sn:sp.n, ss:sp.st.slice(), sx:sp.d||''}; if(usePh.length) p.td[id].pb=usePh.length;
   var po={}; usePh.forEach(function(d,i){ po[i===0?'b':'b'+(i+1)]=d; });
   try{ if(usePh.length) await phSaveMany(id,po); }catch(e){ toast('The photos could not be saved. Check your internet and try again.'); sopBusy=false; return; }
   if(await save(p)){ sopPhotos=[]; sopPhotoDraw(); $('#tdSop').value=''; sopAsgSel=[]; $('#sopAsg')._k=''; sopSub='start'; renderTasks(); toast('SOP task started'); }
