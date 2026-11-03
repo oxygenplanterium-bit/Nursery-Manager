@@ -533,7 +533,7 @@ select:not([multiple]){pointer-events:none}
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 5:10 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 5:35 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6179,9 +6179,10 @@ function lowItems(){
   ['1','2'].forEach(function(n){ rowsOf(n).forEach(function(it){ var mn=Number(minMap[it[0]])||0, b=bal(it[1]); if(mn>0&&b<=mn) out.push({id:it[0],name:it[1].name,nid:n,bal:b,min:mn}); }); });
   return out.sort(function(a,b){ return (a.bal-a.min)-(b.bal-b.min); });
 }
+var lowSeen=false;
 function lowUpdate(){
   var l=day?lowItems():[], bx=$('#lowBox');
-  bx.hidden=!l.length;
+  bx.hidden=!l.length||lowSeen;
   if(l.length) $('#lowText').textContent=l.length+(l.length===1?' item':' items')+' low on stock';
   $('#tabLow').textContent='Low Stock'+(l.length?' '+l.length:'');
 }
@@ -6237,7 +6238,7 @@ function renderLow(){
 }
 function openLow(){ renderLow(); var d=$('#dlgLow'); if(!d.open) d.showModal(); }
 $('#tabLow').addEventListener('click', openLow);
-$('#lowBtn').addEventListener('click', openLow);
+$('#lowBtn').addEventListener('click', function(){ lowSeen=true; lowUpdate(); openLow(); });
 $('#lowClose').addEventListener('click', function(){ $('#dlgLow').close(); });
 
 /* money owed */
