@@ -534,7 +534,8 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:05 AM</p>
+    <button class="btn small" id="refreshApp" type="button" style="align-self:center">Refresh App</button>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 4 Nov 2026, 1:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1588,6 +1589,7 @@ select:not([multiple]){pointer-events:none}
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
+<div id="updBar" hidden style="position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:10000;background:#16221b;color:#e8f0ea;border:1px solid #2c4636;border-radius:12px;padding:10px 12px;align-items:center;justify-content:space-between;gap:10px;font-weight:600"><span>A new version is available.</span><button class="btn small primary" id="updGo" type="button">Update Now</button></div>
 <div id="instBar" hidden style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;background:#16221b;color:#e8f0ea;border:1px solid #2c4636;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px"><span style="flex:1">Install Nursery Manager on this phone as an app.</span><button class="btn" id="instGo" type="button">Install</button><button class="btn" id="instNo" type="button">Not now</button></div>
 <script>(function(){var ev=null,bar=document.getElementById('instBar');bar.style.display='none';
 function ok(){try{return !localStorage.getItem('instNo')&&!matchMedia('(display-mode: standalone)').matches;}catch(e){return true;}}
@@ -1614,8 +1616,9 @@ function st(){ try{ return localStorage.getItem('asgHide_tdlist')==='1'; }catch(
 function ap(){ var hd=st(); l.classList.toggle('hideasg',hd); b.textContent=hd?'Show':'Hide'; b.setAttribute('aria-expanded',String(!hd)); }
 ap(); b.addEventListener('click', function(){ try{ localStorage.setItem('asgHide_tdlist', st()?'0':'1'); }catch(e){ l.classList.toggle('hideasg'); b.textContent=l.classList.contains('hideasg')?'Show':'Hide'; return; } ap(); });
 })();</script>
-<script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }</script>
-<script src="platform.js"></script>
+<script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
+<script>var APP_BUILD='__BUILD__';</script>
+<script src="platform.js?v=__BUILD__"></script>
 <script>
 (function(){
 'use strict';
@@ -2761,6 +2764,26 @@ function renderTd(){
 }
 
 
+
+/* ---------- cache buster: refresh button and new version check ---------- */
+async function appRefresh(){
+  try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+  try{ if('serviceWorker' in navigator){ var rg=await navigator.serviceWorker.getRegistrations(); await Promise.all(rg.map(function(r){ return r.unregister(); })); } }catch(e){}
+  location.replace(location.pathname+'?r='+Date.now());
+}
+$('#refreshApp').addEventListener('click', function(){ toast('Refreshing the app...',2000); appRefresh(); });
+$('#updGo').addEventListener('click', function(){ appRefresh(); });
+var updLast=0;
+async function updCheck(force){
+  if(!force&&Date.now()-updLast<600000) return; updLast=Date.now();
+  try{
+    var t=await (await fetch('index.html?c='+Date.now(),{cache:'no-store'})).text(), m=t.match(/var APP_BUILD='([^']*)'/);
+    if(m&&m[1]&&m[1]!==APP_BUILD&&m[1]!==('__BUI'+'LD__')&&APP_BUILD!==('__BUI'+'LD__')){ var b=$('#updBar'); b.hidden=false; b.style.display='flex'; }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) updCheck(false); });
+setTimeout(function(){ updCheck(true); },4000); setInterval(function(){ updCheck(false); },1800000);
+
 /* ---------- daily report send + phone alerts ---------- */
 $('#repSetBtn').addEventListener('click', async function(){
   if(!isOwner||!db) return;
@@ -3311,8 +3334,8 @@ function csvRows(text){
   return rows;
 }
 var pdfP=null, xlsP=null;
-function ensurePdf(){ if(window.jspdf) return Promise.resolve(); if(!pdfP) pdfP=loadScript('pdf-lib.js').catch(function(){ pdfP=null; }); return pdfP; }
-function ensureXlsx(){ if(window.XLSX) return Promise.resolve(); if(!xlsP) xlsP=loadScript('xlsx-lib.js').catch(function(){ xlsP=null; }); return xlsP; }
+function ensurePdf(){ if(window.jspdf) return Promise.resolve(); if(!pdfP) pdfP=loadScript('pdf-lib.js?v='+APP_BUILD).catch(function(){ pdfP=null; }); return pdfP; }
+function ensureXlsx(){ if(window.XLSX) return Promise.resolve(); if(!xlsP) xlsP=loadScript('xlsx-lib.js?v='+APP_BUILD).catch(function(){ xlsP=null; }); return xlsP; }
 function loadScript(src){
   return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error('load')); }; document.head.appendChild(s); });
 }
