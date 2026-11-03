@@ -550,8 +550,7 @@ select:not([multiple]){pointer-events:none}
 
   <section class="card alertcard" id="resOk" hidden style="flex-direction:column;align-items:stretch;gap:8px;overflow:hidden">
     <b style="margin:-14px -14px 2px;padding:12px 14px;background:var(--accent);color:#fff;display:block">Resources Accepted</b>
-    <p class="pmeta" id="resOkSub" style="margin:0"></p>
-    <div style="overflow-x:auto"><table id="resOkTbl" style="width:100%;border-collapse:collapse;font-size:.85rem"></table></div>
+        <div id="resOkTbl" style="display:flex;flex-direction:column;gap:6px;font-weight:600"></div>
     <button class="btn primary" type="button" id="resOkBtn">OK</button>
   </section>
 
@@ -3788,11 +3787,9 @@ function resOkList(){
 }
 function resOkUpdate(){
   var bx=$('#resOk'); if(!bx) return; var l=resOkList(); bx.hidden=!l.length; if(!l.length) return;
-  var t=$('#resOkTbl'); t.textContent='';
-  var multi=l.some(function(it){ return (it[1].nid||'1')!==(l[0][1].nid||'1'); });
-  var hr=document.createElement('tr'); ['Sl.','Resource','Qty','Accepted by','Time'].forEach(function(h){ var th=mk('th',null,h); th.style.cssText='text-align:left;padding:6px 6px;border-bottom:2px solid var(--line)'; hr.append(th); }); t.append(hr);
-  l.forEach(function(it,i){ var a=it[1], tr=document.createElement('tr'); [i+1,a.n+(multi?' ('+(NURS[a.nid||'1']||'')+')':''),fmtN(a.q||0),a.by||assigneeName(a.to),fmtTime(a.at)].forEach(function(v,k){ var td=mk('td',null,String(v)); td.style.cssText='padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top'+(k===2?';text-align:center':''); tr.append(td); }); t.append(tr); });
-  $('#resOkSub').textContent=l.length+(l.length===1?' resource has':' resources have')+' been accepted. Each holder confirmed that they received the material and will keep it safe for future use.';
+  var t=$('#resOkTbl'), g={}, ord=[]; t.textContent='';
+  l.forEach(function(it){ var a=it[1], k=(a.by||'')+'|'+(a.at||0); if(!g[k]){ g[k]={by:a.by||assigneeName(a.to),at:a.at,n:0}; ord.push(k); } g[k].n++; });
+  ord.forEach(function(k){ var x=g[k]; t.append(mk('div',null,x.by+' accepted '+(x.n===1?'1 resource':x.n+' resources')+' at '+fmtTime(x.at)+'.')); });
 }
 $('#resOkBtn').addEventListener('click', async function(){
   var l=resOkList(); if(!l.length) return; var p={}; l.forEach(function(it){ p[it[0]]={seen:true}; });
