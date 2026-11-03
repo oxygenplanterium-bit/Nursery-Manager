@@ -533,7 +533,8 @@ select:not([multiple]){pointer-events:none}
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 9:55 PM</p>
+    <button class="btn small" id="alNotifBtn" type="button" style="align-self:center">Turn on phone alerts</button>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 3 Nov 2026, 11:10 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1395,6 +1396,16 @@ select:not([multiple]){pointer-events:none}
   </form>
 </dialog>
 
+<dialog id="dlgRep">
+  <form id="fRep">
+    <h2>Daily report send</h2>
+    <p>Every day at 8:00 PM the day's report is sent to these emails and WhatsApp numbers. One entry per line. WhatsApp numbers need the country code, digits only, for example 919876543210.</p>
+    <label class="f"><span>Send the daily report</span><select id="repOn"><option value="1">On</option><option value="0">Off</option></select></label>
+    <label class="f"><span>Emails</span><textarea id="repEm" rows="3" placeholder="name@example.com"></textarea></label>
+    <label class="f"><span>WhatsApp numbers</span><textarea id="repWa" rows="3" placeholder="91XXXXXXXXXX"></textarea></label>
+    <div class="actions"><button type="button" class="btn" id="repCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+  </form>
+</dialog>
 <dialog id="dlgWa">
   <form id="fWa">
     <h2>Owner WhatsApp number</h2>
@@ -1463,6 +1474,7 @@ select:not([multiple]){pointer-events:none}
         <button class="btn small" id="coBtn" hidden>Company Profile</button>
         <button class="btn small" id="pinBtn" hidden>Set owner PIN</button>
         <button class="btn small" id="waSetBtn" hidden style="grid-column:1/-1">Owner WhatsApp number</button>
+        <button class="btn small" id="repSetBtn" hidden style="grid-column:1/-1">Daily report send</button>
       </div>
     <div class="fdpick">
     <label class="f card fdnl"><span class="sr">Nursery</span>
@@ -2074,7 +2086,7 @@ function renderStock(){
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
   var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all'; undoSync();
-  $('#waSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
+  $('#waSetBtn').hidden=!isOwner; $('#repSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
   var pend=items.filter(function(it){ var r=it[1]; return (r.damages||0)>0 && !((r.notes||{}).damages||{}).reason; }).length;
@@ -2682,6 +2694,28 @@ function renderTd(){
   tdEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); tdEls.delete(id); } });
 }
 
+
+/* ---------- daily report send + phone alerts ---------- */
+$('#repSetBtn').addEventListener('click', async function(){
+  if(!isOwner||!db) return;
+  var rep={}; try{ var s=await db.doc('meta/accounts').get(); rep=(s.exists&&s.data()&&s.data().rep)||{}; }catch(e){}
+  $('#repOn').value=rep.on===false?'0':'1'; $('#repEm').value=(rep.em||[]).join('\n'); $('#repWa').value=(rep.wa||[]).join('\n');
+  var d=$('#dlgRep'); if(!d.open) d.showModal();
+});
+$('#repCancel').addEventListener('click', function(){ $('#dlgRep').close(); });
+$('#fRep').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var em=$('#repEm').value.split(/[\n,;]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+  var wa=$('#repWa').value.split(/[\n,;]+/).map(function(x){ return x.replace(/\D/g,''); }).filter(Boolean);
+  if(em.some(function(x){ return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); })){ toast('One of the emails is not valid.'); return; }
+  if(wa.some(function(x){ return x.length<8||x.length>15; })){ toast('Each WhatsApp number needs 8 to 15 digits including the country code.'); return; }
+  $('#dlgRep').close(); if(!isOwner||!db) return;
+  var rep={on:$('#repOn').value!=='0', em:em, wa:wa}, d=db.doc('meta/accounts');
+  try{ var s=await d.get(); if(s.exists) await d.update({rep:rep}); else await d.set({rep:rep}); toast('Daily report send saved'); }catch(err){ onWriteErr(err); }
+});
+function alNotifBtn(){ var b=$('#alNotifBtn'); if(b){ b.textContent=chatNotifOn()?'Turn off phone alerts':'Turn on phone alerts'; } }
+$('#alNotifBtn').addEventListener('click', async function(){ if(chatNotifOn()) await chatNotifDisable(); else await chatNotifEnable(); alNotifBtn(); });
+setTimeout(alNotifBtn,1500);
 /* ---------- half-hour open task alarm ---------- */
 var TDAL_MS=30*60*1000, tdAlBeep=0, tdAlAudio=null, tdAlTab='tasks';
 function tdAlGet(){ try{ return JSON.parse(localStorage.getItem('nurseryTdAck')||'{}')||{}; }catch(e){ return {}; } }
