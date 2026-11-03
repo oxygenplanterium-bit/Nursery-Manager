@@ -1023,6 +1023,15 @@ select:not([multiple]){pointer-events:none}
     </label>
     <label id="editCatL">Category<select id="editCat"></select></label>
     <label id="editSrcL">Source<select id="editSrc"></select></label>
+    <div id="editQtyL"><span class="tglbl">Quantities</span>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <label class="f"><span>Total Qty</span><input type="number" id="edTotal" min="0" step="1" inputmode="numeric"></label>
+        <label class="f"><span>Purchases</span><input type="number" id="edPur" min="0" step="1" inputmode="numeric"></label>
+        <label class="f"><span>Sales</span><input type="number" id="edSal" min="0" step="1" inputmode="numeric"></label>
+        <label class="f"><span>Damages</span><input type="number" id="edDam" min="0" step="1" inputmode="numeric"></label>
+      </div>
+      <p class="pmeta" style="margin:6px 0 0"><b>Bal Qty: <span id="edBal">0</span></b> <span id="edQtyNote"></span></p>
+    </div>
     <div id="editTagsL"><span class="tglbl">Tags (optional)</span><div id="editTagsBox"></div></div>
     <div class="actions">
       <button type="button" class="btn danger" id="editRemove">Delete</button>
@@ -2961,14 +2970,31 @@ function openEdit(kind,id){
   $('#editLabel').textContent = kind==='item' ? 'Item name' : 'Task';
   $('#editName').value = kind==='item' ? o.name : o.title;
   $('#editRemove').textContent = kind==='item' ? 'Remove item' : 'Delete task';
-  $('#editCatL').hidden=kind!=='item'; $('#editTagsL').hidden=kind!=='item'; $('#editSrcL').hidden=kind!=='item'; if(kind==='item'){ $('#editSrc').value=o.src||''; pickify($('#editSrc'),'Source'); $('#editSrc')._sync(); catFill($('#editCat'),o.cat||''); editTags.set(o.tags||[]); }
+  $('#editCatL').hidden=kind!=='item'; $('#editTagsL').hidden=kind!=='item'; $('#editSrcL').hidden=kind!=='item'; $('#editQtyL').hidden=kind!=='item';
+  if(kind==='item'){
+    var qe=editable()&&canWrite; [['edTotal','total',isOwner],['edPur','purchase',true],['edSal','sales',true],['edDam','damages',true]].forEach(function(q){ var i=$('#'+q[0]); i.value=o[q[1]]||0; i.disabled=!(qe&&q[2]); });
+    $('#edBal').textContent=fmtN(bal(o)); $('#edQtyNote').textContent=qe?(isOwner?'':'(Total Qty is changed by the owner)'):'(view only: the day is closed or you are offline)';
+  }
+  if(kind==='item'){ $('#editSrc').value=o.src||''; pickify($('#editSrc'),'Source'); $('#editSrc')._sync(); catFill($('#editCat'),o.cat||''); editTags.set(o.tags||[]); }
   var d=$('#dlgEdit'); if(!d.open) d.showModal();
 }
+['edTotal','edPur','edSal','edDam'].forEach(function(i){ $('#'+i).addEventListener('input', function(){ var o=Object.assign({},(day&&day.rows&&edCtx&&day.rows[edCtx.id])||{}); o.total=Number($('#edTotal').value)||0; o.purchase=Number($('#edPur').value)||0; o.sales=Number($('#edSal').value)||0; o.damages=Number($('#edDam').value)||0; $('#edBal').textContent=fmtN(bal(o)); }); });
 $('#fEdit').addEventListener('submit', async function(e){
   e.preventDefault();
   var v=$('#editName').value.trim().replace(/\s+/g,' '); if(!v||!edCtx) return;
   if(edCtx.kind==='item' && existingNames(edCtx.id)[normName(v)]){ toast(v+' is already in the list.'); return; }
   var patch={}, key=edCtx.kind==='item'?'rows':'tasks'; patch[key]={}; patch[key][edCtx.id]={};
+  if(edCtx.kind==='item'){
+    var r0=day&&day.rows&&day.rows[edCtx.id];
+    if(r0&&editable()&&canWrite){
+      var nx=Object.assign({},r0), ch=[];
+      [['edTotal','total',isOwner],['edPur','purchase',true],['edSal','sales',true],['edDam','damages',true]].forEach(function(q){ if(!q[2]) return; var nv=Math.max(0,Math.round(Number($('#'+q[0]).value)||0)); if(nv!==(r0[q[1]]||0)){ nx[q[1]]=nv; ch.push(q[1]); } });
+      if(ch.length){
+        if(bal(nx)<0){ toast('The quantities would make the balance negative. Balance would be '+fmtN(bal(nx))+'.',4500); return; }
+        ch.forEach(function(f){ patch.rows[edCtx.id][f]=nx[f]; if(f!=='total'&&nx[f]===0){ patch.rows[edCtx.id].notes=patch.rows[edCtx.id].notes||{}; patch.rows[edCtx.id].notes[f]=null; } });
+      }
+    }
+  }
   patch[key][edCtx.id][edCtx.kind==='item'?'name':'title']=v;
   if(edCtx.kind==='item'){ patch[key][edCtx.id].modAt=Date.now(); patch[key][edCtx.id].cat=$('#editCat').value||''; patch[key][edCtx.id].tags=editTags.get(); patch[key][edCtx.id].src=$('#editSrc').value||null; }
   $('#dlgEdit').close(); await save(patch);
