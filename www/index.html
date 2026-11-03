@@ -1107,6 +1107,25 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
+<dialog id="dlgResTo">
+  <div class="dbody">
+    <h2>Select Supervisor</h2>
+    <p class="pmeta">This resource is set to All supervisors. Choose the supervisor it is handed to. They will get the message on their home screen to accept it.</p>
+    <label class="f"><span>Supervisor</span><select id="rtoPick"></select></label>
+    <div class="actions"><button type="button" class="btn" id="rtoCancel">Cancel</button><button type="button" class="btn primary" id="rtoOk">Add Resource</button></div>
+  </div>
+</dialog>
+<dialog id="dlgResStk">
+  <div class="dbody">
+    <h2>Add To Stock</h2>
+    <p class="pmeta" id="rsInfo"></p>
+    <label class="f"><span>Quantity to add</span><input type="number" id="rsQty" min="1" step="1" inputmode="numeric"></label>
+    <label class="f" id="rsCatL"><span>Category or sub-category</span><select id="rsCat"></select></label>
+    <p class="pmeta" id="rsErr" style="color:var(--warn)"></p>
+    <div class="actions"><button type="button" class="btn" id="rsCancel">Cancel</button><button type="button" class="btn primary" id="rsOk">Add To Stock</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgCatEd">
   <div class="dbody">
     <h2 id="cedHead">Edit Category</h2>
@@ -3811,6 +3830,30 @@ $('#resMsgBtn').addEventListener('click', async function(){
   l.forEach(function(it){ p[resAckKey(it[0],it[1])]={rid:it[0],to:it[1].to||'',q:it[1].q||0,n:it[1].n,nid:it[1].nid||'1',by:who,at:now,seen:null}; });
   if(await resAckSave(p)){ Object.keys(p).forEach(function(k){ resAck[k]=p[k]; }); resMsgUpdate(); toast('Accepted. Thank you.'); if(tab==='res') renderRes(); }
 });
+var rsId='';
+function resStkOpen(id){
+  var r=res[id]; if(!r) return;
+  if(!editable()){ toast('Stock can be changed only on the open (latest) day.'); return; }
+  rsId=id; $('#rsInfo').textContent=r.n+' \u00B7 '+NURS[r.nid||'1']; $('#rsQty').value=Math.max(1,Math.round(Number(r.q)||1)); $('#rsErr').textContent='';
+  var has=catList().length>0; $('#rsCatL').hidden=!has; if(has) catFill($('#rsCat'),'',true);
+  var d=$('#dlgResStk'); if(!d.open) d.showModal();
+}
+$('#rsCancel').addEventListener('click', function(){ $('#dlgResStk').close(); });
+$('#rsOk').addEventListener('click', async function(){
+  var r=res[rsId]; if(!r) return; var err=$('#rsErr'); err.textContent='';
+  if(!editable()){ err.textContent='Stock can be changed only on the open (latest) day.'; return; }
+  var qty=Math.round(Number($('#rsQty').value)||0); if(!(qty>0)){ err.textContent='Enter the quantity to add.'; return; }
+  var cat=$('#rsCatL').hidden?'':$('#rsCat').value; if(!$('#rsCatL').hidden&&!cat){ err.textContent='Select the category or sub-category.'; return; }
+  var nid=r.nid||'1', rows=(day&&day.rows)||{}, ex=null, pr={rows:{}};
+  Object.keys(rows).forEach(function(k){ if(!rows[k].removed&&(rows[k].nid||'1')===nid&&normName(rows[k].name)===normName(r.n)) ex=k; });
+  if(ex){ pr.rows[ex]={purchase:(rows[ex].purchase||0)+qty}; if(cat) pr.rows[ex].cat=cat; }
+  else{
+    var maxO=0; Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
+    var rid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    pr.rows[rid]={order:maxO+1,name:r.n,total:0,purchase:qty,sales:0,damages:0,nid:nid,addedAt:Date.now(),tags:['Resource']}; if(cat) pr.rows[rid].cat=cat;
+  }
+  if(await save(pr)){ $('#dlgResStk').close(); toast(r.n+(ex?' added to the existing stock item (+'+qty+')':' added to stock with quantity '+qty)+(cat?' under '+catName(cat):'')); }
+});
 function resShown(n){
   n=n||nursery;
   var rs=(day&&day.rs)||{}, out=[];
@@ -3867,21 +3910,7 @@ function makeRes(id){
       });
     });
     var stb=mk('button','btn small','Add to stock'); stb.type='button';
-    stb.addEventListener('click', function(){ arm(stb,'stk'+id,'Add to stock',stkGo); });
-    var stkGo=async function(){
-      var r=res[id]; if(!r) return;
-      if(!editable()){ toast('Stock can be changed only on the open (latest) day.'); return; }
-      var nid=r.nid||'1', qty=Math.max(0,Math.round(Number(r.q)||0)), rows=(day&&day.rows)||{}, ex=null;
-      Object.keys(rows).forEach(function(k){ if(!rows[k].removed&&(rows[k].nid||'1')===nid&&normName(rows[k].name)===normName(r.n)) ex=k; });
-      var pr={rows:{}};
-      if(ex){ pr.rows[ex]={purchase:(rows[ex].purchase||0)+qty}; }
-      else{
-        var maxO=0; Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
-        var rid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-        pr.rows[rid]={order:maxO+1,name:r.n,total:0,purchase:qty,sales:0,damages:0,nid:nid,addedAt:Date.now(),tags:['Resource']};
-      }
-      if(await save(pr)) toast(r.n+(ex?' quantity added to the existing stock item (+'+qty+')':' added to stock with quantity '+qty)+' in '+NURS[nid]);
-    };
+    stb.addEventListener('click', function(){ resStkOpen(id); });
     own.append(inp,qi,sel,stb,mvb,rm); el.append(own);
     R.mv=mvb; R.inp=inp; R.sel=sel; R.rm=rm; R.qi=qi;
   }
@@ -3960,18 +3989,25 @@ $('#resAll').addEventListener('click', function(){
   resShown().forEach(function(it){ if(it[1].v===null){ n++; p.rs[it[0]]={v:true, qty:it[1].q||1, q:it[1].q||0, nid:it[1].nid, n:it[1].n, who:whoNow(), at:Date.now()}; } });
   if(n) save(p);
 });
+$('#rtoCancel').addEventListener('click', function(){ $('#dlgResTo').close(); });
+$('#rtoOk').addEventListener('click', function(){ var v=$('#rtoPick').value; if(!v) return; $('#dlgResTo').close(); $('#resTo').value=v; $('#fRes').requestSubmit(); });
 $('#fRes').addEventListener('submit', async function(e){
   e.preventDefault(); if(!isOwner) return;
   var names=$('#resIn').value.split(/[,;\n]+/).map(cleanName).filter(Boolean), have={}, maxO=0, added=0, dups=[];
   resList().forEach(function(it){ if((it[1].nid||'1')===nursery) have[normName(it[1].n)]=1; maxO=Math.max(maxO,it[1].o||0); });
   var to=$('#resTo').hidden?'':$('#resTo').value, patch={res:{}}, q0=num($('#resQty').value);
+  if(!to&&teamList('sup').length){
+    if(!names.length){ toast('Enter an item first.'); return; }
+    var pk=$('#rtoPick'); pk.textContent=''; teamList('sup').forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; pk.append(o); });
+    pickify(pk,'Supervisor'); pk._sync(); var d=$('#dlgResTo'); if(!d.open) d.showModal(); return;
+  }
   names.forEach(function(n){
     var k=normName(n); if(have[k]){ dups.push(n); return; }
     have[k]=1; maxO++; added++;
     patch.res['r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]={n:n, o:maxO, to:to, q:q0, nid:nursery};
   });
   if(!added){ toast(dups.length ? 'Already added: '+dups.join(', ') : 'Enter an item first.'); return; }
-  if(await saveSettings(patch)){ $('#resIn').value=''; $('#resQty').value='1'; toast(added+(added===1?' item added':' items added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):'')); }
+  if(await saveSettings(patch)){ $('#resIn').value=''; $('#resQty').value='1'; $('#resTo').value=''; fillAssign($('#resTo'),''); toast(added+(added===1?' item added':' items added')+(dups.length?'. Skipped duplicates: '+dups.join(', '):'')); }
 });
 
 /* ---------- customers and sales ---------- */
