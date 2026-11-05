@@ -543,7 +543,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -7004,13 +7004,72 @@ function ctEdit(id){
   });
   d.showModal();
 }
+/* read a CSV, text or Excel (.xlsx) file into rows of cells, all inside the phone */
+function csvRows(t){
+  var rows=[], row=[], cur='', q=false, i, ch, l1=t.split('\n')[0], dl=(l1.split(';').length>l1.split(',').length)?';':',';
+  for(i=0;i<t.length;i++){ ch=t[i];
+    if(q){ if(ch==='"'){ if(t[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true; else if(ch===dl){ row.push(cur); cur=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&t[i+1]==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+    else cur+=ch; }
+  if(cur||row.length){ row.push(cur); rows.push(row); } return rows;
+}
+async function zipFiles(buf){
+  var u=new Uint8Array(buf), dv=new DataView(buf), e=-1, i, out={};
+  for(i=u.length-22;i>=Math.max(0,u.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } }
+  if(e<0) throw new Error('zip'); var n=dv.getUint16(e+10,true), p=dv.getUint32(e+16,true), dec=new TextDecoder();
+  for(i=0;i<n;i++){
+    var meth=dv.getUint16(p+10,true), cs=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lo=dv.getUint32(p+42,true), nm=dec.decode(u.subarray(p+46,p+46+nl));
+    p+=46+nl+xl+cl;
+    if(!/^xl\/(sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/.test(nm)) continue;
+    var ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true), data=u.subarray(ds,ds+cs);
+    if(meth===0) out[nm]=dec.decode(data);
+    else { var s=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')); out[nm]=dec.decode(await new Response(s).arrayBuffer()); }
+  }
+  return out;
+}
+async function xlsxRows(buf){
+  var f=await zipFiles(buf), ss=[], P=new DOMParser();
+  if(f['xl/sharedStrings.xml']) Array.prototype.forEach.call(P.parseFromString(f['xl/sharedStrings.xml'],'application/xml').getElementsByTagName('si'),function(si){ ss.push(Array.prototype.map.call(si.getElementsByTagName('t'),function(t){ return t.textContent; }).join('')); });
+  var names=Object.keys(f).filter(function(k){ return /worksheets/.test(k); }).sort(); if(!names.length) throw new Error('sheet');
+  var rows=[]; Array.prototype.forEach.call(P.parseFromString(f[names[0]],'application/xml').getElementsByTagName('row'),function(r){
+    var row=[]; Array.prototype.forEach.call(r.getElementsByTagName('c'),function(c){
+      var ref=(c.getAttribute('r')||'').replace(/\d+/g,''), ci=0, k; for(k=0;k<ref.length;k++) ci=ci*26+ref.charCodeAt(k)-64; ci=ci?ci-1:row.length;
+      var t=c.getAttribute('t'), v=c.getElementsByTagName('v')[0], val='';
+      if(t==='s'&&v) val=ss[+v.textContent]||''; else if(t==='inlineStr') val=Array.prototype.map.call(c.getElementsByTagName('t'),function(x){ return x.textContent; }).join(''); else if(v) val=v.textContent;
+      if(/^\d\.?\d*E\+?\d+$/i.test(val)) val=String(Math.round(Number(val))); row[ci]=val; });
+    rows.push(row); });
+  return rows;
+}
+function rowsToLines(rows){
+  var out=[], skipped=0, isPh=function(s){ return /^\+?[\d\s()-]+$/.test(s)&&digitsOf(s).length>=5; };
+  rows.forEach(function(r){
+    var cells=(r||[]).map(function(x){ return String(x==null?'':x).trim(); }), pi=-1, k;
+    for(k=0;k<cells.length;k++){ if(isPh(cells[k])){ pi=k; break; } }
+    var nm=''; for(k=0;k<cells.length;k++){ if(k!==pi&&cells[k]&&!/^[+\d\s()-]+$/.test(cells[k])){ nm=cells[k]; break; } }
+    if(pi<0||!nm){ if(cells.join('').trim()) skipped++; return; }
+    out.push(nm.replace(/[,\n]/g,' ')+', '+cells[pi]);
+  });
+  return {lines:out,skipped:skipped};
+}
 function ctBulk(){
   var r=callDlg('dlgCallCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,'Add Many Contacts'));
   b.append(mk('p','pmeta','One contact per line: name, then phone number. For example: Ravi Kumar, 98765 43210'));
   var ta=document.createElement('textarea'); ta.rows=8; ta.maxLength=8000; var gs=callGroupSel('',false), er=mk('p','pmeta'); er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Add'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
-  b.append(callFld('Contacts',ta),callFld('Group for all',gs),er,row);
+  var up=mk('button','btn','Upload Excel Or CSV File'); up.type='button'; var fi=document.createElement('input'); fi.type='file'; fi.accept='.csv,.txt,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; fi.hidden=true;
+  var hint=mk('p','pmeta','The file needs one name column and one phone column. The contacts are added to the box below so you can check them before pressing Add.');
+  up.addEventListener('click',function(){ fi.click(); });
+  fi.addEventListener('change',async function(){
+    var f=fi.files&&fi.files[0]; fi.value=''; if(!f) return; er.textContent='';
+    try{
+      var rows; if(/\.xlsx$/i.test(f.name)) rows=await xlsxRows(await f.arrayBuffer()); else if(/\.xls$/i.test(f.name)){ er.textContent='Old .xls files are not supported. Save the sheet as .xlsx or .csv and upload again.'; return; } else rows=csvRows((await f.text()).replace(/^\ufeff/,''));
+      var r=rowsToLines(rows); if(!r.lines.length){ er.textContent='No names with phone numbers were found in this file.'; return; }
+      ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+r.lines.join('\n'); ta.maxLength=Math.max(8000,ta.value.length+100); toast(r.lines.length+' contact'+(r.lines.length>1?'s':'')+' read from the file'+(r.skipped?'; '+r.skipped+' row(s) skipped':''));
+    }catch(e){ er.textContent='This file could not be read. Use an .xlsx or .csv file.'; }
+  });
+  b.append(up,fi,hint,callFld('Contacts',ta),callFld('Group for all',gs),er,row);
   cn.addEventListener('click', function(){ d.close(); });
   sv.addEventListener('click', async function(){
     var seen={}; ctAll().forEach(function(it){ seen[digitsOf(it[1].p)]=1; });
