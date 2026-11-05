@@ -19,12 +19,12 @@ create policy docs_select on public.docs for select to authenticated
   using (path not in ('meta/security','meta/accounts') or public.is_owner());
 -- Team, resources and the PIN can only be changed by the owner; day records by any signed-in team member
 create policy docs_insert on public.docs for insert to authenticated
-  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts') or public.is_owner());
+  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
 create policy docs_update on public.docs for update to authenticated
-  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts') or public.is_owner())
-  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts') or public.is_owner());
+  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
+  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
 create policy docs_delete on public.docs for delete to authenticated
-  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts') or public.is_owner());
+  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb
