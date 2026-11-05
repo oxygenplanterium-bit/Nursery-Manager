@@ -543,7 +543,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 6 Nov 2026, 3:30 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -854,7 +854,7 @@ select:not([multiple]){pointer-events:none}
       <button class="btn" type="button" id="accCats">Manage categories</button>
       <button class="btn small danger" type="button" id="accRstBtn" hidden>Reset All Accounts Entries</button>
       <label class="f"><span>Period</span>
-        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day" selected>This day only (today)</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
+        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day" selected>This day</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
       </label>
       <label class="f" id="accDayL" hidden style="min-width:0;max-width:100%"><span>Date</span><input type="date" id="accDay" aria-label="Choose date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;-webkit-appearance:none;appearance:none"></label>
       <label class="f"><span>Show</span>
@@ -4897,6 +4897,9 @@ async function invPdf(id){
 
 /* ---------- accounts: receipts, payments, income, expenses (owner only) ---------- */
 var accData={e:{}}, accSubbed=false, accEls=new Map(), accKind='rc';
+var accDayV='';
+function accDayKey(){ return accDayV||todayKey(); }
+function accDayShift(k,n){ var q=String(k).split('-'), d=new Date(+q[0],+q[1]-1,+q[2]+n); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 var accMonth=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); })();
 var ACC_T={rc:'Receipt',py:'Payment',in:'Income',ex:'Expense',sl:'Salary'};
 var ACC_CATS={ex:['Fertiliser','Soil and manure','Pots and planters','Seeds and saplings','Pesticides','Transport','Fuel','Electricity and water','Rent','Repairs and maintenance','Labour (other than salary)','Packing','Miscellaneous'],in:['Other sales','Service charges','Rent received','Miscellaneous']};
@@ -4970,7 +4973,7 @@ function accNext(k,nid){
   return m+1;
 }
 function accMonthItems(mo){
-  var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
+  var o=accData.e||{}, pv=mo?'m':$('#accPeriod').value, all=pv==='all', dk=pv==='day'?accDayKey():pv==='date'?$('#accDay').value:'';
   var bothN=accBoth, okd=function(x){ return (bothN||(x.nid||'1')===nursery)&&(all||(dk?x.d===dk:String(x.d||'').slice(0,7)===accMonth)); };
   var se=(salData&&salData.e)||{}, sl=Object.keys(se).filter(function(id){ var x=se[id]; return x&&(x.k==='adv'||x.k==='bon')&&x.d&&okd(x); })
     .map(function(id){ var x=se[id]; return ['sal:'+id,{k:'sl',sub:x.k==='adv'?'Advance':'Bonus',d:x.d,amt:x.amt,mode:'cash',party:x.n||'',note:x.note||'',nid:x.nid,at:x.at||0,auto:true}]; });
@@ -5008,10 +5011,10 @@ function renderAcc(){
   if(tab!=='acc'||!isOwner) return;
   accSubscribe(); salSubscribe();
   var ym=accMonth.split('-'); $('#accMonthLbl').textContent=new Date(+ym[0],+ym[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-  var pv=$('#accPeriod').value, allP=pv!=='m', dk=pv==='day'?todayKey():pv==='date'?$('#accDay').value:'';
+  var pv=$('#accPeriod').value, allP=pv!=='m', dk=pv==='day'?accDayKey():pv==='date'?$('#accDay').value:'';
   $('#accDayL').hidden=pv!=='date';
   if(allP){ $('#accMonthLbl').textContent=pv==='all'?'All months':(dk?new Date(dk+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'Choose a date'); }
-  $('#accPrev').disabled=allP; $('#accNext').disabled=allP;
+  $('#accPrev').disabled=pv==='all'||(pv==='date'&&!dk); $('#accNext').disabled=pv==='all'||(pv==='date'&&!dk); $('#accPrev').setAttribute('aria-label',allP?'Previous day':'Previous month'); $('#accNext').setAttribute('aria-label',allP?'Next day':'Next month');
   var items=accMonthItems(), S=accSums(items), op=accBoth?(function(a,b){ return {rec:a.rec+b.rec,pay:a.pay+b.pay}; })(accOpen('1'),accOpen('2')):accOpen(nursery), f=$('#accFilter').value, list=$('#accList'), seen=new Set(), pos=0;
   var g=$('#accCards'); g.textContent='';
   var net=S.rc+S.in-S.py-S.ex-S.sl;
@@ -5032,10 +5035,10 @@ function renderAcc(){
   accEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); accEls.delete(id); } });
 }
 $('#accFilter').addEventListener('change', renderAcc);
-$('#accPeriod').addEventListener('change', function(){ if(this.value==='date'&&!$('#accDay').value) $('#accDay').value=todayKey(); renderAcc(); });
+$('#accPeriod').addEventListener('change', function(){ if(this.value==='day') accDayV=''; if(this.value==='date'&&!$('#accDay').value) $('#accDay').value=todayKey(); renderAcc(); });
 $('#accDay').addEventListener('change', renderAcc);
-$('#accPrev').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
-$('#accNext').addEventListener('click', function(){ var q=accMonth.split('-'), d=new Date(+q[0],+q[1],1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
+$('#accPrev').addEventListener('click', function(){ var pv=$('#accPeriod').value; if(pv==='day'){ accDayV=accDayShift(accDayKey(),-1); renderAcc(); return; } if(pv==='date'){ if($('#accDay').value){ $('#accDay').value=accDayShift($('#accDay').value,-1); renderAcc(); } return; } var q=accMonth.split('-'), d=new Date(+q[0],+q[1]-2,1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
+$('#accNext').addEventListener('click', function(){ var pv=$('#accPeriod').value; if(pv==='day'){ accDayV=accDayShift(accDayKey(),1); renderAcc(); return; } if(pv==='date'){ if($('#accDay').value){ $('#accDay').value=accDayShift($('#accDay').value,1); renderAcc(); } return; } var q=accMonth.split('-'), d=new Date(+q[0],+q[1],1); accMonth=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); renderAcc(); });
 var accNid0='1';
 function accFillInv(){
   var sel=$('#accInv'); sel.textContent='';
