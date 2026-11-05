@@ -15,16 +15,36 @@ drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
 -- Owner PIN data is readable by the owner only. Salary data can be viewed by every signed-in user but changed only by the owner
+-- App subscription: sub/<id> is one login's subscription record (the owner sets its end date), subclaim/<id> is that login's "I have paid" note
 create policy docs_select on public.docs for select to authenticated
-  using (path not in ('meta/security','meta/accounts') or public.is_owner());
--- Team, resources and the PIN can only be changed by the owner; day records by any signed-in team member
+  using (
+    (path not in ('meta/security','meta/accounts') or public.is_owner())
+    and (path not like 'sub/%' or public.is_owner() or path = 'sub/' || auth.uid()::text)
+    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+  );
+-- Team, resources, the PIN and the subscription settings can only be changed by the owner; day records by any signed-in team member
 create policy docs_insert on public.docs for insert to authenticated
-  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
+  with check (
+    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
+    and (path not like 'sub/%' or public.is_owner() or (path = 'sub/' || auth.uid()::text and not (data ? 'ex')))
+    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+  );
 create policy docs_update on public.docs for update to authenticated
-  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
-  with check (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
+  using (
+    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
+    and (path not like 'sub/%' or public.is_owner())
+    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+  )
+  with check (
+    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
+    and (path not like 'sub/%' or public.is_owner())
+    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+  );
 create policy docs_delete on public.docs for delete to authenticated
-  using (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner());
+  using (
+    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') and path not like 'sub/%' and path not like 'subclaim/%')
+    or public.is_owner()
+  );
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb

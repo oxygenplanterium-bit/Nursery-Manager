@@ -543,7 +543,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 2:00 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:00 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -7646,12 +7646,14 @@ var QR=(function(){
   return {draw:draw,build:build};
 })();
 /* ---------- app subscription: owner switch and settings, payment wall for everyone else ---------- */
-var subData={}, subClaim=null, subLoaded=false, SUBDAY=86400000;
+var subMineClaim=null, subData={}, subClaim=null, subLoaded=false, SUBDAY=86400000, subMine=null, subMineLoaded=false, subUsers={}, subClaims={}, subEnsured=false;
 function subOn(){ return subData&&subData.on===true; }
+function subUserMode(){ return subData&&subData.mode==='user'; }
+function subEnd(){ return subUserMode()?(Number(subMine&&subMine.ex)||0):(Number(subData&&subData.ex)||0); }
 function subDaysN(){ return Math.max(1,Math.round(Number(subData&&subData.days)||30)); }
 function subMoney(a){ a=Number(a)||0; return '₹'+(a%1?a.toFixed(2):String(a)); }
 function subDate(ms){ var d=new Date(Number(ms)); return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); }
-function subExpired(){ return subOn()&&!(Number(subData.ex)>Date.now()); }
+function subExpired(){ return subOn()&&!(subEnd()>Date.now()); }
 function subUpi(){ var st=subData||{}; return 'upi://pay?pa='+encodeURIComponent(st.upi||'')+'&pn='+encodeURIComponent(st.pn||'Owner')+(Number(st.amt)>0?'&am='+encodeURIComponent(Number(st.amt).toFixed(2)):'')+'&cu=INR&tn='+encodeURIComponent('Nursery Manager subscription'); }
 function subQrBox(px){ var w=mk('div'); w.style.cssText='background:#fff;padding:8px;border-radius:12px;align-self:center;line-height:0'; var cv=document.createElement('canvas'); cv.style.cssText='width:'+px+'px;height:'+px+'px;display:block'; if(QR.draw(cv,subUpi(),px*2)) w.append(cv); else w.append(mk('span',null,'QR is too long')); return w; }
 function subPut(path,patch){ var d=db.doc(path); return d.get().then(function(s){ return s.exists?d.update(patch):d.set(patch); }).then(function(){ return true; },onWriteErr); }
@@ -7661,49 +7663,65 @@ function subSw(label,on,fn){
   var l=mk('label','subsw'), i=document.createElement('input'); i.type='checkbox'; i.checked=on; i.setAttribute('role','switch'); i.setAttribute('aria-label',label); l.append(mk('span',null,label),i,document.createElement('i')); i.addEventListener('change',function(){ fn(i); }); return l;
 }
 /* owner: card in the Team tab */
+function subPendingCount(){ var n=subClaim&&subClaim.st==='pending'?1:0; Object.keys(subClaims).forEach(function(k){ if(subClaims[k]&&subClaims[k].st==='pending') n++; }); return n; }
 function subCardBuild(){
   var pane=$('#paneTeam'); if(!pane) return; var c=$('#subCard'); if(!c){ c=mk('section','card team'); c.id='subCard'; pane.insertBefore(c,pane.firstChild); }
   c.hidden=!accountOwner; if(!accountOwner) return; c.textContent='';
   c.append(mk('h2',null,'App Subscription'));
-  var st=mk('p','pmeta'); st.textContent=subOn()?(subExpired()?'Switched on. The subscription has ended.':'Switched on. Valid till '+subDate(subData.ex)+'.'):'Switched off. Nobody is asked to pay.'; c.append(st);
+  var st=mk('p','pmeta'); st.textContent=subOn()?(subUserMode()?'Switched on. Every login pays for itself.':(subExpired()?'Switched on. The subscription has ended.':'Switched on. Valid till '+subDate(subData.ex)+'.')):'Switched off. Nobody is asked to pay.'; c.append(st);
   c.append(subSw('App Subscription',subOn(),async function(i){
     var on=i.checked; try{ i.blur(); }catch(e){}
     if(on&&!(subData.upi&&Number(subData.amt)>0)){ i.checked=false; toast('Enter the UPI ID and amount, then Save',4000); subDlg(); return; }
-    var p={on:on}; if(on&&!(Number(subData.ex)>Date.now())) p.ex=Date.now()+Math.max(0,Math.round(Number(subData.trial)||0))*SUBDAY;
+    var p={on:on}; if(on&&!subUserMode()&&!(Number(subData.ex)>Date.now())) p.ex=Date.now()+Math.max(0,Math.round(Number(subData.trial)||0))*SUBDAY;
     if(await subPut('meta/subscription',p)) toast(on?'Subscription switched on':'Subscription switched off'); else i.checked=!on;
   }));
-  var np=subClaim&&subClaim.st==='pending'?1:0, b=mk('button','btn','Subscription Settings'+(np?' (1)':'')); b.type='button'; b.style.minHeight='42px'; b.addEventListener('click',subDlg); c.append(b);
+  var np=subPendingCount(), b=mk('button','btn','Subscription Settings'+(np?' (1)':'')); b.type='button'; b.style.minHeight='42px'; b.addEventListener('click',subDlg); c.append(b);
 }
 function subDlg(){
   var d=$('#dlgSub'); if(!d){ d=document.createElement('dialog'); d.id='dlgSub'; document.body.append(d); d.addEventListener('click',function(e){ if(!e.target.closest('.dbody')) d.close(); }); }
   d.textContent=''; var b=mk('div','dbody'); d.append(b); b.append(mk('h2',null,'Subscription'));
   var st=subData||{}, pn=subIn('text','Name shown with the QR code',st.pn||''), upi=subIn('text','UPI ID, for example name@bank',st.upi||''), amt=subIn('number','Amount in rupees',st.amt||''), days=subIn('number','Days for each payment',st.days||30), tr=subIn('number','Free days when switched on',st.trial===undefined?7:st.trial);
+  var md=document.createElement('select'); [['app','Whole App (one subscription for everyone)'],['user','Each Login (every login pays for itself)']].forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; md.append(o); }); md.value=subUserMode()?'user':'app';
   upi.style.textTransform='none'; upi.autocapitalize='off'; upi.autocomplete='off'; amt.inputMode='decimal'; days.inputMode='numeric'; tr.inputMode='numeric'; pn.maxLength=40; upi.maxLength=60;
   var er=mk('p','pmeta'); er.style.color='var(--warn)'; var sv=mk('button','btn primary','Save'); sv.type='button';
-  b.append(subFld('Name',pn),subFld('UPI ID',upi),subFld('Amount (rupees)',amt),subFld('Days for each payment',days),subFld('Free days when switched on',tr),er,sv);
+  b.append(subFld('Subscription Type',md),subFld('Name',pn),subFld('UPI ID',upi),subFld('Amount (rupees)',amt),subFld('Days for each payment',days),subFld('Free days when switched on (Whole App)',tr),er,sv);
   sv.addEventListener('click',async function(){
     var u=upi.value.trim(), a=parseFloat(amt.value), dd=Math.round(parseFloat(days.value)), t=Math.round(parseFloat(tr.value||'0'));
     if(!/^[A-Za-z0-9._\-]{2,}@[A-Za-z0-9._\-]{2,}$/.test(u)){ er.textContent='Enter a valid UPI ID such as name@bank.'; return; }
     if(!(a>0)){ er.textContent='Enter the amount in rupees.'; return; }
     if(!(dd>=1)){ er.textContent='Enter the number of days.'; return; }
-    er.textContent=''; if(await subPut('meta/subscription',{pn:pn.value.trim().slice(0,40),upi:u,amt:a,days:dd,trial:t>0?t:0})) toast('Subscription settings saved');
+    er.textContent=''; if(await subPut('meta/subscription',{pn:pn.value.trim().slice(0,40),upi:u,amt:a,days:dd,trial:t>0?t:0,mode:md.value})){ toast('Subscription settings saved'); d.close(); }
   });
-  var cl=subClaim, g=mk('div','card team'); g.style.cssText+=';margin-top:4px'; g.append(mk('b',null,'Payment waiting for you'));
-  if(cl&&cl.st==='pending'){
-    g.append(mk('div','pmeta',[cl.n||'Team',subMoney(cl.amt),subDate(cl.at)].filter(Boolean).join(' · ')));
+  function claimBox(title,cl,okFn,noFn){
+    var g=mk('div'); g.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px';
+    g.append(mk('b',null,title),mk('div','pmeta',[cl.n||'Team',subMoney(cl.amt),subDate(cl.at)].filter(Boolean).join(' · ')));
     var rf=mk('div','pmeta','Reference: '+(cl.ref||'')); rf.style.textTransform='none'; g.append(rf);
-    var ar=mk('div','actions'), ok=mk('button','btn primary','Confirm Payment'), no=mk('button','btn','Reject'); ok.type=no.type='button'; ar.append(ok,no); g.append(ar);
-    ok.addEventListener('click',async function(){ var base=Math.max(Date.now(),Number(subData.ex)||0); if(await subPut('meta/subscription',{ex:base+subDaysN()*SUBDAY})&&await subPut('meta/subclaim',{st:'done',okAt:Date.now()})){ toast('Payment confirmed. Valid for '+subDaysN()+' more days'); d.close(); } });
-    no.addEventListener('click',async function(){ if(await subPut('meta/subclaim',{st:'rejected'})){ toast('Payment rejected'); d.close(); } });
-  } else g.append(mk('p','pmeta','No payment is waiting.'));
-  b.append(g);
-  var ext=mk('button','btn','Add '+subDaysN()+' Days Now'); ext.type='button'; ext.addEventListener('click',function(){ arm(ext,'subext','Add '+subDaysN()+' Days Now',async function(){ var base=Math.max(Date.now(),Number(subData.ex)||0); if(await subPut('meta/subscription',{ex:base+subDaysN()*SUBDAY})) toast('Added '+subDaysN()+' days'); }); });
-  var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(ext,x);
+    var ar=mk('div'); ar.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; var ok=mk('button','btn primary','Confirm Payment'), no=mk('button','btn','Reject'); ok.type=no.type='button'; ar.append(ok,no); g.append(ar);
+    ok.addEventListener('click',okFn); no.addEventListener('click',noFn); return g;
+  }
+  function plusDays(id,n){ var cur=id==='app'?subData:(subUsers[id]||{}), base=Math.max(Date.now(),Number(cur.ex)||0); return subPut(id==='app'?'meta/subscription':'sub/'+id,{ex:base+n*SUBDAY}); }
+  if(!subUserMode()){
+    if(subClaim&&subClaim.st==='pending') b.append(claimBox('Payment waiting for you',subClaim,async function(){ if(await plusDays('app',subDaysN())&&await subPut('meta/subclaim',{st:'done',okAt:Date.now()})){ toast('Payment confirmed. Valid for '+subDaysN()+' more days'); d.close(); } },async function(){ if(await subPut('meta/subclaim',{st:'rejected'})){ toast('Payment rejected'); d.close(); } }));
+    else b.append(mk('p','pmeta','No payment is waiting.'));
+    var ext=mk('button','btn','Add '+subDaysN()+' Days Now'); ext.type='button'; ext.addEventListener('click',function(){ arm(ext,'subext','Add '+subDaysN()+' Days Now',async function(){ if(await plusDays('app',subDaysN())) toast('Added '+subDaysN()+' days'); }); }); b.append(ext);
+  } else {
+    b.append(mk('h2',null,'Logins'));
+    var ids=Object.keys(subUsers).sort(function(x,y){ return String(subUsers[x].n||'').localeCompare(String(subUsers[y].n||'')); });
+    if(!ids.length) b.append(mk('p','pmeta','No login has opened the app yet. Each login appears here after it signs in once.'));
+    ids.forEach(function(id){
+      var u=subUsers[id], cl=subClaims[id], box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px';
+      var ok=Number(u.ex)>Date.now(); box.append(mk('b',null,u.n||'Login'),mk('div','pmeta',u.ex?(ok?'Valid till ':'Ended on ')+subDate(u.ex):'Not paid yet'));
+      if(cl&&cl.st==='pending'){ box.append(claimBox('Payment waiting',cl,async function(){ if(await plusDays(id,subDaysN())&&await subPut('subclaim/'+id,{st:'done',okAt:Date.now()})) toast('Payment confirmed for '+(u.n||'login')); },async function(){ if(await subPut('subclaim/'+id,{st:'rejected'})) toast('Payment rejected'); })); }
+      var ad=mk('button','btn small','Add '+subDaysN()+' Days'); ad.type='button'; ad.style.alignSelf='flex-start'; ad.addEventListener('click',async function(){ if(await plusDays(id,subDaysN())) toast((u.n||'Login')+' has '+subDaysN()+' more days'); }); box.append(ad); b.append(box);
+    });
+    if(ids.length){ var all=mk('button','btn','Give Everyone '+subDaysN()+' Days'); all.type='button'; all.addEventListener('click',function(){ arm(all,'suball','Give Everyone '+subDaysN()+' Days',async function(){ var okk=true; for(var i=0;i<ids.length;i++){ okk=okk&&await plusDays(ids[i],subDaysN()); } if(okk) toast('Everyone has '+subDaysN()+' more days'); }); }); b.append(all); }
+  }
+  var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x);
   if(!d.open) d.showModal();
 }
 /* everyone except the owner: full screen payment wall when the subscription has ended */
 function subWallUpdate(){
-  var w=$('#subWall'), show=!accountOwner&&subLoaded&&subExpired();
+  var w=$('#subWall'), show=!accountOwner&&subLoaded&&(!subUserMode()||subMineLoaded)&&subExpired();
   if(!show){ if(w) w.hidden=true; return; }
   if(!w){ w=mk('div'); w.id='subWall'; document.body.append(w); }
   w.hidden=false; w.textContent='';
@@ -7718,11 +7736,11 @@ function subWallUpdate(){
     var ar=mk('div'), cp=mk('button','btn','Copy UPI ID'), pa=mk('button','btn primary','Pay With UPI App'); cp.type=pa.type='button'; ar.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; ar.append(cp,pa); c.append(ar);
     cp.addEventListener('click',function(){ try{ navigator.clipboard.writeText(st.upi).then(function(){ toast('UPI ID copied'); },function(){ toast(st.upi,4000); }); }catch(e){ toast(st.upi,4000); } });
     pa.addEventListener('click',function(){ var a=document.createElement('a'); a.href=subUpi(); a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); });
-    if(subClaim&&subClaim.st==='pending'){ var wp=mk('p',null,'Payment sent. Access returns when the owner confirms it.'); wp.style.cssText='font-weight:600;color:var(--warn)'; c.append(wp,mk('p','pmeta','Reference: '+(subClaim.ref||''))); }
+    var myClaim=subUserMode()?subClaims[uid]||subMineClaim:subClaim; if(myClaim&&myClaim.st==='pending'){ var wp=mk('p',null,'Payment sent. Access returns when the owner confirms it.'); wp.style.cssText='font-weight:600;color:var(--warn)'; c.append(wp,mk('p','pmeta','Reference: '+(myClaim.ref||''))); }
     var rf=subIn('text','UPI reference number (UTR)',''); rf.maxLength=40; rf.style.textTransform='none'; var er=mk('p','pmeta'); er.style.color='var(--warn)';
-    var sv=mk('button','btn primary',subClaim&&subClaim.st==='pending'?'Send Again':'I Have Paid'); sv.type='button';
+    var sv=mk('button','btn primary',myClaim&&myClaim.st==='pending'?'Send Again':'I Have Paid'); sv.type='button';
     sv.addEventListener('click',async function(){ var r=rf.value.trim(); if(r.length<6){ er.textContent='Enter the payment reference number from your UPI app.'; return; }
-      if(await subPut('meta/subclaim',{n:(typeof supName==='string'&&supName)||'Team',ref:r.slice(0,40),amt:Number(st.amt)||0,at:Date.now(),st:'pending'})) toast('Payment sent to the owner'); });
+      if(await subPut(subUserMode()?'subclaim/'+uid:'meta/subclaim',{n:(subMine&&subMine.n)||(typeof supName==='string'&&supName)||'Team',ref:r.slice(0,40),amt:Number(st.amt)||0,at:Date.now(),st:'pending'})) toast('Payment sent to the owner'); });
     c.append(subFld('Payment reference',rf),er,sv);
   }
   var so=mk('button','btn','Sign Out'); so.type='button'; so.addEventListener('click',function(){ var b=$('#signOutBtn'); if(b) b.click(); else location.reload(); }); c.append(so);
@@ -7731,6 +7749,18 @@ function subWallUpdate(){
 function subStart(){
   db.doc('meta/subscription').onSnapshot(function(s){ subData=s.exists?(s.data()||{}):{}; subLoaded=true; subCardBuild(); subWallUpdate(); }, function(){ subLoaded=true; });
   db.doc('meta/subclaim').onSnapshot(function(s){ subClaim=s.exists?(s.data()||null):null; subCardBuild(); subWallUpdate(); }, function(){});
+  if(accountOwner){
+    if(db.watch){
+      db.watch('sub/',function(l){ var m={}; (l||[]).forEach(function(x){ m[x.path.slice(4)]=x.data||{}; }); subUsers=m; subCardBuild(); });
+      db.watch('subclaim/',function(l){ var m={}; (l||[]).forEach(function(x){ m[x.path.slice(9)]=x.data||{}; }); subClaims=m; subCardBuild(); });
+    }
+  } else if(uid){
+    db.doc('sub/'+uid).onSnapshot(function(s){
+      subMine=s.exists?(s.data()||{}):null; subMineLoaded=true;
+      if(!s.exists&&!subEnsured){ subEnsured=true; subPut('sub/'+uid,{n:(typeof supName==='string'&&supName)||'Login',at:Date.now()}); }
+      subWallUpdate(); }, function(){ subMineLoaded=true; });
+    db.doc('subclaim/'+uid).onSnapshot(function(s){ subMineClaim=s.exists?(s.data()||null):null; subClaims[uid]=subMineClaim||undefined; subWallUpdate(); }, function(){});
+  }
   setInterval(subWallUpdate,60000);
 }
 
