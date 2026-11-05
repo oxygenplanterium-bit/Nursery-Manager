@@ -543,7 +543,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:00 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 5 Nov 2026, 3:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -7704,24 +7704,29 @@ function subDlg(){
     if(subClaim&&subClaim.st==='pending') b.append(claimBox('Payment waiting for you',subClaim,async function(){ if(await plusDays('app',subDaysN())&&await subPut('meta/subclaim',{st:'done',okAt:Date.now()})){ toast('Payment confirmed. Valid for '+subDaysN()+' more days'); d.close(); } },async function(){ if(await subPut('meta/subclaim',{st:'rejected'})){ toast('Payment rejected'); d.close(); } }));
     else b.append(mk('p','pmeta','No payment is waiting.'));
     var ext=mk('button','btn','Add '+subDaysN()+' Days Now'); ext.type='button'; ext.addEventListener('click',function(){ arm(ext,'subext','Add '+subDaysN()+' Days Now',async function(){ if(await plusDays('app',subDaysN())) toast('Added '+subDaysN()+' days'); }); }); b.append(ext);
-  } else {
-    b.append(mk('h2',null,'Logins'));
-    var ids=Object.keys(subUsers).sort(function(x,y){ return String(subUsers[x].n||'').localeCompare(String(subUsers[y].n||'')); });
-    if(!ids.length) b.append(mk('p','pmeta','No login has opened the app yet. Each login appears here after it signs in once.'));
-    ids.forEach(function(id){
-      var u=subUsers[id], cl=subClaims[id], box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px';
-      var ok=Number(u.ex)>Date.now(); box.append(mk('b',null,u.n||'Login'),mk('div','pmeta',u.ex?(ok?'Valid till ':'Ended on ')+subDate(u.ex):'Not paid yet'));
-      if(cl&&cl.st==='pending'){ box.append(claimBox('Payment waiting',cl,async function(){ if(await plusDays(id,subDaysN())&&await subPut('subclaim/'+id,{st:'done',okAt:Date.now()})) toast('Payment confirmed for '+(u.n||'login')); },async function(){ if(await subPut('subclaim/'+id,{st:'rejected'})) toast('Payment rejected'); })); }
-      var ad=mk('button','btn small','Add '+subDaysN()+' Days'); ad.type='button'; ad.style.alignSelf='flex-start'; ad.addEventListener('click',async function(){ if(await plusDays(id,subDaysN())) toast((u.n||'Login')+' has '+subDaysN()+' more days'); }); box.append(ad); b.append(box);
-    });
-    if(ids.length){ var all=mk('button','btn','Give Everyone '+subDaysN()+' Days'); all.type='button'; all.addEventListener('click',function(){ arm(all,'suball','Give Everyone '+subDaysN()+' Days',async function(){ var okk=true; for(var i=0;i<ids.length;i++){ okk=okk&&await plusDays(ids[i],subDaysN()); } if(okk) toast('Everyone has '+subDaysN()+' more days'); }); }); b.append(all); }
   }
+  b.append(mk('h2',null,'Logins'));
+  b.append(mk('p','pmeta','Only logins marked Paying are asked to pay. Everyone else, including supervisors and members you add, is never blocked.'));
+  var ids=Object.keys(subUsers).sort(function(x,y){ return String(subUsers[x].n||'').localeCompare(String(subUsers[y].n||'')); });
+  if(!ids.length) b.append(mk('p','pmeta','No login has opened the app yet. Each login appears here after it signs in once.'));
+  ids.forEach(function(id){
+    var u=subUsers[id], cl=subClaims[id], box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px';
+    var ok=Number(u.ex)>Date.now(); box.append(mk('b',null,u.n||'Login'));
+    var pay=mk('button','btn small',u.pay?'Paying: Yes':'Paying: No'); pay.type='button'; pay.style.alignSelf='flex-start'; pay.addEventListener('click',async function(){ if(await subPut('sub/'+id,{pay:!u.pay})) toast((u.n||'Login')+(u.pay?' is now free':' will now be asked to pay')); }); box.append(pay);
+    if(u.pay&&subUserMode()){
+      box.append(mk('div','pmeta',u.ex?(ok?'Valid till ':'Ended on ')+subDate(u.ex):'Not paid yet'));
+      if(cl&&cl.st==='pending'){ box.append(claimBox('Payment waiting',cl,async function(){ if(await plusDays(id,subDaysN())&&await subPut('subclaim/'+id,{st:'done',okAt:Date.now()})) toast('Payment confirmed for '+(u.n||'login')); },async function(){ if(await subPut('subclaim/'+id,{st:'rejected'})) toast('Payment rejected'); })); }
+      var ad=mk('button','btn small','Add '+subDaysN()+' Days'); ad.type='button'; ad.style.alignSelf='flex-start'; ad.addEventListener('click',async function(){ if(await plusDays(id,subDaysN())) toast((u.n||'Login')+' has '+subDaysN()+' more days'); }); box.append(ad);
+    }
+    b.append(box);
+  });
+  if(subUserMode()){ var pids=ids.filter(function(i){ return subUsers[i].pay; }); if(pids.length){ var all=mk('button','btn','Give Paying Logins '+subDaysN()+' Days'); all.type='button'; all.addEventListener('click',function(){ arm(all,'suball','Give Paying Logins '+subDaysN()+' Days',async function(){ var okk=true; for(var i=0;i<pids.length;i++){ okk=okk&&await plusDays(pids[i],subDaysN()); } if(okk) toast('Paying logins have '+subDaysN()+' more days'); }); }); b.append(all); } }
   var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x);
   if(!d.open) d.showModal();
 }
 /* everyone except the owner: full screen payment wall when the subscription has ended */
 function subWallUpdate(){
-  var w=$('#subWall'), show=!accountOwner&&subLoaded&&(!subUserMode()||subMineLoaded)&&subExpired();
+  var w=$('#subWall'), show=!accountOwner&&subLoaded&&subMineLoaded&&!!(subMine&&subMine.pay)&&subExpired();
   if(!show){ if(w) w.hidden=true; return; }
   if(!w){ w=mk('div'); w.id='subWall'; document.body.append(w); }
   w.hidden=false; w.textContent='';

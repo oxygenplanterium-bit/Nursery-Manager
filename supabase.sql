@@ -26,7 +26,7 @@ create policy docs_select on public.docs for select to authenticated
 create policy docs_insert on public.docs for insert to authenticated
   with check (
     (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
-    and (path not like 'sub/%' or public.is_owner() or (path = 'sub/' || auth.uid()::text and not (data ? 'ex')))
+    and (path not like 'sub/%' or public.is_owner() or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
     and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
   );
 create policy docs_update on public.docs for update to authenticated
