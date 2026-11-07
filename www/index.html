@@ -543,7 +543,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 7 Nov 2026, 9:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 7 Nov 2026, 10:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6424,11 +6424,11 @@ function renderSalDlg(){
     }else{
       pbox.append(mk('span',null,'Until This Month\'s Salary Is Marked As Paid, All The Advances Are Deducted In Old Or Previous Month Salary.')); pbox.append(mk('span',null,'Any Excess Advance Amount Paid Shall Be Carried Forwarded To Next Month As Advance.'));
       var pb=mk('button','btn primary','Mark salary paid'); pb.type='button'; pb.style.minHeight='48px';
-      var zero=Math.round(m.balance)===0; pb.disabled=!zero;
+      var zero=Math.round(m.balance)<=0; pb.disabled=!zero;
       if(!isOwner) pb.hidden=true;
-      pbox.append(pb, mk('span','pmeta',zero?'Balance to pay is ₹0 – ready to mark as paid.':'Available only when the Balance to pay is ₹0 (now '+(m.balance<0?'excess advance ₹'+fmtN(-m.balance):'₹'+fmtN(m.balance))+').'));
+      pbox.append(pb, mk('span','pmeta',zero?(Math.round(m.balance)<0?'Excess advance of ₹'+fmtN(-m.balance)+' is carried forward to next month when you mark this paid.':'Balance to pay is ₹0 – ready to mark as paid.'):'Available when the Balance to pay is ₹0 or an excess advance (now ₹'+fmtN(m.balance)+' still to pay).'));
       pb.addEventListener('click', function(){
-        if(Math.round(m.balance)!==0){ toast('Balance to pay must be ₹0.'); return; }
+        if(Math.round(m.balance)>0){ toast('Balance to pay must be ₹0 or an excess advance.'); return; }
         var p={p:{}}; p.p[sid]={}; p.p[sid][salMonth]={amt:0,at:Date.now(),ci:m.carryIn>0?m.carryIn:0,adv:m.advItems.slice().sort(function(a,b){ return (a.d||'').localeCompare(b.d||'')||(a.at||0)-(b.at||0); }).map(function(x){ return {d:x.d||'',amt:Number(x.amt)||0,note:x.note||'',at:x.at||0,m:x.m||''}; })}; salSave(p);
       });
     }
