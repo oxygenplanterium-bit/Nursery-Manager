@@ -21,28 +21,33 @@ create policy docs_select on public.docs for select to authenticated
     (path not in ('meta/security','meta/accounts') or public.is_owner())
     and (path not like 'sub/%' or public.is_owner() or path = 'sub/' || auth.uid()::text)
     and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+    and (path not like 'archiveo/%' or public.is_owner())
   );
+-- archiveo/<date> is the owner's own saved copy of a day (with accounts and salary): owner only, in every policy
 -- Team, resources, the PIN and the subscription settings can only be changed by the owner; day records by any signed-in team member
 create policy docs_insert on public.docs for insert to authenticated
   with check (
     (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
     and (path not like 'sub/%' or public.is_owner() or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
     and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+    and (path not like 'archiveo/%' or public.is_owner())
   );
 create policy docs_update on public.docs for update to authenticated
   using (
     (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
     and (path not like 'sub/%' or public.is_owner())
     and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+    and (path not like 'archiveo/%' or public.is_owner())
   )
   with check (
     (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
     and (path not like 'sub/%' or public.is_owner())
     and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
+    and (path not like 'archiveo/%' or public.is_owner())
   );
 create policy docs_delete on public.docs for delete to authenticated
   using (
-    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') and path not like 'sub/%' and path not like 'subclaim/%')
+    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') and path not like 'sub/%' and path not like 'subclaim/%' and path not like 'archiveo/%')
     or public.is_owner()
   );
 
