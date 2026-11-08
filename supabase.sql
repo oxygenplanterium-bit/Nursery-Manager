@@ -33,6 +33,7 @@ on conflict (path) do nothing;
 -- Owner PIN data is readable by the owner only. Salary data can be viewed by every signed-in user but changed only by the owner
 -- App subscription: sub/<id> is one login's subscription record (the owner sets its end date), subclaim/<id> is that login's "I have paid" note
 -- archiveo/<date> is the owner's own saved copy of a day (with accounts and salary): owner only, in every policy
+-- handover/<id> is a supervisor's request to confirm cash handed to the owner: anyone approved can create it (pending) or cancel it while pending; only the owner can confirm it
 -- Team, resources, the PIN and the subscription settings can only be changed by the owner; day records by any approved team member
 create policy docs_select on public.docs for select to authenticated
   using (
@@ -54,6 +55,7 @@ create policy docs_insert on public.docs for insert to authenticated
     or (
       public.is_ok()
       and path not like 'users/%'
+      and (path not like 'handover/%' or data ->> 'st' = 'p')
       and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
       and (path not like 'sub/%' or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
@@ -68,6 +70,7 @@ create policy docs_update on public.docs for update to authenticated
       and path not like 'users/%'
       and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
       and path not like 'sub/%'
+      and path not like 'handover/%'
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
       and path not like 'archiveo/%'
     )
@@ -79,6 +82,7 @@ create policy docs_update on public.docs for update to authenticated
       and path not like 'users/%'
       and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
       and path not like 'sub/%'
+      and path not like 'handover/%'
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
       and path not like 'archiveo/%'
     )
@@ -91,6 +95,7 @@ create policy docs_delete on public.docs for delete to authenticated
       and path not like 'users/%'
       and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
       and path not like 'sub/%' and path not like 'subclaim/%' and path not like 'archiveo/%'
+      and (path not like 'handover/%' or data ->> 'st' = 'p')
     )
   );
 

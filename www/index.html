@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 5:00 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 5:30 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -814,6 +814,7 @@ select:not([multiple]){pointer-events:none}
       <div class="bar" id="csBar" hidden><span class="tsum" id="csSum"></span></div>
       <p class="pmeta" id="csEmpty">No sales entered yet.</p>
       <div class="tl" id="csList"></div>
+      <div id="hoBox" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
       <div id="padSold"></div>
       </div>
     </section>
@@ -4481,14 +4482,84 @@ function makeCs(id){
       var p={cs:{}}; p.cs[id]=null; save(p);
     });
   });
-  el.append(t,meta,rm); el._r={t:t,meta:meta,rm:rm};
+  el.append(t,meta,rm); el._r={t:t,meta:meta,rm:rm}; el._id=id;
   return el;
 }
 function updateCs(el,x,ed){
   var R=el._r;
   R.t.textContent=[x.name,x.phone].filter(Boolean).join(' \u00b7 ');
-  R.meta.textContent=[x.bill?'Bill no. '+x.bill:'No bill no.', x.amt>0?'\u20b9'+fmtMoney(x.amt):'No amount', x.mode?({cash:'Cash',upi:'UPI',bank:'Bank',card:'Card'}[x.mode]||x.mode):'', x.by?'By '+x.by:'', fmtTime(x.at)].filter(Boolean).join(' \u00b7 ');
+  R.meta.textContent=[x.bill?'Bill no. '+x.bill:'No bill no.', x.amt>0?'\u20b9'+fmtMoney(x.amt):'No amount', x.mode?({cash:'Cash',upi:'UPI',bank:'Bank',card:'Card'}[x.mode]||x.mode):'', x.by?'By '+x.by:'', fmtTime(x.at), (x.mode==='cash'&&Number(x.amt)>0&&selDate)?hoStatus(selDate,el._id):''].filter(Boolean).join(' \u00b7 ');
   R.rm.hidden=!ed;
+}
+/* ---------- cash handover: the supervisor hands cash to the owner and asks for a confirmation ---------- */
+var hoData={}, hoSel={}, hoOn=false;
+function hoStart(){
+  if(hoOn||!db||!db.watch) return; hoOn=true;
+  db.watch('handover/',function(l){ var m={}; (l||[]).forEach(function(x){ m[x.path.slice(9)]=x.data||{}; }); var prev=Object.keys(hoData).filter(function(k){ return hoData[k].st==='p'; }).length, now=Object.keys(m).filter(function(k){ return m[k].st==='p'; }).length; var first=!hoLoaded; hoLoaded=true; hoData=m; if(isOwner&&!first&&now>prev) toast('A supervisor has asked you to confirm a cash handover.',4000); if(tab==='cs') renderCs(); });
+}
+var hoLoaded=false;
+function hoPut(id,d){ return db.doc('handover/'+id).set(d).then(function(){ hoData[id]=d; if(tab==='cs') renderCs(); return true; },onWriteErr); }
+function hoCovered(){ var c={}; Object.keys(hoData).forEach(function(k){ var h=hoData[k]; if(h.st==='no') return; (h.ids||[]).forEach(function(i){ c[h.d+'|'+i]=h.st; }); }); return c; }
+function hoStatus(date,id){ var c=hoCovered()[date+'|'+id]; return c==='ok'?'Cash received by owner':c==='p'?'Handover waiting for owner':'Cash with supervisor'; }
+function hoRender(){ renderHo(); }
+function renderHo(){
+  var box=$('#hoBox'); if(!box) return; box.textContent='';
+  if(!day||!selDate) return;
+  var cov=hoCovered(), cash=csItems().filter(function(it){ return it[1].mode==='cash'&&Number(it[1].amt)>0; });
+  var mine=cash.filter(function(it){ return !cov[selDate+'|'+it[0]]; });
+  box.append(mk('h2',null,'Cash Handover'));
+  box.append(mk('p','pmeta','Cash taken from customers stays with the supervisor. Tick the bills whose cash you handed to the owner and ask the owner to confirm it.'));
+  var cs=csItems(), tot=0; cash.forEach(function(it){ tot+=Number(it[1].amt)||0; });
+  var sumP=0,sumO=0; cash.forEach(function(it){ var c=cov[selDate+'|'+it[0]]; if(c==='ok') sumO+=Number(it[1].amt)||0; else if(c==='p') sumP+=Number(it[1].amt)||0; });
+  box.append(mk('div','pmeta','Cash sales \u20b9'+fmtMoney(tot)+' \u00b7 With supervisor \u20b9'+fmtMoney(tot-sumP-sumO)+' \u00b7 Waiting for owner \u20b9'+fmtMoney(sumP)+' \u00b7 Received by owner \u20b9'+fmtMoney(sumO)));
+  if(!isOwner){
+    if(!mine.length) box.append(mk('p','pmeta','No cash sales are waiting to be handed over for this date.'));
+    else{
+      var sel=hoSel[selDate]=hoSel[selDate]||{}, totEl=mk('b',null), btn=mk('button','btn primary','Ask Owner To Confirm Cash Received'); btn.type='button';
+      var upd=function(){ var t=0,n=0; mine.forEach(function(it){ if(sel[it[0]]){ t+=Number(it[1].amt)||0; n++; } }); totEl.textContent=n?n+' selected \u00b7 \u20b9'+fmtMoney(t):'Nothing selected'; btn.disabled=!n; };
+      var all=mk('button','btn small','Select All'); all.type='button'; all.style.alignSelf='flex-start'; all.addEventListener('click',function(){ var on=!mine.every(function(it){ return sel[it[0]]; }); mine.forEach(function(it){ sel[it[0]]=on; }); renderHo(); });
+      box.append(all);
+      mine.forEach(function(it,i){
+        var x=it[1], row=mk('label'); row.style.cssText='display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;background:'+(i%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))');
+        var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!sel[it[0]]; cb.style.cssText='width:22px;height:22px;flex:0 0 auto';
+        cb.addEventListener('change',function(){ sel[it[0]]=cb.checked; upd(); });
+        var tx=mk('div'); tx.append(mk('div','pname',[x.name,x.phone].filter(Boolean).join(' \u00b7 ')||'Customer'),mk('div','pmeta',[x.bill?'Bill no. '+x.bill:'No bill no.','\u20b9'+fmtMoney(x.amt)].join(' \u00b7 ')));
+        row.append(cb,tx); box.append(row);
+      });
+      box.append(totEl,btn); upd();
+      btn.addEventListener('click',async function(){
+        if(needSup()){ toast('Choose your name at the top first.'); return; }
+        var ids=mine.filter(function(it){ return sel[it[0]]; }), t=0; ids.forEach(function(it){ t+=Number(it[1].amt)||0; });
+        if(!ids.length) return;
+        var id='h'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+        var lines=ids.map(function(it){ return [it[0],[it[1].name,it[1].phone].filter(Boolean).join(' '),it[1].bill||'',Number(it[1].amt)||0]; });
+        if(await hoPut(id,{nid:nursery,d:selDate,by:nameNow()||'Supervisor',at:Date.now(),amt:Math.round(t*100)/100,ids:ids.map(function(it){ return it[0]; }),lines:lines,st:'p'})){ hoSel[selDate]={}; toast('Sent to the owner for confirmation'); }
+      });
+    }
+  }
+  /* requests: every waiting one for this nursery (any date) and every one for the selected date */
+  var reqs=Object.keys(hoData).map(function(k){ return [k,hoData[k]]; }).filter(function(r){ return (r[1].nid||'1')===nursery && (r[1].st==='p' || r[1].d===selDate); }).sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
+  if(reqs.length) box.append(mk('h2',null,'Handover Requests'));
+  reqs.forEach(function(r){
+    var id=r[0], h=r[1], c=mk('div','pitem'), st=h.st==='ok'?'Received by owner':h.st==='no'?'Not accepted':'Waiting for owner';
+    c.style.background='color-mix(in srgb,var(--accent) 10%,var(--card))';
+    c.append(mk('div','pname','\u20b9'+fmtMoney(h.amt)+' \u00b7 '+st));
+    c.append(mk('div','pmeta',['Sales of '+h.d,'By '+(h.by||''),fmtTime(h.at),h.st==='ok'&&h.okAt?'Confirmed '+fmtTime(h.okAt):''].filter(Boolean).join(' \u00b7 ')));
+    (h.lines||[]).forEach(function(l){ c.append(mk('div','pmeta','\u2022 '+[l[1]||'Customer',l[2]?'Bill no. '+l[2]:'','\u20b9'+fmtMoney(l[3])].filter(Boolean).join(' \u00b7 '))); });
+    var row=mk('div'); row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px';
+    if(h.st==='p'&&isOwner){
+      var ok=mk('button','btn primary','Confirm Cash Received'), no=mk('button','btn','Not Received'); ok.type=no.type='button';
+      ok.addEventListener('click',function(){ arm(ok,'hok'+id,'Confirm Cash Received',async function(){ if(await hoPut(id,Object.assign({},h,{st:'ok',okAt:Date.now(),okBy:'Owner'}))) toast('Cash receipt confirmed'); }); });
+      no.addEventListener('click',function(){ arm(no,'hno'+id,'Not Received',async function(){ if(await hoPut(id,Object.assign({},h,{st:'no',okAt:Date.now()}))) toast('Marked as not received'); }); });
+      row.append(ok,no); c.append(row);
+    } else if(h.st==='p'&&!isOwner){
+      var cn=mk('button','btn small','Cancel Request'); cn.type='button'; cn.style.alignSelf='flex-start';
+      cn.addEventListener('click',function(){ arm(cn,'hcn'+id,'Cancel Request',async function(){ try{ await db.doc('handover/'+id).delete(); toast('Request cancelled'); }catch(e){ onWriteErr(e); } }); });
+      c.append(cn);
+    }
+    if(h.d!==selDate){ var go=mk('button','btn small','Open '+h.d); go.type='button'; go.style.alignSelf='flex-start'; go.addEventListener('click',function(){ followToday=(h.d===todayKey()); subscribeDay(h.d); }); c.append(go); }
+    box.append(c);
+  });
 }
 function renderCs(){
   var ed=editable(), items=csItems(), list=$('#csList'), seen=new Set(), pos=0, total=0;
@@ -4509,6 +4580,7 @@ function renderCs(){
     pos++;
   });
   csEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); csEls.delete(id); } });
+  renderHo();
 }
 $('#csDay').addEventListener('change', function(){ var k=this.value; if(!k) return; if(k>todayKey()){ toast('Choose today or an earlier date.'); this.value=selDate; return; } followToday=(k===todayKey()); subscribeDay(k); });
 $('#csToday').addEventListener('click', function(){ followToday=true; subscribeDay(todayKey()); });
@@ -8028,7 +8100,7 @@ async function boot(){
   }, function(){ if(!index) index=cache.idx||{}; renderAll(); });
   subscribeDay(selDate);
   if(accountOwner) db.doc('meta/security').onSnapshot(function(s){ pinData=s.exists ? s.data() : null; renderAll(); }, function(){});
-  invSubscribe(); subStart(); loginsStart();
+  invSubscribe(); subStart(); loginsStart(); hoStart();
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
     cache.meta.settings=d; cacheSave();
