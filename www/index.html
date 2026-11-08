@@ -1595,6 +1595,7 @@ select:not([multiple]){pointer-events:none}
     <div class="acts">
         <button class="btn primary" id="pdfBtn">Download stock PDF</button>
         <button class="btn" id="backupBtn">Download all days backup</button>
+        <button class="btn" id="arcAllBtn" hidden>Save Copies Of Earlier Days</button>
         <button class="btn" id="importBtn" hidden>Import backup file</button>
         <input type="file" id="importFile" hidden>
       </div>
@@ -1857,7 +1858,7 @@ function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.classNam
 function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',label)); return c; }
 
 function renderTop(){
-  $('#backupBtn').hidden=!isOwner; $('#homeBackup').hidden=!isOwner;
+  $('#backupBtn').hidden=!isOwner; $('#arcAllBtn').hidden=!isOwner; $('#homeBackup').hidden=!isOwner;
   $('#importBtn').hidden=!(isOwner&&canWrite);
   var mo=$('#modeOwner'), ms=$('#modeSup');
   mo.setAttribute('aria-pressed', isOwner); ms.setAttribute('aria-pressed', !isOwner);
@@ -6227,7 +6228,7 @@ $('#attPdfBtn').addEventListener('click', async function(){
 /* ---------- automatic saved copy of every day at day close (data file and report PDF) ---------- */
 function b64Bytes(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 function bytesB64(buf){ var u=new Uint8Array(buf), s2='', i; for(i=0;i<u.length;i+=8192) s2+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s2); }
-async function arcSave(k,dayData,withPdf){
+async function arcSave(k,dayData,withPdf,quiet){
   if(!db||!k||!dayData) return;
   try{
     var inv={}; Object.keys((invData&&invData.i)||{}).forEach(function(id){ var x=invData.i[id]; if(x&&x.at&&dayKey(x.at)===k) inv[id]=x; });
@@ -6235,12 +6236,30 @@ async function arcSave(k,dayData,withPdf){
     await db.doc('archive/'+k).set(snap);
     if(withPdf){
       if(!window.jspdf) await ensurePdf();
-      var buf=null; window.__arch=true; try{ buf=pdfAll(); }catch(e){ buf=null; } window.__arch=false;
+      var buf=null, od=day, os=selDate; window.__arch=true; try{ if(k!==selDate||dayData!==day){ day=dayData; selDate=k; } buf=pdfAll(); }catch(e){ buf=null; } day=od; selDate=os; window.__arch=false;
       if(buf) await db.doc('archive/'+k+'/pdf').set({name:'daily-report-'+k+'.pdf',savedAt:Date.now(),b64:bytesB64(buf)});
     }
-    toast('Day saved: report and data copy stored',3000);
-  }catch(e){ window.__arch=false; toast('The day is closed, but its saved copy could not be stored.',4000); }
+    if(!quiet) toast('Day saved: report and data copy stored',3000);
+    return true;
+  }catch(e){ window.__arch=false; if(!quiet) toast('The day is closed, but its saved copy could not be stored.',4000); return false; }
 }
+async function arcBackfill(manual){
+  if(!isOwner||!db||!index||arcBackfill.run) return; arcBackfill.run=true; var made=0, tried=0;
+  try{
+    var ks=keys().filter(function(k){ return index[k]&&index[k].closed; });
+    for(var i=0;i<ks.length;i++){
+      var k=ks[i]; try{
+        var ex=await db.doc('archive/'+k).get(); if(ex.exists) continue;
+        var dsn=await db.doc('days/'+k).get(); if(!dsn.exists) continue; tried++;
+        if(await arcSave(k,dsn.data()||{},true,true)) made++;
+      }catch(e){}
+    }
+  }finally{ arcBackfill.run=false; }
+  if(made) toast('Saved copies created for '+made+' earlier '+(made===1?'day':'days'),4000);
+  else if(manual) toast(tried?'The saved copies could not be created. Try again.':'Every closed day already has a saved copy.',4000);
+}
+setInterval(function(){ if(isOwner&&db&&index&&!arcBackfill.auto){ arcBackfill.auto=true; setTimeout(function(){ arcBackfill(false); },6000); } },3000);
+$('#arcAllBtn').addEventListener('click', function(){ arcBackfill(true); });
 $('#arcPdf').addEventListener('click', async function(){
   if(!db||!downloads){ toast('Saving files is not available in this view.'); return; }
   try{ var sn=await db.doc('archive/'+selDate+'/pdf').get(); var d=sn.exists&&sn.data(); if(!d||!d.b64){ toast('No saved report for this day. It is saved when a day is closed here.',4000); return; }
