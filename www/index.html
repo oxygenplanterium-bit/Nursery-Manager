@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 3:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 4:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -946,12 +946,14 @@ select:not([multiple]){pointer-events:none}
       <div class="tl" id="supList"></div>
     </section>
     <section class="card team">
-      <h2 id="staffHead">Staff</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 id="staffHead" style="margin:0">Staff</h2><button type="button" class="rsw" id="staffTog" role="switch" aria-checked="true" aria-label="Show staff"><span class="rswk"></span></button></div>
+      <div id="staffBody">
       <p class="pmeta">Supervisors mark attendance for these people every day.</p>
       <form class="addtask" id="fStaff"><input type="text" id="staffIn" maxlength="600" placeholder="Name, or several separated by commas" aria-label="Add staff"><input type="number" id="staffRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><select id="staffNur" aria-label="Staff nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
       <p class="pmeta" id="staffWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="staffEmpty">No staff yet.</p>
       <div class="tl" id="staffList"></div>
+      </div>
     </section>
     <section class="card team" id="loginsCard">
       <h2 id="loginsHead">Logins</h2>
@@ -3922,6 +3924,14 @@ function makeTeam(kind,id){
   el._r={inp:inp,nsel:nsel,rin:rin,cb:cb}; el._kind=kind;
   return el;
 }
+/* toggle switch: show or hide the Staff list in the Team tab */
+(function(){
+  var sw=document.getElementById('staffTog'), body=document.getElementById('staffBody'); if(!sw||!body) return;
+  var on=true; try{ on=localStorage.getItem('nurseryStaffShow')!=='0'; }catch(e){}
+  function apply(){ sw.setAttribute('aria-checked', on?'true':'false'); body.hidden=!on; }
+  sw.addEventListener('click', function(){ on=!on; try{ localStorage.setItem('nurseryStaffShow', on?'1':'0'); }catch(e){} apply(); });
+  apply();
+})();
 /* ---------- logins: people create an account with a phone number and the owner approves them ---------- */
 var loginUsers={}, loginsOn=false, loginPendSeen=-1;
 function loginsStart(){
