@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 9:00 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 9:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6916,14 +6916,89 @@ function dueRemind(g){
   var txt='Hello '+g.name+', a gentle reminder from '+(CO.n||'our nursery')+': your pending balance is Rs. '+fmtMoney(g.due)+' ('+g.inv.map(function(i){ return i.label; }).join(', ')+'). Kindly pay at the earliest. Thank you.';
   var a=document.createElement('a'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(txt); a.target='_blank'; a.rel='noopener'; document.body.append(a); a.click(); a.remove();
 }
+/* manual money-owed entries: the owner records money he owes (To Pay) or is owed (To Receive) and later records each payment */
+var dueData={e:{}}, dueSubbed=false, dueForm=null;
+function dueSubscribe(){
+  if(dueSubbed||!db||!isOwner) return; dueSubbed=true;
+  db.doc('meta/dues').onSnapshot(function(sn){ dueData=sn.exists?(sn.data()||{}):{}; dueData.e=dueData.e||{}; if($('#dlgDue').open) renderDue(); }, function(){ dueSubbed=false; });
+}
+function duePut(patch){
+  var d=db.doc('meta/dues');
+  return d.update(patch).catch(function(e){
+    if(e&&e.code==='not_found'){ return d.set(JSON.parse(JSON.stringify(patch,function(k,v){ return v===null?undefined:v; }))); }
+    throw e;
+  }).then(function(){ return true; }, function(){ toast('Could not save. Check your internet and try again.',4000); return false; });
+}
+function dueEntryInfo(x){ var paid=0; Object.keys(x.s||{}).forEach(function(k){ paid+=Number((x.s[k]||{}).amt)||0; }); var amt=Number(x.amt)||0; return {paid:Math.round(paid*100)/100, left:Math.max(0,Math.round((amt-paid)*100)/100)}; }
+function dueManual(kind){ var o=dueData.e||{}; return Object.keys(o).filter(function(id){ return o[id]&&o[id].k===kind; }).map(function(id){ return [id,o[id]]; }).sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); }); }
+function dueManualTotal(kind){ var t=0; dueManual(kind).forEach(function(it){ t+=dueEntryInfo(it[1]).left; }); return Math.round(t*100)/100; }
+function dueModeSel(){ return mkSelect([['cash','Cash'],['upi','UPI'],['bank','Bank'],['card','Card']],'cash'); }
+function dueDateIn(){ var i=mkIn('date'); i.value=todayKey(); i.max='2100-01-01'; i.style.cssText='display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box'; return i; }
+function dueRenderManual(body){
+  var K=dueKind, isS=K==='S', all=dueManual(K), open=all.filter(function(it){ return dueEntryInfo(it[1]).left>0.004; }), done=all.filter(function(it){ return dueEntryInfo(it[1]).left<=0.004; });
+  var h=mk('div'); h.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px'; h.append(mk('b',null,'Manual Entries'));
+  var add=mk('button','btn small primary',isS?'Add Money Owed To Me':'Add Money I Owe'); add.type='button'; add.addEventListener('click',function(){ dueForm=(dueForm&&dueForm.t==='add')?null:{t:'add'}; renderDue(); }); h.append(add); body.append(h);
+  if(dueForm&&dueForm.t==='add'){
+    var f=mk('div','bcard'); f.style.cssText='border:1px solid var(--line);border-radius:12px;padding:10px;gap:8px';
+    var nm=mkIn('text',isS?'Who owes you':'Whom you owe'), ph=mkIn('tel','Phone number (optional)'), am=mkIn('number','Amount in rupees'), dt=dueDateIn(), nt=mkIn('text','Note (optional)'), er=mk('p','pmeta'); er.style.color='var(--warn)';
+    nm.maxLength=60; ph.maxLength=16; nt.maxLength=120; am.min='0'; am.step='0.01'; am.inputMode='decimal';
+    var sv=mk('button','btn primary','Save Entry'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button';
+    cn.addEventListener('click',function(){ dueForm=null; renderDue(); });
+    sv.addEventListener('click',async function(){
+      var n=cleanName(nm.value), a=Math.round((parseFloat(am.value)||0)*100)/100;
+      if(!n){ er.textContent='Enter the name.'; return; } if(!(a>0)){ er.textContent='Enter an amount above zero.'; return; } if(!dt.value){ er.textContent='Choose the date.'; return; }
+      var id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), p={e:{}};
+      p.e[id]={k:K,party:n,phone:ph.value.replace(/\D/g,'').slice(-10),amt:a,d:dt.value,note:nt.value.trim(),nid:nursery,at:Date.now(),s:{}};
+      if(await duePut(p)){ dueForm=null; toast('Entry saved'); }
+    });
+    var two=mk('div','two'); two.append(mkLbl('Amount in \u20b9',am),mkLbl('Date',dt));
+    f.append(mkLbl(isS?'Who owes you':'Whom you owe',nm),mkLbl('Phone (optional)',ph),two,mkLbl('Note (optional)',nt),er,sv,cn); body.append(f);
+  }
+  if(!all.length&&!(dueForm&&dueForm.t==='add')) body.append(mk('p','pmeta',isS?'No manual entries. Add money someone owes you that is not on an invoice.':'No manual entries. Add money you owe that is not on an invoice.'));
+  function card(it,i,isDone){
+    var id=it[0], x=it[1], inf=dueEntryInfo(x), c=mk('div','bcard'); c.style.background=RC_BG[i%2];
+    var r=mk('div','brow'); r.append(mk('b',null,x.party+(x.phone?' \u00b7 '+x.phone:'')),mk('b',null,isDone?'Cleared':'\u20b9'+fmtMoney(inf.left))); c.append(r);
+    c.append(mk('div','pmeta',[isS?'Owed to you':'You owe','\u20b9'+fmtMoney(x.amt)+' on '+fmtIso(x.d),inf.paid>0?(isS?'Received ':'Paid ')+'\u20b9'+fmtMoney(inf.paid):'',x.note||''].filter(Boolean).join(' \u00b7 ')));
+    Object.keys(x.s||{}).map(function(k){ return [k,x.s[k]]; }).sort(function(a,b){ return (a[1].at||0)-(b[1].at||0); }).forEach(function(sp){
+      var q=mk('div','brow'); q.append(mk('span','pmeta',(isS?'Received ':'Paid ')+fmtIso(sp[1].d)+(sp[1].mode?' \u00b7 '+({cash:'Cash',upi:'UPI',bank:'Bank',card:'Card'}[sp[1].mode]||sp[1].mode):'')),mk('span','pmeta','\u20b9'+fmtMoney(sp[1].amt)));
+      var rm=mk('button','btn small','Undo'); rm.type='button'; rm.addEventListener('click',function(){ arm(rm,'dsu'+id+sp[0],'Undo',async function(){ var p={e:{}}; p.e[id]={s:{}}; p.e[id].s[sp[0]]=null; if(await duePut(p)) toast('Entry undone'); }); }); q.append(rm); c.append(q);
+    });
+    var act=mk('div','sline');
+    if(!isDone){
+      var pb=mk('button','btn small primary',isS?'Record Money Received':'Record Money Paid'); pb.type='button'; pb.addEventListener('click',function(){ dueForm=(dueForm&&dueForm.t==='rec'&&dueForm.id===id)?null:{t:'rec',id:id}; renderDue(); }); act.append(pb);
+      if(isS&&x.phone){ var wa=mk('button','btn small','WhatsApp Reminder'); wa.type='button'; wa.addEventListener('click',function(){ dueRemind({name:x.party,phone:x.phone,due:inf.left,inv:[{label:'Entry of '+fmtIso(x.d)}]}); }); act.append(wa); }
+    }
+    var dl=mk('button','btn small danger','Delete Entry'); dl.type='button'; dl.addEventListener('click',function(){ arm(dl,'dsd'+id,'Delete Entry',async function(){ var p={e:{}}; p.e[id]=null; if(await duePut(p)) toast('Entry deleted'); }); }); act.append(dl);
+    c.append(act);
+    if(dueForm&&dueForm.t==='rec'&&dueForm.id===id){
+      var f=mk('div'); f.style.cssText='display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--line)';
+      var am=mkIn('number','Amount in rupees'), dt=dueDateIn(), md=dueModeSel(), er=mk('p','pmeta'); er.style.color='var(--warn)'; am.min='0'; am.step='0.01'; am.inputMode='decimal'; am.value=inf.left;
+      var sv=mk('button','btn primary',isS?'Save Money Received':'Save Money Paid'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button';
+      cn.addEventListener('click',function(){ dueForm=null; renderDue(); });
+      sv.addEventListener('click',async function(){
+        var a=Math.round((parseFloat(am.value)||0)*100)/100;
+        if(!(a>0)){ er.textContent='Enter an amount above zero.'; return; } if(a>inf.left+0.004){ er.textContent='This is more than the \u20b9'+fmtMoney(inf.left)+' still pending.'; return; } if(!dt.value){ er.textContent='Choose the date.'; return; }
+        var sid='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), p={e:{}}; p.e[id]={s:{}}; p.e[id].s[sid]={amt:a,d:dt.value,mode:md.value,at:Date.now()};
+        if(await duePut(p)){ dueForm=null; toast(isS?'Money received recorded':'Payment recorded'); }
+      });
+      var two=mk('div','two'); two.append(mkLbl('Amount in \u20b9',am),mkLbl('Date',dt));
+      f.append(two,mkLbl('Mode of payment',md),er,sv,cn); c.append(f);
+    }
+    return c;
+  }
+  open.forEach(function(it,i){ body.append(card(it,i,false)); });
+  if(done.length){ body.append(mk('b',null,'Cleared Entries ('+done.length+')')); done.forEach(function(it,i){ body.append(card(it,i,true)); }); }
+}
 function renderDue(){
   invSubscribe(); accSubscribe();
   var body=$('#dueBody'); body.textContent='';
   $('#dueS').setAttribute('aria-pressed',dueKind==='S'); $('#dueP').setAttribute('aria-pressed',dueKind==='P');
   var D=dueGroups(), list=Object.keys(D.G[dueKind]).map(function(k){ var g=D.G[dueKind][k]; g.inv.sort(function(a,b){ return String(a.d).localeCompare(String(b.d)); }); g.oldest=g.inv[0]?g.inv[0].d:''; return g; }), t=todayKey();
   list.sort(function(a,b){ return String(a.oldest).localeCompare(String(b.oldest)); });
-  $('#dueSum').textContent=(dueKind==='S'?'Customers owe you ':'You owe suppliers ')+'₹'+fmtMoney(D.tot[dueKind])+' in total · '+list.length+(dueKind==='S'?(list.length===1?' customer':' customers'):(list.length===1?' supplier':' suppliers'));
-  if(!list.length) body.append(mk('p','pmeta',dueKind==='S'?'No customer has a pending balance.':'No supplier payment is pending.'));
+  var mTot=dueManualTotal(dueKind);
+  $('#dueSum').textContent=(dueKind==='S'?'Owed to you ':'You owe ')+'\u20b9'+fmtMoney(D.tot[dueKind]+mTot)+' in total \u00b7 Invoices \u20b9'+fmtMoney(D.tot[dueKind])+' \u00b7 Manual entries \u20b9'+fmtMoney(mTot);
+  body.append(mk('b',null,dueKind==='S'?'From Invoices ('+list.length+')':'From Invoices ('+list.length+')'));
+  if(!list.length) body.append(mk('p','pmeta',dueKind==='S'?'No customer has a pending balance on an invoice.':'No supplier payment is pending on an invoice.'));
   list.forEach(function(g,i){
     var c=mk('div','bcard'), r=mk('div','brow'), age=g.oldest?dayDiff(g.oldest,t):0; c.style.background=RC_BG[i%2];
     r.append(mk('b',null,g.name+(g.phone?' · '+g.phone:'')), mk('b',null,'₹'+fmtMoney(g.due))); c.append(r);
@@ -6934,10 +7009,11 @@ function renderDue(){
     if(dueKind==='S'){ var wa=mk('button','btn small','WhatsApp Reminder'); wa.type='button'; wa.addEventListener('click', function(){ dueRemind(g); }); act.append(wa); }
     c.append(act); body.append(c);
   });
+  dueRenderManual(body);
 }
-$('#tabDue').addEventListener('click', function(){ if(!isOwner) return; renderDue(); var d=$('#dlgDue'); if(!d.open) d.showModal(); });
-$('#dueS').addEventListener('click', function(){ dueKind='S'; renderDue(); });
-$('#dueP').addEventListener('click', function(){ dueKind='P'; renderDue(); });
+$('#tabDue').addEventListener('click', function(){ if(!isOwner) return; dueSubscribe(); dueForm=null; renderDue(); var d=$('#dlgDue'); if(!d.open) d.showModal(); });
+$('#dueS').addEventListener('click', function(){ dueKind='S'; dueForm=null; renderDue(); });
+$('#dueP').addEventListener('click', function(){ dueKind='P'; dueForm=null; renderDue(); });
 $('#dueClose').addEventListener('click', function(){ $('#dlgDue').close(); });
 
 /* batches and losses */
@@ -8136,7 +8212,7 @@ async function boot(){
   }, function(){ if(!index) index=cache.idx||{}; renderAll(); });
   subscribeDay(selDate);
   if(accountOwner) db.doc('meta/security').onSnapshot(function(s){ pinData=s.exists ? s.data() : null; renderAll(); }, function(){});
-  invSubscribe(); subStart(); loginsStart(); hoStart();
+  invSubscribe(); subStart(); loginsStart(); hoStart(); if(accountOwner) dueSubscribe();
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
     cache.meta.settings=d; cacheSave();

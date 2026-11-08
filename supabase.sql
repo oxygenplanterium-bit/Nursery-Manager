@@ -42,7 +42,7 @@ create policy docs_select on public.docs for select to authenticated
     or (
       public.is_ok()
       and path not like 'users/%'
-      and path not in ('meta/security','meta/accounts')
+      and path not in ('meta/security','meta/accounts','meta/dues')
       and (path not like 'sub/%' or path = 'sub/' || auth.uid()::text)
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
       and path not like 'archiveo/%'
@@ -56,7 +56,7 @@ create policy docs_insert on public.docs for insert to authenticated
       public.is_ok()
       and path not like 'users/%'
       and (path not like 'handover/%' or data ->> 'st' = 'p')
-      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/dues','meta/subscription')
       and (path not like 'sub/%' or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
       and path not like 'archiveo/%'
@@ -68,7 +68,7 @@ create policy docs_update on public.docs for update to authenticated
     or (
       public.is_ok()
       and path not like 'users/%'
-      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/dues','meta/subscription')
       and path not like 'sub/%'
       and path not like 'handover/%'
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
@@ -80,7 +80,7 @@ create policy docs_update on public.docs for update to authenticated
     or (
       public.is_ok()
       and path not like 'users/%'
-      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/dues','meta/subscription')
       and path not like 'sub/%'
       and path not like 'handover/%'
       and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
@@ -93,7 +93,7 @@ create policy docs_delete on public.docs for delete to authenticated
     or (
       public.is_ok()
       and path not like 'users/%'
-      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/dues','meta/subscription')
       and path not like 'sub/%' and path not like 'subclaim/%' and path not like 'archiveo/%'
       and (path not like 'handover/%' or data ->> 'st' = 'p')
     )
