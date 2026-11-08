@@ -48,7 +48,8 @@ const db = {
   /* call cb(list) now and whenever a document under the prefix changes; returns a stop function */
   watch(prefix, cb) {
     let dead = false;
-    const run = async () => { try { const l = await db.list(prefix); if (!dead) cb(l); } catch (e) {} };
+    let lastW = null;
+    const run = async () => { try { const l = await db.list(prefix); if (dead) return; const j = JSON.stringify(l); if (j === lastW) return; lastW = j; cb(l); } catch (e) {} };
     run();
     const timer = setInterval(run, 6000);
     const ch = sb.channel('watch-' + prefix + Math.random().toString(36).slice(2))
@@ -80,9 +81,12 @@ const db = {
       onSnapshot: (ok, err) => {
         const l = { ok, err };
         (listeners[path] = listeners[path] || new Set()).add(l);
-        let dead = false;
+        let dead = false, last = null;
+        /* skip identical data so the screen is not redrawn (and scrolling not interrupted) by every poll */
+        const push = d => { const j = JSON.stringify(d === undefined ? null : d); if (j === last) return; last = j; ok(snapOf(d)); };
+        l.ok = d => push(d && typeof d.data === 'function' ? d.data() : d);
         const run = async () => {
-          try { const d = await fetchDoc(path); if (!dead) ok(snapOf(d)); }
+          try { const d = await fetchDoc(path); if (!dead) push(d); }
           catch (e) { if (!dead && err) err(e); }
         };
         run();
@@ -90,7 +94,7 @@ const db = {
         const ch = sb.channel('doc-' + path + '-' + Math.random().toString(36).slice(2))
           .on('postgres_changes', { event: '*', schema: 'public', table: 'docs', filter: 'path=eq.' + path }, p => {
             if (dead) return;
-            if (p.eventType === 'DELETE') ok(snapOf(null)); else if (p.new && p.new.data) ok(snapOf(p.new.data)); else run();
+            if (p.eventType === 'DELETE') push(null); else if (p.new && p.new.data) push(p.new.data); else run();
           })
           .subscribe(st => { if (st === 'SUBSCRIBED') run(); });
         return () => { dead = true; clearInterval(timer); listeners[path].delete(l); sb.removeChannel(ch); };
