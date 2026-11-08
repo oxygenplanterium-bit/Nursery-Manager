@@ -14,41 +14,84 @@ drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
+-- Logins: users/<id> is one person's account record (name, phone, st = pending, ok or no). A person created with the sign-up screen is pending until the owner approves them.
+-- Until approved, a person can read and create only their own users/<id> record. The owner is always allowed.
+create or replace function public.is_ok() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.docs u where u.path = 'users/' || auth.uid()::text and u.data ->> 'st' = 'ok')
+$$;
+grant execute on function public.is_ok() to authenticated;
+
+-- Everyone who already had a login before this update stays approved (the owner can remove them later in Team, Logins).
+insert into public.docs(path, data)
+select 'users/' || au.id::text,
+       jsonb_build_object('n', coalesce(nullif(au.raw_user_meta_data ->> 'name', ''), split_part(au.email, '@', 1)), 'ph', coalesce(au.raw_user_meta_data ->> 'phone', ''), 'st', 'ok', 'at', (extract(epoch from now()) * 1000)::bigint)
+from auth.users au
+where lower(coalesce(au.email, '')) <> 'oxygenplanterium@gmail.com'
+on conflict (path) do nothing;
+
 -- Owner PIN data is readable by the owner only. Salary data can be viewed by every signed-in user but changed only by the owner
 -- App subscription: sub/<id> is one login's subscription record (the owner sets its end date), subclaim/<id> is that login's "I have paid" note
+-- archiveo/<date> is the owner's own saved copy of a day (with accounts and salary): owner only, in every policy
+-- Team, resources, the PIN and the subscription settings can only be changed by the owner; day records by any approved team member
 create policy docs_select on public.docs for select to authenticated
   using (
-    (path not in ('meta/security','meta/accounts') or public.is_owner())
-    and (path not like 'sub/%' or public.is_owner() or path = 'sub/' || auth.uid()::text)
-    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
-    and (path not like 'archiveo/%' or public.is_owner())
+    public.is_owner()
+    or path = 'users/' || auth.uid()::text
+    or (
+      public.is_ok()
+      and path not like 'users/%'
+      and path not in ('meta/security','meta/accounts')
+      and (path not like 'sub/%' or path = 'sub/' || auth.uid()::text)
+      and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
+      and path not like 'archiveo/%'
+    )
   );
--- archiveo/<date> is the owner's own saved copy of a day (with accounts and salary): owner only, in every policy
--- Team, resources, the PIN and the subscription settings can only be changed by the owner; day records by any signed-in team member
 create policy docs_insert on public.docs for insert to authenticated
   with check (
-    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
-    and (path not like 'sub/%' or public.is_owner() or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
-    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
-    and (path not like 'archiveo/%' or public.is_owner())
+    public.is_owner()
+    or (path = 'users/' || auth.uid()::text and data ->> 'st' = 'pending')
+    or (
+      public.is_ok()
+      and path not like 'users/%'
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and (path not like 'sub/%' or (path = 'sub/' || auth.uid()::text and not (data ? 'ex') and not (data ? 'pay')))
+      and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
+      and path not like 'archiveo/%'
+    )
   );
 create policy docs_update on public.docs for update to authenticated
   using (
-    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
-    and (path not like 'sub/%' or public.is_owner())
-    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
-    and (path not like 'archiveo/%' or public.is_owner())
+    public.is_owner()
+    or (
+      public.is_ok()
+      and path not like 'users/%'
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not like 'sub/%'
+      and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
+      and path not like 'archiveo/%'
+    )
   )
   with check (
-    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') or public.is_owner())
-    and (path not like 'sub/%' or public.is_owner())
-    and (path not like 'subclaim/%' or public.is_owner() or path = 'subclaim/' || auth.uid()::text)
-    and (path not like 'archiveo/%' or public.is_owner())
+    public.is_owner()
+    or (
+      public.is_ok()
+      and path not like 'users/%'
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not like 'sub/%'
+      and (path not like 'subclaim/%' or path = 'subclaim/' || auth.uid()::text)
+      and path not like 'archiveo/%'
+    )
   );
 create policy docs_delete on public.docs for delete to authenticated
   using (
-    (path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription') and path not like 'sub/%' and path not like 'subclaim/%' and path not like 'archiveo/%')
-    or public.is_owner()
+    public.is_owner()
+    or (
+      public.is_ok()
+      and path not like 'users/%'
+      and path not in ('meta/security','meta/settings','meta/salary','meta/accounts','meta/subscription')
+      and path not like 'sub/%' and path not like 'subclaim/%' and path not like 'archiveo/%'
+    )
   );
 
 -- Merge helper: nested objects merge, null removes a key

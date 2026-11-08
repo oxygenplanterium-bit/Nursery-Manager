@@ -103,27 +103,102 @@ const db = {
   }
 };
 
-/* ---------- sign-in ---------- */
+/* ---------- sign-in and sign-up ---------- */
+/* A phone number is turned into a private e-mail style login name, so people only type their phone number and a password.
+   The address is never mailed: e-mail confirmation must be switched off in Supabase (Authentication, Providers, Email). */
+const OWNER_BASE = OWNER_EMAIL.split('@');
+function phoneDigits(p) {
+  let d = String(p || '').replace(/\D/g, '');
+  if (d.length === 11 && d[0] === '0') d = d.slice(1);
+  if (d.length === 10) d = '91' + d;
+  return d;
+}
+function loginName(v) {
+  v = String(v || '').trim();
+  return v.indexOf('@') >= 0 ? v.toLowerCase() : OWNER_BASE[0] + '+' + phoneDigits(v) + '@' + OWNER_BASE[1];
+}
 let current = null;
 const ready = new Promise(resolve => {
   const style = document.createElement('style');
-  style.textContent = '#loginBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif}#loginBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small{color:#5a6b5a}';
+  style.textContent = '#loginBox,#waitBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#loginBox form,#waitBox .wc{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1,#waitBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button,#waitBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginBox button.alt,#waitBox button.alt{background:#fff;color:#1f6b34}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small,#waitBox p{color:#5a6b5a;margin:0}@media (prefers-color-scheme:dark){#loginBox,#waitBox{background:#0F1713}#loginBox form,#waitBox .wc{background:#1A2620;border-color:#2C3D33}#loginBox h1,#waitBox h1{color:#6DBE6F}#loginBox input{background:#111A15;color:#E9F1EB;border-color:#2C3D33}#loginBox button,#waitBox button{background:#6DBE6F;border-color:#6DBE6F;color:#0B1A10}#loginBox button.alt,#waitBox button.alt{background:transparent;color:#6DBE6F}#loginBox small,#waitBox p{color:#9DB1A4}#loginMsg{color:#FF9381}}';
   document.head.appendChild(style);
   const box = document.createElement('div'); box.id = 'loginBox';
-  box.innerHTML = '<form id="loginForm"><h1>Nursery Manager</h1><input id="loginEmail" type="email" autocomplete="username" placeholder="Email" required><input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" required><p id="loginMsg" role="alert"></p><button type="submit">Sign in</button><small>Forgot your password? Ask the owner to reset it.</small></form>';
-  const attach = () => document.body.appendChild(box);
+  box.innerHTML = '<form id="loginForm" novalidate><h1>Nursery Manager</h1>' +
+    '<input id="loginName" type="text" autocomplete="name" placeholder="Your name" hidden>' +
+    '<input id="loginEmail" type="text" inputmode="text" autocomplete="username" placeholder="Phone number or owner email" autocapitalize="none">' +
+    '<input id="loginPass" type="password" autocomplete="current-password" placeholder="Password">' +
+    '<input id="loginPass2" type="password" autocomplete="new-password" placeholder="Type the password again" hidden>' +
+    '<p id="loginMsg" role="alert"></p><button type="submit" id="loginGo">Sign in</button>' +
+    '<button type="button" class="alt" id="loginSwap">Create new account</button>' +
+    '<small id="loginNote">New here? Create an account with your phone number. The owner approves it before you can use the app.</small></form>';
+  const wait = document.createElement('div'); wait.id = 'waitBox';
+  wait.innerHTML = '<div class="wc"><h1 id="waitTitle">Waiting for approval</h1><p id="waitText"></p><button type="button" id="waitCheck">Check Again</button><button type="button" class="alt" id="waitOut">Sign Out</button></div>';
+  const attach = () => { document.body.appendChild(box); document.body.appendChild(wait); };
   if (document.body) attach(); else document.addEventListener('DOMContentLoaded', attach);
-  const msg = t => { box.querySelector('#loginMsg').textContent = t; };
-  box.querySelector('#loginForm').addEventListener('submit', async e => {
+  const q = id => box.querySelector(id);
+  const msg = t => { q('#loginMsg').textContent = t; };
+  let mode = 'in';
+  const setMode = m => {
+    mode = m; msg('');
+    q('#loginName').hidden = q('#loginPass2').hidden = m !== 'up';
+    q('#loginGo').textContent = m === 'up' ? 'Create account' : 'Sign in';
+    q('#loginSwap').textContent = m === 'up' ? 'I already have an account' : 'Create new account';
+    q('#loginEmail').placeholder = m === 'up' ? 'Phone number' : 'Phone number or owner email';
+    q('#loginPass').autocomplete = m === 'up' ? 'new-password' : 'current-password';
+    q('#loginNote').hidden = m === 'up';
+  };
+  q('#loginSwap').addEventListener('click', () => setMode(mode === 'up' ? 'in' : 'up'));
+  const bad = e => /fetch|network/i.test(e.message) ? 'No internet connection.' : null;
+  q('#loginForm').addEventListener('submit', async e => {
     e.preventDefault(); msg('');
-    const r = await sb.auth.signInWithPassword({ email: box.querySelector('#loginEmail').value.trim(), password: box.querySelector('#loginPass').value });
-    if (r.error) msg(/fetch|network/i.test(r.error.message) ? 'No internet connection.' : 'Wrong email or password.');
+    const who = q('#loginEmail').value.trim(), pass = q('#loginPass').value;
+    if (!who) { msg('Enter your phone number.'); return; }
+    if (who.indexOf('@') < 0 && phoneDigits(who).length < 10) { msg('Enter a valid 10 digit phone number.'); return; }
+    if (!pass) { msg('Enter your password.'); return; }
+    if (mode === 'up') {
+      const nm = q('#loginName').value.trim().replace(/\s+/g, ' ');
+      if (who.indexOf('@') >= 0) { msg('Use your phone number to create an account.'); return; }
+      if (!nm) { msg('Enter your name.'); return; }
+      if (pass.length < 6) { msg('The password needs at least 6 characters.'); return; }
+      if (pass !== q('#loginPass2').value) { msg('The two passwords do not match.'); return; }
+      const r = await sb.auth.signUp({ email: loginName(who), password: pass, options: { data: { name: nm, phone: phoneDigits(who) } } });
+      if (r.error) { msg(bad(r.error) || (/registered|exists/i.test(r.error.message) ? 'This phone number already has an account. Tap "I already have an account".' : 'Could not create the account. ' + r.error.message)); return; }
+      if (!r.data.session) { msg('Account created, but sign in is not switched on yet. Please tell the owner.'); }
+      return;
+    }
+    const r = await sb.auth.signInWithPassword({ email: loginName(who), password: pass });
+    if (r.error) msg(bad(r.error) || 'Wrong phone number or password.');
   });
-  let first = true;
+  /* A person who is not the owner can use the app only after the owner approves the record users/<id>. */
+  const isOwnerUser = u => (u.email || '').toLowerCase() === OWNER_EMAIL;
+  let approved = false, first = true, gateTimer = null, gateFor = '';
+  const open = u => { approved = true; clearInterval(gateTimer); wait.style.display = 'none'; box.style.display = 'none'; if (first) { first = false; resolve(u); } addSignOut(); };
+  const showWait = (title, text) => { wait.querySelector('#waitTitle').textContent = title; wait.querySelector('#waitText').textContent = text; wait.style.display = 'flex'; box.style.display = 'none'; };
+  const check = async u => {
+    if (!current || current.id !== u.id) return;
+    const path = 'users/' + u.id;
+    const r = await sb.from('docs').select('data').eq('path', path).maybeSingle();
+    if (r.error) { showWait('Could not check your account', 'Check your internet connection. This page tries again by itself.'); return; }
+    let d = r.data && r.data.data;
+    if (!d) {
+      const md = u.user_metadata || {};
+      d = { n: md.name || (u.email || '').split('@')[0], ph: md.phone || '', st: 'pending', at: Date.now() };
+      const w = await sb.from('docs').upsert({ path, data: d, updated_at: new Date().toISOString() });
+      if (w.error) { showWait('Could not create your account record', 'Please tell the owner. This page tries again by itself.'); return; }
+    }
+    if (d.st === 'ok') { open(u); return; }
+    if (d.st === 'no') showWait('Not approved', 'The owner has not approved this account. Please contact the owner.');
+    else showWait('Waiting for approval', 'Your account has been created. The owner needs to approve it before you can use the app. This page opens by itself once you are approved.');
+  };
+  wait.querySelector('#waitCheck').addEventListener('click', () => { if (current) check(current); });
+  wait.querySelector('#waitOut').addEventListener('click', async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
   const onSession = sess => {
     current = sess ? sess.user : null;
-    if (current) { box.style.display = 'none'; if (first) { first = false; resolve(current); } addSignOut(); }
-    else box.style.display = 'flex';
+    if (!current) { approved = false; gateFor = ''; clearInterval(gateTimer); wait.style.display = 'none'; box.style.display = 'flex'; return; }
+    if (approved && gateFor === current.id) return;
+    if (isOwnerUser(current)) { gateFor = current.id; open(current); return; }
+    gateFor = current.id; box.style.display = 'none';
+    clearInterval(gateTimer); const u = current; check(u); gateTimer = setInterval(() => check(u), 5000);
   };
   sb.auth.onAuthStateChange((ev, sess) => onSession(sess));
   sb.auth.getSession().then(r => onSession(r.data && r.data.session));
@@ -131,7 +206,7 @@ const ready = new Promise(resolve => {
 function addSignOut() {
   const acts = document.querySelector('.acts'); if (!acts || document.getElementById('signOutBtn')) return;
   const b = document.createElement('button'); b.className = 'btn'; b.id = 'signOutBtn'; b.textContent = 'Sign out';
-  b.addEventListener('click', async () => { try { await sb.auth.signOut(); } catch (e) {} location.reload(); });
+  b.addEventListener('click', async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
   acts.appendChild(b);
 }
 
@@ -139,7 +214,7 @@ const user = {
   canEdit: async () => !!current && (current.email || '').toLowerCase() === OWNER_EMAIL,
   can: async () => !!current,
   id: async () => current ? current.id : null,
-  me: async () => current ? { name: (current.user_metadata && current.user_metadata.name) || (current.email || '').split('@')[0] } : null
+  me: async () => current ? { name: (current.user_metadata && current.user_metadata.name) || (current.email || '').split('@')[0], phone: (current.user_metadata && current.user_metadata.phone) || '' } : null
 };
 
 /* ---------- saving files ---------- */

@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 7 Nov 2026, 10:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 3:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -952,6 +952,12 @@ select:not([multiple]){pointer-events:none}
       <p class="pmeta" id="staffWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="staffEmpty">No staff yet.</p>
       <div class="tl" id="staffList"></div>
+    </section>
+    <section class="card team" id="loginsCard">
+      <h2 id="loginsHead">Logins</h2>
+      <p class="pmeta">People create their own login with a phone number. Approve a person here before they can open the app.</p>
+      <p class="pmeta" id="loginsEmpty">Nobody has created a login yet.</p>
+      <div class="tl" id="loginsList"></div>
     </section>
   </section>
 
@@ -3916,9 +3922,42 @@ function makeTeam(kind,id){
   el._r={inp:inp,nsel:nsel,rin:rin,cb:cb}; el._kind=kind;
   return el;
 }
+/* ---------- logins: people create an account with a phone number and the owner approves them ---------- */
+var loginUsers={}, loginsOn=false, loginPendSeen=-1;
+function loginsStart(){
+  if(loginsOn||!accountOwner||!db.watch) return; loginsOn=true;
+  db.watch('users/',function(l){ var m={}; (l||[]).forEach(function(x){ m[x.path.slice(6)]=x.data||{}; }); loginUsers=m; renderLogins(); });
+}
+function loginPut(id,patch){ var d=db.doc('users/'+id); return d.get().then(function(s){ return s.exists?d.update(patch):d.set(patch); }).then(function(){ return true; },onWriteErr); }
+function renderLogins(){
+  var list=$('#loginsList'); if(!list||!accountOwner) return;
+  var ids=Object.keys(loginUsers).sort(function(a,b){
+    var ra=loginUsers[a].st==='ok'?1:0, rb=loginUsers[b].st==='ok'?1:0;
+    return ra-rb || String(loginUsers[a].n||'').localeCompare(String(loginUsers[b].n||''));
+  });
+  var pend=ids.filter(function(id){ return loginUsers[id].st!=='ok'&&loginUsers[id].st!=='no'; }).length;
+  $('#loginsHead').textContent='Logins'+(ids.length?' ('+ids.length+')':'')+(pend?' · '+pend+' waiting':'');
+  $('#loginsEmpty').hidden=ids.length>0;
+  if(loginPendSeen>=0&&pend>loginPendSeen) toast('A new login is waiting for your approval.',4000);
+  loginPendSeen=pend;
+  list.textContent='';
+  ids.forEach(function(id,i){
+    var u=loginUsers[id], st=u.st==='ok'?'Approved':(u.st==='no'?'Not approved':'Waiting for approval');
+    var box=mk('div','titem'); box.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:10px;background:'+(i%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))');
+    box.append(mk('b',null,u.n||'Login'));
+    box.append(mk('div','pmeta',[u.ph?'Phone '+u.ph:'',st].filter(Boolean).join(' · ')));
+    var row=mk('div'); row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+    function b(label,cls,fn){ var x=mk('button','btn'+(cls?' '+cls:''),label); x.type='button'; x.addEventListener('click',fn); row.append(x); return x; }
+    if(u.st!=='ok') b('Approve','primary',async function(){ if(await loginPut(id,{st:'ok'})) toast((u.n||'Login')+' approved'); });
+    if(u.st==='ok') b('Stop Access','',function(){ var self=this; arm(self,'lg'+id,'Stop Access',async function(){ if(await loginPut(id,{st:'no'})) toast((u.n||'Login')+' can no longer open the app'); }); });
+    else if(u.st!=='no') b('Reject','',async function(){ if(await loginPut(id,{st:'no'})) toast((u.n||'Login')+' rejected'); });
+    var rm=b('Remove','',function(){ arm(rm,'lr'+id,'Remove',async function(){ try{ await db.doc('users/'+id).delete(); toast('Removed from the list'); }catch(e){ onWriteErr(e); } }); });
+    box.append(row); list.append(box);
+  });
+}
 function renderTeam(){
   if(!isOwner) return;
-  salSubscribe();
+  salSubscribe(); loginsStart(); renderLogins();
   [['sup','#supList','#supEmpty','#supHead','Supervisors'],['staff','#staffList','#staffEmpty','#staffHead','Staff']].forEach(function(d){
     var kind=d[0], list=$(d[1]), l=teamList(kind), seen=new Set(), pos=0;
     $(d[2]).hidden=l.length>0;
@@ -7958,7 +7997,7 @@ async function boot(){
   }, function(){ if(!index) index=cache.idx||{}; renderAll(); });
   subscribeDay(selDate);
   if(accountOwner) db.doc('meta/security').onSnapshot(function(s){ pinData=s.exists ? s.data() : null; renderAll(); }, function(){});
-  invSubscribe(); subStart();
+  invSubscribe(); subStart(); loginsStart();
   db.doc('meta/settings').onSnapshot(function(s){
     var d=s.exists ? s.data() : {};
     cache.meta.settings=d; cacheSave();
