@@ -534,6 +534,7 @@ select:not([multiple]){pointer-events:none}
         
       </div>
       <div class="statusline" id="statusline"><span id="dstat"></span></div>
+      <div class="two" id="arcRow" hidden><button class="btn small" id="arcPdf" type="button">Saved Day Report (PDF)</button><button class="btn small" id="arcData" type="button">Saved Day Data (File)</button></div>
       <div class="statusline" id="actrow" hidden style="flex-wrap:nowrap;align-items:center"><span id="homeMsg" hidden style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#eef2ef;border:1px solid #cfd8d2;border-radius:999px;padding:2px 3px 2px 10px;font-size:.76rem;font-weight:600"><span id="homeMsgTxt">Chat</span><button class="btn small primary" type="button" id="homeMsgBtn" style="padding:3px 10px;min-height:0;font-size:.76rem">Open</button></span></div>
       <p class="pmeta" id="supHint" style="color:var(--warn)" hidden>Choose your name below to mark tasks and attendance.</p>
     </section>
@@ -1799,7 +1800,7 @@ async function ensureToday(){
           if(!x.st) sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:''};
           else if(x.st==='ok' && !x.added){ mo++; tasks['g'+id]={order:mo, title:x.t, to:x.to||'', as:x.as||[], nid:x.nid||'1', once:true, sgBy:x.by||'', status:'', reason:'', note:''}; sg[id]={t:x.t, by:x.by||'', sid:x.sid||'', nid:x.nid||'1', at:x.at||0, d:x.d||'', st:'ok', to:x.to||'', as:x.as||[], added:true}; }
         });
-        if(!pd.closed) await db.doc('days/'+prev).update({closed:true, closedAt:Date.now(), auto:true});
+        if(!pd.closed){ await db.doc('days/'+prev).update({closed:true, closedAt:Date.now(), auto:true}); arcSave(prev,Object.assign({},pd,{closed:true,closedAt:Date.now(),auto:true}),false); }
       }
     }
     var pn={};
@@ -1890,6 +1891,7 @@ function renderTop(){
   else st=(selDate===t?'Today':fmtLong(selDate))+' is open · changes save automatically';
   $('#dstat').textContent=st;
   $('#attDate').value=fmtLong(selDate);
+  $('#arcRow').hidden=!(day&&day.closed);
   var cb=$('#closeBtn');
   if(canWrite && day && selDate===lt){
     if(!day.closed){ cb.hidden=false; cb.textContent='Close day'; }
@@ -5712,7 +5714,7 @@ $('#closeBtn').addEventListener('click', function(){
   var missing=sortedTasks().filter(function(it){ return it[1].status==='notdone' && !(it[1].reason||'').trim(); });
   if(missing.length){ tab='tasks'; renderAll(); toast('Add a reason for every task marked Not done before closing the day.'); return; }
   arm(b,'close','Close day', async function(){
-    if(await save({closed:true, closedAt:Date.now()})){ setIndexClosed(selDate,true); toast('Day closed. Tomorrow starts from these balances.'); }
+    if(await save({closed:true, closedAt:Date.now()})){ setIndexClosed(selDate,true); toast('Day closed. Tomorrow starts from these balances.'); arcSave(selDate,day,true); }
   });
 });
 $('#report').addEventListener('change', function(){
@@ -6186,7 +6188,7 @@ function pdfAcc(doc){
 }
 function pdfAll(){
   var doc=pdfBase('Daily Report'); if(!doc) return null;
-  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc); pdfTd(doc,false); pdfTd(doc,true); pdfLow(doc); pdfBat(doc); if(isOwner) pdfAcc(doc);
+  pdfStock(doc,true); pdfTasks(doc,false); pdfAtt(doc,false); pdfRes(doc); pdfCs(doc); pdfInv(doc); pdfTd(doc,false); pdfTd(doc,true); pdfLow(doc); pdfBat(doc); if(isOwner&&!window.__arch) pdfAcc(doc);
   return doc.output('arraybuffer');
 }
 $('#pdfBtn').addEventListener('click', async function(){
@@ -6222,6 +6224,35 @@ $('#attPdfBtn').addEventListener('click', async function(){
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 });
 
+/* ---------- automatic saved copy of every day at day close (data file and report PDF) ---------- */
+function b64Bytes(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+function bytesB64(buf){ var u=new Uint8Array(buf), s2='', i; for(i=0;i<u.length;i+=8192) s2+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s2); }
+async function arcSave(k,dayData,withPdf){
+  if(!db||!k||!dayData) return;
+  try{
+    var inv={}; Object.keys((invData&&invData.i)||{}).forEach(function(id){ var x=invData.i[id]; if(x&&x.at&&dayKey(x.at)===k) inv[id]=x; });
+    var snap=JSON.parse(JSON.stringify({app:'Nursery Daily Manager',kind:'day-archive',date:k,savedAt:Date.now(),by:(typeof nameNow==='function'&&nameNow())||'',day:dayData,invoices:inv},function(key,v){ return v===undefined?null:v; }));
+    await db.doc('archive/'+k).set(snap);
+    if(withPdf){
+      if(!window.jspdf) await ensurePdf();
+      var buf=null; window.__arch=true; try{ buf=pdfAll(); }catch(e){ buf=null; } window.__arch=false;
+      if(buf) await db.doc('archive/'+k+'/pdf').set({name:'daily-report-'+k+'.pdf',savedAt:Date.now(),b64:bytesB64(buf)});
+    }
+    toast('Day saved: report and data copy stored',3000);
+  }catch(e){ window.__arch=false; toast('The day is closed, but its saved copy could not be stored.',4000); }
+}
+$('#arcPdf').addEventListener('click', async function(){
+  if(!db||!downloads){ toast('Saving files is not available in this view.'); return; }
+  try{ var sn=await db.doc('archive/'+selDate+'/pdf').get(); var d=sn.exists&&sn.data(); if(!d||!d.b64){ toast('No saved report for this day. It is saved when a day is closed here.',4000); return; }
+    await downloads.save({filename:d.name||('daily-report-'+selDate+'.pdf'),data:b64Bytes(d.b64).buffer}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The saved report could not be opened here.'); }
+});
+$('#arcData').addEventListener('click', async function(){
+  if(!db||!downloads){ toast('Saving files is not available in this view.'); return; }
+  try{ var sn=await db.doc('archive/'+selDate).get(); var d=sn.exists&&sn.data(); if(!d){ toast('No saved data copy for this day. It is saved when a day is closed.',4000); return; }
+    await downloads.save({filename:'day-data-'+selDate+'.json',data:JSON.stringify(d,null,1)}); }
+  catch(e){ if(!e||e.code!=='declined') toast('The saved data could not be opened here.'); }
+});
 /* ---------- backup of all days ---------- */
 $('#backupBtn').addEventListener('click', async function(){
   var b=this, old=b.textContent;
