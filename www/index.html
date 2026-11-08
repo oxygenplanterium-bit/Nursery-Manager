@@ -789,6 +789,12 @@ select:not([multiple]){pointer-events:none}
     </label>
     <section class="card team" id="csBox" hidden>
       <h2>Customers and sales</h2>
+      <div class="two" style="align-items:end">
+        <label class="f" style="min-width:0"><span>Date</span><input type="date" id="csDay" aria-label="Choose a date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box"></label>
+        <button class="btn" type="button" id="csToday">Today</button>
+      </div>
+      <p class="pmeta" id="csNoDay" hidden>No report was saved for this date.</p>
+      <div id="csMain">
       <p class="pmeta">Enter every customer you attended. The customer's name or phone number is required. Bill no. and amount are optional.</p>
       <form class="team" id="fCs" hidden novalidate>
         <div class="two">
@@ -807,6 +813,7 @@ select:not([multiple]){pointer-events:none}
       <p class="pmeta" id="csEmpty">No sales entered yet.</p>
       <div class="tl" id="csList"></div>
       <div id="padSold"></div>
+      </div>
     </section>
   </section>
 
@@ -4411,7 +4418,9 @@ function updateCs(el,x,ed){
 }
 function renderCs(){
   var ed=editable(), items=csItems(), list=$('#csList'), seen=new Set(), pos=0, total=0;
-  $('#csBox').hidden=!day;
+  $('#csBox').hidden=(day===undefined&&!index);
+  var cd=$('#csDay'); if(document.activeElement!==cd){ cd.value=selDate||todayKey(); cd.max=todayKey(); }
+  $('#csToday').hidden=selDate===todayKey(); $('#csNoDay').hidden=!(day===null); $('#csMain').hidden=!day;
   $('#fCs').hidden=!ed;
   items.forEach(function(it){ total+=Number(it[1].amt)||0; });
   $('#csBar').hidden=!items.length;
@@ -4427,6 +4436,8 @@ function renderCs(){
   });
   csEls.forEach(function(el,id){ if(!seen.has(id)){ el.remove(); csEls.delete(id); } });
 }
+$('#csDay').addEventListener('change', function(){ var k=this.value; if(!k) return; if(k>todayKey()){ toast('Choose today or an earlier date.'); this.value=selDate; return; } followToday=(k===todayKey()); subscribeDay(k); });
+$('#csToday').addEventListener('click', function(){ followToday=true; subscribeDay(todayKey()); });
 $('#csPhone').addEventListener('input', function(){ var v=this.value.replace(/\D/g,''); if(v.length===12&&v.indexOf('91')===0) v=v.slice(2); else if(v.length===11&&v.charAt(0)==='0') v=v.slice(1); v=v.slice(0,10); if(v!==this.value) this.value=v; });
 $('#fCs').addEventListener('submit', function(e){
   e.preventDefault();
