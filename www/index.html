@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 7:45 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 8:00 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6864,11 +6864,12 @@ function renderLow(){
     var bh=mk('div','brow'); bh.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch'; bi.placeholder='Qty'; bi.style.cssText='width:100%;min-width:0;text-align:center;box-sizing:border-box'; bc.style.width='100%';
     br.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch'; ba.style.width='100%'; bo.style.width='100%'; bh.append(bc, bi); br.append(ba,bo);
     bk.append(bh, br, mk('div','pmeta','Applies to every item in both nurseries. You can still change any single item below.')); body.append(bk);
-    var ssw=lowSw('stocklist',"the nurseries' stock list");
-    var shd=mk('div'); shd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px'; shd.append(mk('b',null,'Nurseries Stock List'),ssw.sw); body.append(shd);
-    if(ssw.on) ['1','2'].forEach(function(n){
+    ['1','2'].forEach(function(n){
       var rs=rowsOf(n); if(!rs.length) return;
-      var nb=mk('div','bcard'); nb.style.cssText='border:1px solid var(--line);border-radius:12px;padding:8px;gap:6px'; nb.append(mk('b',null,NURS[n]+' ('+rs.length+')')); body.append(nb);
+      var nsw=lowSw('stock'+n,NURS[n]+' stock list');
+      var nb=mk('div','bcard'); nb.style.cssText='border:1px solid var(--line);border-radius:12px;padding:8px;gap:6px';
+      var nh=mk('div'); nh.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; nh.append(mk('b',null,NURS[n]+' ('+rs.length+')'),nsw.sw); nb.append(nh); body.append(nb);
+      if(!nsw.on) return;
       rs.forEach(function(it,i){
         var c=mk('div','bcard'), r=mk('div','brow'), inp=mkIn('number','Min'); c.style.background=RC_BG[i%2]; c.style.padding='4px 8px';
         inp.min='0'; inp.step='1'; inp.inputMode='numeric'; inp.style.cssText='width:64px;flex:none;padding:4px 6px;min-height:0;height:30px;text-align:center'; inp.value=Number(minMap[it[0]])>0?minMap[it[0]]:''; inp.setAttribute('aria-label','Minimum quantity for '+it[1].name);
