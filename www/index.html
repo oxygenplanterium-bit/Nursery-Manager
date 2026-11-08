@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 4:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 4:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -848,8 +848,11 @@ select:not([multiple]){pointer-events:none}
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option><option value="both" id="accBothOpt">Both Nurseries Together</option></select>
     </label>
     <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="accPrev" aria-label="Previous month">Prev</button><b id="accMonthLbl"></b><button class="btn" type="button" id="accNext" aria-label="Next month">Next</button></div>
+    <div class="card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px"><b>Summary Cards</b><button type="button" class="rsw" id="accCardsTog" role="switch" aria-checked="true" aria-label="Show summary cards"><span class="rswk"></span></button></div>
+    <div id="accCardsBody">
     <div class="fdgrid" id="accCards"></div>
     <p class="pmeta" id="accNote"></p>
+    </div>
     <section class="card team">
       <h2>Receipts, payments, income and expenses</h2>
       <p class="pmeta">Receipts and payments can be linked to a sales or purchase invoice, so each invoice shows what is paid and what is due.</p>
@@ -3929,7 +3932,7 @@ function makeTeam(kind,id){
   return el;
 }
 /* toggle switches: show or hide the Supervisors, Staff and Logins cards in the Team tab */
-['sup','staff','logins'].forEach(function(k){
+['sup','staff','logins','accCards'].forEach(function(k){
   var sw=document.getElementById(k+'Tog'), body=document.getElementById(k+'Body'); if(!sw||!body) return;
   var on=true; try{ on=localStorage.getItem('nurseryShow_'+k)!=='0'; if(k==='staff'&&localStorage.getItem('nurseryStaffShow')==='0') on=false; }catch(e){}
   function apply(){ sw.setAttribute('aria-checked', on?'true':'false'); body.hidden=!on; }
