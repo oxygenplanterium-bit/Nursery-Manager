@@ -545,7 +545,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 4:05 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 8 Nov 2026, 4:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -938,12 +938,14 @@ select:not([multiple]){pointer-events:none}
 
   <section class="pane" id="paneTeam" role="tabpanel" aria-labelledby="tabTeam" hidden>
     <section class="card team">
-      <h2 id="supHead">Supervisors</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 id="supHead" style="margin:0">Supervisors</h2><button type="button" class="rsw" id="supTog" role="switch" aria-checked="true" aria-label="Show supervisors"><span class="rswk"></span></button></div>
+      <div id="supBody">
       <p class="pmeta">Assign tasks to them. Each supervisor picks their own name at the top of the app.</p>
       <form class="addtask" id="fSup"><input type="text" id="supIn" maxlength="300" placeholder="Name, or several separated by commas" aria-label="Add supervisors"><input type="number" id="supRate" min="0" step="1" inputmode="numeric" placeholder="₹ per day" aria-label="Per day salary"><select id="supNur" aria-label="Supervisor nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select><button class="btn primary" type="submit">Add</button></form>
       <p class="pmeta" id="supWarn" style="color:var(--warn)"></p>
       <p class="pmeta" id="supEmpty">No supervisors yet.</p>
       <div class="tl" id="supList"></div>
+      </div>
     </section>
     <section class="card team">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 id="staffHead" style="margin:0">Staff</h2><button type="button" class="rsw" id="staffTog" role="switch" aria-checked="true" aria-label="Show staff"><span class="rswk"></span></button></div>
@@ -956,10 +958,12 @@ select:not([multiple]){pointer-events:none}
       </div>
     </section>
     <section class="card team" id="loginsCard">
-      <h2 id="loginsHead">Logins</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 id="loginsHead" style="margin:0">Logins</h2><button type="button" class="rsw" id="loginsTog" role="switch" aria-checked="true" aria-label="Show logins"><span class="rswk"></span></button></div>
+      <div id="loginsBody">
       <p class="pmeta">People create their own login with a phone number. Approve a person here before they can open the app.</p>
       <p class="pmeta" id="loginsEmpty">Nobody has created a login yet.</p>
       <div class="tl" id="loginsList"></div>
+      </div>
     </section>
   </section>
 
@@ -3924,14 +3928,14 @@ function makeTeam(kind,id){
   el._r={inp:inp,nsel:nsel,rin:rin,cb:cb}; el._kind=kind;
   return el;
 }
-/* toggle switch: show or hide the Staff list in the Team tab */
-(function(){
-  var sw=document.getElementById('staffTog'), body=document.getElementById('staffBody'); if(!sw||!body) return;
-  var on=true; try{ on=localStorage.getItem('nurseryStaffShow')!=='0'; }catch(e){}
+/* toggle switches: show or hide the Supervisors, Staff and Logins cards in the Team tab */
+['sup','staff','logins'].forEach(function(k){
+  var sw=document.getElementById(k+'Tog'), body=document.getElementById(k+'Body'); if(!sw||!body) return;
+  var on=true; try{ on=localStorage.getItem('nurseryShow_'+k)!=='0'; if(k==='staff'&&localStorage.getItem('nurseryStaffShow')==='0') on=false; }catch(e){}
   function apply(){ sw.setAttribute('aria-checked', on?'true':'false'); body.hidden=!on; }
-  sw.addEventListener('click', function(){ on=!on; try{ localStorage.setItem('nurseryStaffShow', on?'1':'0'); }catch(e){} apply(); });
+  sw.addEventListener('click', function(){ on=!on; try{ localStorage.setItem('nurseryShow_'+k, on?'1':'0'); if(k==='staff') localStorage.removeItem('nurseryStaffShow'); }catch(e){} apply(); });
   apply();
-})();
+});
 /* ---------- logins: people create an account with a phone number and the owner approves them ---------- */
 var loginUsers={}, loginsOn=false, loginPendSeen=-1;
 function loginsStart(){
