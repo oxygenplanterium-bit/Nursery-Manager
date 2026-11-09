@@ -26,4 +26,27 @@ s.onload=function(){ row('Sign-in code loaded',true,window.claude?'ready':'loade
 s.onerror=function(){ row('Sign-in code loaded',false,'could not download platform.js'); };
 document.body.appendChild(s);
 fetch('index.html?c='+Date.now(),{cache:'no-store'}).then(function(r){ return r.text().then(function(x){ row('Download app page',r.ok,(x.length/1024|0)+' KB'); }); }).catch(function(e){ row('Download app page',false,e&&e.message); });
-</script></body></html>
+</script>
+<div class="r"><button id="go" style="font:inherit;padding:12px 16px">Test The App Start</button> <small>Press this, then wait 15 seconds.</small></div>
+<script>
+try{ if(localStorage.getItem('chk_run')){ row('Last app test',false,'The browser closed or crashed during the last test. Stage reached: '+localStorage.getItem('chk_run')); localStorage.removeItem('chk_run'); } }catch(e){}
+document.getElementById('go').onclick=function(){
+  var st=function(x){ try{ localStorage.setItem('chk_run',x); }catch(e){} };
+  st('starting'); row('App test',true,'started, please wait');
+  var f=document.createElement('iframe'); f.style.cssText='width:360px;height:300px;border:1px solid #999'; f.src='index.html?chk='+Date.now();
+  var errs=[];
+  f.onload=function(){ st('page loaded'); try{ f.contentWindow.addEventListener('error',function(e){ errs.push(e.message); }); f.contentWindow.addEventListener('unhandledrejection',function(e){ errs.push(String(e.reason&&e.reason.message||e.reason)); }); }catch(e){}
+    setTimeout(function(){ st('after 6 seconds'); }, 6000);
+    setTimeout(function(){
+      var d=f.contentDocument, txt=''; try{ txt=(d.getElementById('state')&&d.getElementById('state').textContent)||''; }catch(e){}
+      var shown=''; try{ shown=d.getElementById('loginBox')&&d.getElementById('loginBox').style.display; shown+=' / wait:'+(d.getElementById('waitBox')&&d.getElementById('waitBox').style.display); }catch(e){}
+      var mem=(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' MB used':'memory n/a');
+      row('App test result',errs.length===0,'errors: '+(errs.join(' | ')||'none')+' | status text: '+txt.slice(0,80)+' | sign-in box: '+shown+' | '+mem);
+      try{ localStorage.removeItem('chk_run'); }catch(e){}
+    },12000);
+  };
+  f.onerror=function(){ row('App test',false,'could not load the app page'); };
+  document.body.appendChild(f);
+};
+</script>
+</body></html>
