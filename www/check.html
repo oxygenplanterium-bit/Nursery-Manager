@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nursery Manager Check</title>
+<style>body{font:16px/1.4 sans-serif;margin:0;padding:14px;background:#fff;color:#111}h1{font-size:1.2rem;margin:0 0 8px}.r{padding:6px 8px;border-bottom:1px solid #ddd}.ok{color:#0a7a2f}.no{color:#b3261e;font-weight:700}small{color:#555}</style></head><body>
+<h1>Nursery Manager - phone check</h1><p><small>Take a photo of this whole page and send it. Nothing here changes any data.</small></p><div id="out"></div>
+<script>
+var out=document.getElementById('out');
+function row(name,ok,extra){ var d=document.createElement('div'); d.className='r'; d.innerHTML=name+': <span class="'+(ok?'ok':'no')+'">'+(ok?'OK':'PROBLEM')+'</span> '+(extra?'<small>'+String(extra).replace(/</g,'&lt;')+'</small>':''); out.appendChild(d); }
+function t(name,fn){ try{ var r=fn(); row(name,r!==false,typeof r==='string'?r:''); }catch(e){ row(name,false,e&&e.message); } }
+row('Page opens',true,navigator.userAgent);
+t('Screen',function(){ return screen.width+' x '+screen.height+' (window '+innerWidth+' x '+innerHeight+')'; });
+t('Local storage',function(){ localStorage.setItem('chk','1'); localStorage.removeItem('chk'); return true; });
+t('Service worker',function(){ return 'serviceWorker' in navigator; });
+t('Secure page (https)',function(){ return location.protocol==='https:'; });
+t('Promise',function(){ return typeof Promise==='function'; });
+t('async functions',function(){ new Function('return async function(){ await 1; }')(); return true; });
+t('Optional chaining',function(){ new Function('var a={}; return a?.b?.c;')(); return true; });
+t('fetch',function(){ return typeof fetch==='function'; });
+t('Crypto (sign-in needs it)',function(){ return !!(window.crypto&&crypto.subtle); });
+t('WebSocket',function(){ return typeof WebSocket==='function'; });
+t('dialog window',function(){ var d=document.createElement('dialog'); return typeof d.showModal==='function'; });
+t('CSS color-mix',function(){ return !!(window.CSS&&CSS.supports&&CSS.supports('background','color-mix(in srgb,red 50%,blue)')); });
+t('visualViewport',function(){ return !!window.visualViewport; });
+t('Memory',function(){ return navigator.deviceMemory?navigator.deviceMemory+' GB':'unknown'; });
+var s=document.createElement('script'); s.src='platform.js?c='+Date.now();
+window.onerror=function(m,u,l,c){ row('Sign-in code error',false,m+' (line '+l+')'); };
+s.onload=function(){ row('Sign-in code loaded',true,window.claude?'ready':'loaded but not ready'); };
+s.onerror=function(){ row('Sign-in code loaded',false,'could not download platform.js'); };
+document.body.appendChild(s);
+fetch('index.html?c='+Date.now(),{cache:'no-store'}).then(function(r){ return r.text().then(function(x){ row('Download app page',r.ok,(x.length/1024|0)+' KB'); }); }).catch(function(e){ row('Download app page',false,e&&e.message); });
+</script></body></html>
