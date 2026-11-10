@@ -498,6 +498,66 @@ select:not([multiple]){pointer-events:none}
 .spkbtn{display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border-radius:50%}
 .spkbtn.on{background:var(--accent); color:var(--accent-ink)}
 .sopxt{font-weight:400}
+
+/* ---------- Windows desktop layout (wide screens) ---------- */
+#side{display:none}
+@media (min-width:1000px){
+  :root{--sw:236px}
+  html{scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--muted) 45%,transparent) transparent}
+  ::-webkit-scrollbar{width:12px; height:12px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--muted) 40%,transparent); border-radius:8px; border:3px solid transparent; background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--muted) 65%,transparent); background-clip:padding-box; border:3px solid transparent}
+  body{font-family:'Segoe UI Variable','Segoe UI',system-ui,sans-serif; font-size:14.5px; padding:0 28px 28px calc(var(--sw) + 28px)}
+  body.desk .wrap{max-width:980px; padding-top:30px}
+  #side{display:flex; flex-direction:column; position:fixed; left:0; top:0; bottom:0; width:var(--sw); z-index:60; background:var(--card); border-right:1px solid var(--line); padding:14px 10px; gap:2px; overflow-y:auto}
+  #side .sbrand{display:flex; align-items:center; gap:10px; padding:6px 8px 14px; border-bottom:1px solid var(--line); margin-bottom:8px}
+  #side .sbrand img{width:38px; height:38px; border-radius:50%; background:#fff}
+  #side .sbrand b{font-size:.98rem; line-height:1.15; font-weight:600}
+  #side .sgrp{font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:12px 12px 4px}
+  #side .si{display:flex; align-items:center; gap:12px; width:100%; min-height:38px; padding:0 12px; border:0; border-radius:8px; background:none; color:var(--ink); font:inherit; font-size:.92rem; font-weight:500; text-align:left; cursor:pointer; position:relative}
+  #side .si svg{width:20px; height:20px; flex:0 0 auto; stroke:var(--muted); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  #side .si:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  #side .si[aria-current="page"]{background:var(--accent-soft); font-weight:600}
+  #side .si[aria-current="page"]::before{content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--accent)}
+  #side .si[aria-current="page"] svg{stroke:var(--accent)}
+  #side .si:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  #side .sb{margin-left:auto; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#d33; color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; justify-content:center}
+  #side .sfoot{margin-top:auto; padding:10px 12px 2px; font-size:.72rem; color:var(--muted); border-top:1px solid var(--line)}
+  #dock,#dlgMore{display:none!important}
+  .wrap{padding-bottom:30px!important}
+  .brand{display:none}
+  .pane[role="tabpanel"]:not([hidden]){left:var(--sw); padding:78px max(28px, calc((100vw - var(--sw) - 1040px)/2)) 36px}
+  #winBar{left:var(--sw); padding:14px max(28px, calc((100vw - var(--sw) - 1040px)/2)) 12px; display:flex; flex-direction:column; justify-content:center; min-height:62px}
+  .winrow b{font-size:1.15rem; font-weight:600}
+  #winClose{display:none}
+  #fdash{left:var(--sw); padding:30px max(28px, calc((100vw - var(--sw) - 1100px)/2)) 36px}
+  .btn{min-height:38px; padding:7px 14px; border-radius:8px; font-weight:600; font-size:.92rem; transition:background .12s,border-color .12s}
+  .btn:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 10%,var(--field)); border-color:var(--accent)}
+  .btn.primary:hover:not(:disabled){background:color-mix(in srgb,#000 12%,var(--accent)); color:var(--accent-ink)}
+  .btn.small{min-height:32px; padding:4px 11px; font-size:.86rem}
+  .modes .btn{min-height:42px; font-size:.92rem}
+  .winrow .btn{min-height:36px}
+  input,select,textarea{font-size:14.5px!important; padding:8px 11px; border-radius:7px}
+  input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 70%,transparent); outline-offset:-1px; border-color:var(--accent)}
+  .card{border-radius:10px; padding:16px 18px; box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  h1{font-size:1.4rem} h2{font-size:1.05rem}
+  .pane{gap:14px}
+  .tabs .tab{min-height:34px; font-size:.84rem}
+  .row{transition:background .1s}
+  .acts{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .fdgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .kpigrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  dialog{width:min(580px,calc(100vw - 80px)); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  #dlgDue,#dlgBat,#dlgLow,#dlgInv,#dlgEst,#dlgAcc,#dlgSent{width:min(760px,calc(100vw - 80px))}
+  dialog form,dialog .dbody{padding:22px}
+  #dlgLow .dbody,#dlgBat .dbody,#dlgDue .dbody{padding:20px; max-height:88vh}
+  #toast{left:calc(50% + var(--sw)/2); bottom:24px}
+  #rowMoveBar{left:calc(var(--sw) + 20px); right:20px}
+  .dk,.dkt{display:none}
+}
+@media (min-width:1000px) and (max-height:860px){ #side .si{min-height:31px; font-size:.88rem} #side .sgrp{padding:7px 12px 2px} #side .sbrand{padding-bottom:8px; margin-bottom:4px} }
 </style>
 
 <div class="wrap">
@@ -547,7 +607,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 9 Nov 2026, 11:30 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 10 Nov 2026, 9:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1022,6 +1082,7 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 <div id="dock" role="navigation" aria-label="Main tabs"></div>
+<nav id="side" aria-label="Sections"></nav>
 <dialog id="dlgPick" class="pickdlg">
   <div class="dbody">
     <h2 id="pickHead">Choose</h2>
@@ -7672,8 +7733,39 @@ function openMore(){
 $('#moreClose').addEventListener('click', function(){ $('#dlgMore').close(); });
 $('#dlgMore').addEventListener('click', function(e){ if(!e.target.closest('.dbody')) this.close(); });
 $('#dlgMore .dbody').addEventListener('click', function(e){ if(e.target===this) $('#dlgMore').close(); });
+
+/* ---------- desktop sidebar ---------- */
+var sideSig='';
+function sideBuild(){
+  var sd=$('#side'); if(!sd) return;
+  var cur=fdOpen?'dash':(tab||'home');
+  var sig=(isOwner?'o':'s')+'|'+cur+'|'+DK_ALL.map(function(m){ return dkAvail(m)?m[0]+dkBadge(m[0]):''; }).join(',');
+  if(sig===sideSig) return; sideSig=sig; sd.textContent='';
+  var br=mk('div','sbrand'); var im=document.createElement('img'); var lg=document.querySelector('.logo'); if(lg) im.src=lg.getAttribute('src')||lg.src; im.alt=''; br.append(im, mk('b',null,'Oxygen Planterium Nursery Manager')); sd.append(br);
+  function item(key,label,fn){
+    var b=mk('button','si'); b.type='button'; if(key===cur) b.setAttribute('aria-current','page');
+    var ic=key==='home'?'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>':DK_IC[key];
+    b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ic+'</svg>'; b.append(mk('span',null,label));
+    var n=key==='home'?0:dkBadge(key); if(n) b.append(mk('span','sb',String(n)));
+    b.addEventListener('click', fn); sd.append(b);
+  }
+  item('home','Home',function(){ if(fdOpen) $('#fdClose').click(); if(tab){ tab=''; renderAll(); } window.scrollTo(0,0); });
+  var grp={main:['stock','tasks','sop','att','call','chat'],biz:['cs','inv','acc','due'],team:['team','sal','res'],more:['bat','low','dash']}, names={main:'Daily Work',biz:'Business',team:'People',more:'Tools'};
+  Object.keys(grp).forEach(function(g){
+    var ms=grp[g].map(function(k){ return DK_ALL.filter(function(m){ return m[0]===k; })[0]; }).filter(function(m){ return m&&dkAvail(m); });
+    if(!ms.length) return; sd.append(mk('div','sgrp',names[g]));
+    ms.forEach(function(m){ item(m[0],m[1],function(){ if(fdOpen && m[0]!=='dash') $('#fdClose').click(); dkGo(m); }); });
+  });
+  var f=mk('div','sfoot',($('#appVer')||{}).textContent||''); sd.append(f);
+}
+(function(){
+  var mq=window.matchMedia('(min-width:1000px)');
+  function ap(){ document.body.classList.toggle('desk',mq.matches); sideSig=''; try{ sideBuild(); }catch(e){} }
+  (mq.addEventListener?mq.addEventListener('change',ap):mq.addListener(ap)); ap();
+})();
 var dockSig='';
 function dockUpdate(){
+  try{ sideBuild(); }catch(e){}
   var d=$('#dock'); d.hidden=!!(tab||fdOpen);
   var wr=document.querySelector('.wrap'); if(wr&&!d.hidden) wr.style.paddingBottom=(d.offsetHeight+40)+'px';
   var sig=(isOwner?'o':'s')+dkPrefGet().join(',')+(day?lowItems().length:0)+'/'+chatTotal(); if(sig!==dockSig||!d.children.length){ dockSig=sig; dockBuild(); }
