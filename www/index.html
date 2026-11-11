@@ -610,7 +610,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 3:15 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 3:40 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1690,9 +1690,9 @@ select:not([multiple]){pointer-events:none}
     </div>
     <div class="acts">
         <button class="btn primary" id="pdfBtn">Download stock PDF</button>
-        <button class="btn" id="backupBtn">Download all days backup</button>
+        <button class="btn" id="backupBtn">Full Backup (Download All Entries)</button>
         <button class="btn" id="arcAllBtn" hidden>Save Copies Of Earlier Days</button>
-        <button class="btn" id="importBtn" hidden>Import backup file</button>
+        <button class="btn" id="importBtn" hidden>Full Restore From Backup File</button>
         <input type="file" id="importFile" hidden>
       </div>
   </div>
@@ -6569,27 +6569,40 @@ $('#importFile').addEventListener('change', async function(){
     data=JSON.parse(txt);
   }catch(e){ toast('Cannot read this file as a backup (it is not JSON text). Pick the .json file downloaded from the old app.', 7000); return; }
   if(data&&data.days===undefined&&data.backup) data=data.backup;
-  if(!data||typeof data!=='object'||!data.days||typeof data.days!=='object'){ toast('This file has no saved days. Use the file made by "Download all days backup" in the old app.', 7000); return; }
-  ks=Object.keys(data.days).sort();
-  if(!ks.length){ toast('The backup file has no days.'); return; }
-  if(!window.confirm('Import '+ks.length+' saved day'+(ks.length===1?'':'s')+' from this backup? Days with the same date will be replaced.')) return;
+  if(!data||typeof data!=='object'||data.app!=='Nursery Daily Manager'&&!data.days){ toast('This is not a Nursery Manager backup file. Use the file made by "Download all days backup".', 7000); return; }
+  var DAYS=(data.days&&typeof data.days==='object')?data.days:{}; ks=Object.keys(DAYS).sort();
+  var COLS=[['handover/','cashHandover'],['chat/','chats'],['chatph/','chatPhotos'],['photos/','taskPhotos'],['archive/','savedDayCopies'],['archiveo/','savedDayCopiesOwner']];
+  var METAS=[['meta/accounts','accounts'],['meta/invoices','invoices'],['meta/salary','salary'],['meta/dues','moneyOwed']];
+  var nCol=0; COLS.forEach(function(c){ nCol+=Object.keys(data[c[1]]||{}).length; });
+  var nMeta=METAS.filter(function(m){ return data[m[1]]; }).length+Object.keys(data.otherSettings||{}).filter(function(k){ return k!=='index'; }).length;
+  var nLog=Object.keys(data.logins||{}).length;
+  if(!ks.length&&!nCol&&!nMeta&&!data.team&&!data.resources){ toast('The backup file has nothing to restore.'); return; }
+  if(!window.confirm('Restore this backup?\n\n'+ks.length+' day(s), '+nMeta+' account / invoice / salary / settings record(s), '+nCol+' chat, photo, handover and saved-copy entries.\n\nEntries with the same date or ID will be replaced by the backup. Anything newer that is not in the backup stays as it is. Logins already in the app are not changed.')) return;
   b.disabled=true;
+  var fails=0, done=0, total=ks.length+nCol+nMeta+nLog+2;
+  function clean(x){ return JSON.parse(JSON.stringify(x,function(k,v){ return v===undefined?null:v; })); }
+  function prog(){ done++; b.textContent='Restoring '+Math.min(done,total)+' of '+total+'…'; }
+  async function put(path,val){ try{ await db.doc(path).set(clean(val)); }catch(e){ fails++; } prog(); }
   try{
     var idx={}, i;
     for(i=0;i<ks.length;i++){
-      b.textContent='Importing '+(i+1)+' of '+ks.length+'…';
-      await db.doc('days/'+ks[i]).set(JSON.parse(JSON.stringify(data.days[ks[i]])));
-      idx[ks[i]]={c:Date.now(), closed:!!data.days[ks[i]].closed};
+      await put('days/'+ks[i],DAYS[ks[i]]);
+      idx[ks[i]]={c:Date.now(), closed:!!DAYS[ks[i]].closed};
     }
-    var d=db.doc('meta/index'), s=await d.get();
-    if(s.exists) await d.update({d:idx}); else await d.set({d:idx});
-    var st={}; if(data.team) st.team=data.team; if(data.resources) st.res=data.resources;
+    if(ks.length){ var d=db.doc('meta/index'), s=await d.get(); if(s.exists) await d.update({d:idx}); else await d.set({d:idx}); }
+    prog();
+    var st=Object.assign({},(data.otherSettings&&data.otherSettings.settings)||{}); if(data.team) st.team=data.team; if(data.resources) st.res=data.resources;
     if(Object.keys(st).length){
       var sd=db.doc('meta/settings'), ss=await sd.get();
-      if(ss.exists) await sd.update(st); else await sd.set(st);
+      if(ss.exists) await sd.update(clean(st)); else await sd.set(clean(st));
     }
-    toast('Imported '+ks.length+' day'+(ks.length===1?'':'s')+'.');
-  }catch(e){ toast('Import failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check your internet connection and that supabase.sql was run.', 9000); }
+    prog();
+    for(i=0;i<METAS.length;i++){ if(data[METAS[i][1]]) await put(METAS[i][0],data[METAS[i][1]]); }
+    var os=data.otherSettings||{}; for(var ok in os){ if(ok==='index'||ok==='settings') continue; await put('meta/'+ok,os[ok]); }
+    for(i=0;i<COLS.length;i++){ var cm=data[COLS[i][1]]||{}; for(var ck in cm){ await put(COLS[i][0]+ck,cm[ck]); } }
+    var lg=data.logins||{}; for(var lk in lg){ try{ var ex=await db.doc('users/'+lk).get(); if(!ex.exists) await db.doc('users/'+lk).set(clean(lg[lk])); }catch(e){ fails++; } prog(); }
+    toast(fails?('Restored with '+fails+' item(s) that could not be saved. Run the update SQL and try again.'):('Restore complete: '+ks.length+' day'+(ks.length===1?'':'s')+' and all other sections. Press Refresh App.'), 9000);
+  }catch(e){ toast('Restore failed while saving: '+((e&&(e.code||e.message))||'unknown error')+'. Check your internet connection and that supabase.sql was run.', 9000); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 
