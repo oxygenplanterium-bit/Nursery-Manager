@@ -558,6 +558,8 @@ select:not([multiple]){pointer-events:none}
   .dk,.dkt{display:none}
 }
 @media (min-width:1000px) and (max-height:860px){ #side .si{min-height:31px; font-size:.88rem} #side .sgrp{padding:7px 12px 2px} #side .sbrand{padding-bottom:8px; margin-bottom:4px} }
+#fSup,#fStaff{border:1.5px solid var(--line); border-radius:14px; padding:12px; margin:6px 0 18px; background:var(--card)}
+#supWarn:empty,#staffWarn:empty{display:none}
 </style>
 
 <div class="wrap">
@@ -607,7 +609,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
     <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 10 Nov 2026, 9:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 11 Nov 2026, 9:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
