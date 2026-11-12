@@ -608,9 +608,10 @@ select:not([multiple]){pointer-events:none}
 
   <div class="card hdacts" id="homeActs" style="display:flex;flex-direction:column;gap:8px;padding:10px">
     <button class="btn primary" id="homePdf" type="button">Download full report PDF</button>
-    <button class="btn" id="homeBackup" type="button" hidden>Download days backup</button>
+    <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
+    <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 3:40 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 9:45 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1968,7 +1969,7 @@ function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.classNam
 function cell(label,cls){ var c=mk('div','c '+cls); c.append(mk('span','lab',label)); return c; }
 
 function renderTop(){
-  $('#backupBtn').hidden=!isOwner; $('#arcAllBtn').hidden=!isOwner; $('#homeBackup').hidden=!isOwner;
+  $('#backupBtn').hidden=!isOwner; $('#arcAllBtn').hidden=!isOwner; $('#homeBackup').hidden=!isOwner; $('#homeRestore').hidden=!(isOwner&&canWrite);
   $('#importBtn').hidden=!(isOwner&&canWrite);
   var mo=$('#modeOwner'), ms=$('#modeSup');
   mo.setAttribute('aria-pressed', isOwner); ms.setAttribute('aria-pressed', !isOwner);
@@ -6435,6 +6436,7 @@ $('#pdfBtn').addEventListener('click', async function(){
 
 $('#homePdf').addEventListener('click', function(){ $('#pdfBtn').click(); });
 $('#homeBackup').addEventListener('click', function(){ $('#backupBtn').click(); });
+$('#homeRestore').addEventListener('click', function(){ $('#importBtn').click(); });
 $('#attPdfBtn').addEventListener('click', async function(){
   if(!day){ toast('Data not available: no report was saved for this date.'); return; }
   var any=attShown('1').concat(attShown('2')).some(function(it){ return it[1].s; });
