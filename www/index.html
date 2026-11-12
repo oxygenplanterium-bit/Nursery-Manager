@@ -611,7 +611,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 10:50 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 11:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2166,6 +2166,7 @@ function updateRow(el,id,r,n){
   });
   var spv=Number(r.sp)||0;
   R.amt.textContent=spv?'\u20b9'+fmtMoney(Math.round(spv*Math.max(b,0)*100)/100):'\u2013';
+  (function(){ var n=R.amt.textContent.length; R.amt.style.fontSize=n>9?Math.max(.6,Math.round(8.4/n*100)/100)+'em':''; R.amt.style.whiteSpace='nowrap'; })();
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
   xferEntries(r).forEach(function(e){
