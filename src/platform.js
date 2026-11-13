@@ -171,7 +171,7 @@ const ready = new Promise(resolve => {
       return;
     }
     const r = await sb.auth.signInWithPassword({ email: loginName(who), password: pass });
-    if (r.error) msg(bad(r.error) || 'Wrong phone number or password.');
+    if (r.error) msg(bad(r.error) || (/not confirmed/i.test(r.error.message) ? 'This login is not confirmed yet. Please tell the owner.' : 'Wrong phone number or password.'));
   });
   /* A person who is not the owner can use the app only after the owner approves the record users/<id>. */
   const isOwnerUser = u => (u.email || '').toLowerCase() === OWNER_EMAIL;
