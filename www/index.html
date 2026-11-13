@@ -584,6 +584,11 @@ select:not([multiple]){pointer-events:none}
     <button class="btn small primary" type="button" id="lowBtn">View</button>
   </section>
 
+  <section class="card alertcard" id="loginAlert" hidden>
+    <div id="loginAlertText"></div>
+    <button class="btn small primary" type="button" id="loginAlertBtn">Approve</button>
+  </section>
+
   <div class="card hdgrp">
   <div class="fdpick">
     <label class="f card fdnl"><span class="sr">Nursery</span>
@@ -611,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 12 Nov 2026, 11:05 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 13 Nov 2026, 3:50 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4059,6 +4064,7 @@ function renderLogins(){
   $('#loginsEmpty').hidden=ids.length>0;
   if(loginPendSeen>=0&&pend>loginPendSeen) toast('A new login is waiting for your approval.',4000);
   loginPendSeen=pend;
+  var la=$('#loginAlert'); if(la){ la.hidden=!(pend>0&&accountOwner); $('#loginAlertText').textContent=pend+(pend===1?' login is':' logins are')+' waiting for your approval'; }
   list.textContent='';
   ids.forEach(function(id,i){
     var u=loginUsers[id], st=u.st==='ok'?'Approved':(u.st==='no'?'Not approved':'Waiting for approval');
@@ -6996,6 +7002,7 @@ function renderLow(){
 }
 function openLow(){ if(!$('#dlgLow').open) lowDirty=false; renderLow(); var d=$('#dlgLow'); if(!d.open) d.showModal(); }
 $('#tabLow').addEventListener('click', openLow);
+$('#loginAlertBtn').addEventListener('click', function(){ $('#tabTeam').click(); });
 $('#lowBtn').addEventListener('click', function(){ lowSeen=true; lowUpdate(); openLow(); });
 $('#dlgLow').addEventListener('close', function(){ lowDirty=false; });
 $('#lowClose').addEventListener('click', function(){ $('#dlgLow').close(); });
