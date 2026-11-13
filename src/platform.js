@@ -192,9 +192,9 @@ const ready = new Promise(resolve => {
     }
     if (d.st === 'ok') { open(u); return; }
     if (d.st === 'no') showWait('Not approved', 'The owner has not approved this account. Please contact the owner.');
-    else showWait('Waiting for approval', 'Your account has been created. The owner needs to approve it before you can use the app. This page opens by itself once you are approved.');
+    else showWait('Waiting for approval', 'Your account (' + (u.email || '').replace(/^.*\+/, '') + ') has been created. The owner needs to approve it before you can use the app. This page opens by itself once you are approved. Last checked at ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.');
   };
-  wait.querySelector('#waitCheck').addEventListener('click', () => { if (current) check(current); });
+  wait.querySelector('#waitCheck').addEventListener('click', async () => { const bt = wait.querySelector('#waitCheck'); bt.textContent = 'Checking...'; bt.disabled = true; try { await sb.auth.refreshSession(); } catch (e) {} if (current) await check(current); setTimeout(() => { bt.textContent = 'Check Again'; bt.disabled = false; }, 800); });
   wait.querySelector('#waitOut').addEventListener('click', async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
   const onSession = sess => {
     current = sess ? sess.user : null;
