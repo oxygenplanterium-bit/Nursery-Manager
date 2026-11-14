@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 6:55 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 7:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1750,7 +1750,7 @@ ap(); b.addEventListener('click', function(){ try{ localStorage.setItem('asgHide
     var b=document.createElement('button'); b.textContent='Reload'; b.style.cssText='margin-top:8px;padding:8px 14px;font:inherit'; b.onclick=function(){ location.reload(); };
     d.appendChild(document.createElement('br')); d.appendChild(b); document.body.appendChild(d);
   }
-  window.addEventListener('error',function(e){ show((e&&e.message)||'error'+(e&&e.filename?' in '+String(e.filename).split('/').pop():'')); });
+  window.addEventListener('error',function(e){ if(e&&e.message==='Script error.'&&!e.filename&&!e.lineno) return; if(e&&!e.message&&e.target&&e.target!==window) return; show((e&&e.message)||'error'+(e&&e.filename?' in '+String(e.filename).split('/').pop():'')); });
   window.addEventListener('unhandledrejection',function(e){ var r=e&&e.reason; show((r&&r.message)||r||'error'); });
 })();</script>
 <script>var APP_BUILD='__BUILD__';</script>
@@ -6725,7 +6725,7 @@ function renderSal(){
   var bc=$('#salBonusCfg'); if(document.activeElement!==bc) bc.value=(salData.cfg&&salData.cfg.bonus)||''; bc.disabled=!isOwner;
   var ym0=salMonth.split('-'); $('#salMonthLbl').textContent=new Date(+ym0[0],+ym0[1]-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var est=$('#salEst'); est.textContent=''; var eT=0, eN=0, eP={sup:0,staff:0}, eC={sup:0,staff:0};
-  ['sup','staff'].forEach(function(k){ salPeople(k).forEach(function(it){ var mi=salMonthInfo(it[0],k), er=mi.gross-mi.absDed-mi.ded+mi.bon; eP[k]+=er; eC[k]++; eT+=er; eN+=mi.net; }); });
+  ['sup','staff'].forEach(function(k){ salPeople(k).forEach(function(it){ try{ var mi=salMonthInfo(it[0],k), er=mi.gross-mi.absDed-mi.ded+mi.bon; eP[k]+=er; eC[k]++; eT+=er; eN+=mi.net; }catch(x){} }); });
   est.append(mk('span','pmeta','Estimated Total Salary For '+$('#salMonthLbl').textContent+' · '+(NURS[nursery]||'')));
   var eb=mk('b',null,'₹'+fmtN(eT)); eb.style.cssText='font-size:1.5rem;line-height:1.15;font-weight:600'; est.append(eb);
   est.append(mk('span','pmeta','Supervisors ('+eC.sup+') ₹'+fmtN(eP.sup)+' · Staff ('+eC.staff+') ₹'+fmtN(eP.staff)));
