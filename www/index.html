@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 13 Nov 2026, 3:50 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 6:30 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -8374,6 +8374,33 @@ async function boot(){
   }, 30000);
 }
 boot();
+})();
+
+/* ---------- clear (X) button on every search box ---------- */
+(function(){
+  var css=document.createElement('style');
+  css.textContent='.xcw{position:relative; display:block; min-width:0}.xcw[hidden],.xcw:has(>input[hidden]){display:none!important}.xcw>input{width:100%; padding-right:42px!important; box-sizing:border-box}.xcw>.xcx{position:absolute; right:4px; top:50%; transform:translateY(-50%); width:34px; height:34px; padding:0; margin:0; border:0; border-radius:50%; background:transparent; color:var(--muted,#667); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; min-height:0!important}.xcw>.xcx:hover{background:color-mix(in srgb,var(--muted,#667) 18%,transparent)}.xcw>.xcx[hidden]{display:none!important}input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none; appearance:none; display:none}';
+  document.head.appendChild(css);
+  var list=[];
+  function sync(w){ var i=w.firstChild, x=w.lastChild; x.hidden=!i.value; }
+  function wrap(inp){
+    if(inp.dataset.xc||inp.closest('.clr')) return; inp.dataset.xc='1';
+    var par=inp.parentNode; if(!par) return;
+    var cs=getComputedStyle(inp), flex=(cs.flex&&cs.flex!=='0 1 auto')?cs.flex:'';
+    var w=document.createElement('span'); w.className='xcw'; if(flex) w.style.flex=flex; if(inp.style.minHeight) w.style.minHeight=inp.style.minHeight;
+    if(inp.style.gridColumn) w.style.gridColumn=inp.style.gridColumn;
+    var x=document.createElement('button'); x.type='button'; x.className='xcx'; x.setAttribute('aria-label','Clear search'); x.title='Clear';
+    x.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>';
+    par.insertBefore(w,inp); w.append(inp,x);
+    inp.addEventListener('input',function(){ sync(w); });
+    x.addEventListener('mousedown',function(e){ e.preventDefault(); });
+    x.addEventListener('click',function(){ inp.value=''; sync(w); inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('change',{bubbles:true})); try{ inp.focus(); }catch(e){} });
+    list.push(w); sync(w);
+  }
+  function scan(){ var a=document.querySelectorAll('input[type=search]'); for(var i=0;i<a.length;i++) wrap(a[i]); list=list.filter(function(w){ return document.body.contains(w); }); list.forEach(sync); }
+  var t=0; function later(){ if(t) return; t=setTimeout(function(){ t=0; scan(); },60); }
+  function start(){ scan(); try{ new MutationObserver(later).observe(document.body,{childList:true,subtree:true}); }catch(e){} setInterval(function(){ list.forEach(sync); },500); }
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 </script>
 
