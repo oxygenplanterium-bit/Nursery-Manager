@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 6:30 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 6:55 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -929,6 +929,10 @@ select:not([multiple]){pointer-events:none}
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option><option value="both" id="accBothOpt">Both Nurseries Together</option></select>
     </label>
+    <label class="f card" style="padding:10px 14px"><span>Period</span>
+        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day" selected>This day</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
+      </label>
+    <label class="f card" id="accDayL" hidden style="min-width:0;max-width:100%;padding:10px 14px"><span>Date</span><input type="date" id="accDay" aria-label="Choose date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;-webkit-appearance:none;appearance:none"></label>
     <div class="card salmon" role="group" aria-label="Month"><button class="btn" type="button" id="accPrev" aria-label="Previous month">Prev</button><b id="accMonthLbl"></b><button class="btn" type="button" id="accNext" aria-label="Next month">Next</button></div>
     <div class="card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px"><b>Summary Cards</b><button type="button" class="rsw" id="accCardsTog" role="switch" aria-checked="true" aria-label="Show summary cards"><span class="rswk"></span></button></div>
     <div id="accCardsBody">
@@ -947,10 +951,6 @@ select:not([multiple]){pointer-events:none}
       <button class="btn" type="button" id="accPdf">Download monthly statement (PDF)</button>
       <button class="btn" type="button" id="accCats">Manage categories</button>
       <button class="btn small danger" type="button" id="accRstBtn" hidden>Reset All Accounts Entries</button>
-      <label class="f"><span>Period</span>
-        <select id="accPeriod" aria-label="Period"><option value="m">This month only</option><option value="day" selected>This day</option><option value="date">Pick a date</option><option value="all">All transactions (all months)</option></select>
-      </label>
-      <label class="f" id="accDayL" hidden style="min-width:0;max-width:100%"><span>Date</span><input type="date" id="accDay" aria-label="Choose date" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;height:48px;-webkit-appearance:none;appearance:none"></label>
       <label class="f"><span>Show</span>
         <select id="accFilter" aria-label="Filter entries"><option value="">All entries</option><option value="rc">Receipts</option><option value="py">Payments</option><option value="in">Income</option><option value="ex">Expenses</option><option value="sl">Salary advances and bonuses</option></select>
       </label>
