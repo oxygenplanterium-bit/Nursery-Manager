@@ -195,7 +195,7 @@ const ready = new Promise(resolve => {
     else showWait('Waiting for approval', 'Your account (' + (u.email || '').replace(/^.*\+/, '') + ') has been created. The owner needs to approve it before you can use the app. This page opens by itself once you are approved. Last checked at ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.');
   };
   wait.querySelector('#waitCheck').addEventListener('click', async () => { const bt = wait.querySelector('#waitCheck'); bt.textContent = 'Checking...'; bt.disabled = true; try { await sb.auth.refreshSession(); } catch (e) {} if (current) await check(current); setTimeout(() => { bt.textContent = 'Check Again'; bt.disabled = false; }, 800); });
-  wait.querySelector('#waitOut').addEventListener('click', async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
+  wait.querySelector('#waitOut').addEventListener('click', async () => { try { localStorage.removeItem('nurseryRole'); await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
   const onSession = sess => {
     current = sess ? sess.user : null;
     if (!current) { approved = false; gateFor = ''; clearInterval(gateTimer); wait.style.display = 'none'; box.style.display = 'flex'; return; }
@@ -210,7 +210,7 @@ const ready = new Promise(resolve => {
 function addSignOut() {
   const acts = document.querySelector('.acts'); if (!acts || document.getElementById('signOutBtn')) return;
   const b = document.createElement('button'); b.className = 'btn'; b.id = 'signOutBtn'; b.textContent = 'Sign out';
-  b.addEventListener('click', async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
+  b.addEventListener('click', async () => { try { localStorage.removeItem('nurseryRole'); await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
   acts.appendChild(b);
 }
 

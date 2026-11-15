@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title><style>html.booting body{visibility:hidden}</style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
 :root{
@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 14 Nov 2026, 7:20 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 16 Nov 2026, 2:45 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -4049,7 +4049,7 @@ function makeTeam(kind,id){
 /* ---------- logins: people create an account with a phone number and the owner approves them ---------- */
 var loginUsers={}, loginsOn=false, loginPendSeen=-1;
 function loginsStart(){
-  if(loginsOn||!accountOwner||!db.watch) return; loginsOn=true;
+  if(loginsOn||!accountOwner||!db||!db.watch) return; loginsOn=true;
   db.watch('users/',function(l){ var m={}; (l||[]).forEach(function(x){ m[x.path.slice(6)]=x.data||{}; }); loginUsers=m; renderLogins(); });
 }
 function loginPut(id,patch){ var d=db.doc('users/'+id); return d.get().then(function(s){ return s.exists?d.update(patch):d.set(patch); }).then(function(){ return true; },onWriteErr); }
@@ -8328,6 +8328,7 @@ async function boot(){
   try{ supName=localStorage.getItem('nurserySupervisor')||''; supId=localStorage.getItem('nurserySupId')||''; sortMode=localStorage.getItem('nurserySort')||''; nursery=localStorage.getItem('nurseryNo')==='2'?'2':'1'; }catch(e){}
   document.querySelectorAll('.nursel').forEach(function(sel){ sel.value=nursery; });
   $('#supName').value=supName;
+  try{ var rc=JSON.parse(localStorage.getItem('nurseryRole')||'null'); if(rc&&rc.a){ var sm0=localStorage.getItem('nurseryMode')||''; accountOwner=true; canWrite=true; isOwner=sm0!=='supervisor'&&!rc.p; } }catch(e){}
   renderAll();
   var c=window.claude;
   if(c&&c.use){
@@ -8352,6 +8353,8 @@ async function boot(){
     try{ var sec=await db.doc('meta/security').get(); pinData=sec.exists ? sec.data() : null; }catch(e){}
     if(hasPin()) isOwner=false;
   }
+  try{ localStorage.setItem('nurseryRole',JSON.stringify({a:!!accountOwner,p:!!(accountOwner&&hasPin())})); }catch(e){}
+  document.documentElement.classList.remove('booting'); renderAll();
   db.doc('meta/index').onSnapshot(function(s){
     index=s.exists ? (s.data().d||{}) : {}; indexLive=true;
     cache.idx=index; cacheSave();
