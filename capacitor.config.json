@@ -2,5 +2,15 @@
   "appId": "com.oxygenplanterium.nursery",
   "appName": "Nursery Daily Manager",
   "webDir": "www",
-  "android": { "allowMixedContent": false }
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://oxygenplanterium-bit.github.io/nursery-manager/",
+    "allowNavigation": [
+      "oxygenplanterium-bit.github.io",
+      "*.supabase.co"
+    ],
+    "androidScheme": "https"
+  }
 }
