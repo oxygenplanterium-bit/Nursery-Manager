@@ -6,7 +6,7 @@
     "allowMixedContent": false
   },
   "server": {
-    "url": "https://oxygenplanterium-bit.github.io/nursery-manager/",
+    "url": "https://oxygenplanterium-bit.github.io/Nursery-Manager/",
     "allowNavigation": [
       "oxygenplanterium-bit.github.io",
       "*.supabase.co"
