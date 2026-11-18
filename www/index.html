@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 16 Nov 2026, 2:45 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 2:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -704,7 +704,7 @@ select:not([multiple]){pointer-events:none}
         <select id="catSel" aria-label="Filter by category" hidden></select>
         <select id="tagSel" aria-label="Filter by tag" hidden></select>
         <select id="srcSel" aria-label="Filter by source"></select>
-        <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="srcBtn" type="button" hidden>Sources</button><button class="btn small" id="grpBtn" type="button">Group Report</button></div>
+        <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="srcBtn" type="button" hidden>Sources</button><button class="btn small" id="grpBtn" type="button">Group Report</button><button class="btn small" id="dlBtn" type="button">Download Stock Report</button></div>
         <div id="stockActs">
           <button class="btn small" id="mvAllStock" hidden></button>
           <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
@@ -1207,6 +1207,13 @@ select:not([multiple]){pointer-events:none}
   </div>
 </dialog>
 
+<dialog id="dlgDl">
+  <div class="dbody">
+    <h2>Download Stock Report</h2>
+    <p class="pmeta" id="dlSub"></p>
+    <div class="actions" style="flex-wrap:wrap"><button type="button" class="btn" id="dlClose">Close</button><button type="button" class="btn primary" id="dlXls">Excel</button><button type="button" class="btn primary" id="dlPdf">PDF</button></div>
+  </div>
+</dialog>
 <dialog id="dlgGrp">
   <div class="dbody">
     <h2>Stock Report</h2>
@@ -7926,6 +7933,42 @@ $('#grpPdf').addEventListener('click', async function(){
   var buf=doc.output('arraybuffer');
   try{ await downloads.save({filename:'stock-report-'+by+'-'+selDate+'.pdf', data:buf}); }
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+});
+
+/* ---------- download stock report (Excel and PDF) ---------- */
+$('#dlBtn').addEventListener('click', function(){ if(!day){ toast('Data not available for this date.'); return; } $('#dlSub').textContent='Both nurseries, '+fmtLong(selDate)+'. Includes category, source, totals, transfers and reasons.'; var d=$('#dlgDl'); if(!d.open) d.showModal(); });
+$('#dlClose').addEventListener('click', function(){ $('#dlgDl').close(); });
+$('#dlPdf').addEventListener('click', async function(){
+  if(!window.jspdf) await ensurePdf();
+  var buf=null; try{ buf=pdfStock(); }catch(e){ buf=null; }
+  if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
+  try{ await downloads.save({filename:'stock-report-'+selDate+'.pdf', data:buf}); $('#dlgDl').close(); }
+  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+});
+$('#dlXls').addEventListener('click', async function(){
+  await ensureXlsx(); if(!window.XLSX){ toast('The Excel tool did not load. Check your connection and try again.'); return; }
+  try{
+    var wb=XLSX.utils.book_new();
+    ['1','2'].forEach(function(n){
+      var items=rowsOf(n), s=sums(items), tn=0;
+      var aoa=[[NURS[n]+' - Stock Report'],['Date: '+fmtLong(selDate)],[],['Sl.No.','Item Name','Category','Source','Tags','Total Qty','Purchases','Sales','Damages','Transfers (net)','Bal Qty']];
+      items.forEach(function(it,i){ var r=it[1], t=xferOf(r); tn+=t.in-t.out; aoa.push([i+1,r.name,catName(r.cat)||'',SRC_NAME[r.src]||'',(r.tags||[]).join(', '),r.total||0,r.purchase||0,r.sales||0,r.damages||0,t.in-t.out,bal(r)]); });
+      aoa.push(['','Totals','','','',s.total,s.purchase,s.sales,s.damages,tn,s.bal]);
+      var ws=XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols']=[{wch:7},{wch:36},{wch:22},{wch:16},{wch:20},{wch:11},{wch:11},{wch:9},{wch:10},{wch:15},{wch:10}];
+      XLSX.utils.book_append_sheet(wb,ws,NURS[n].replace(/[\\\/?*\[\]:]/g,'').slice(0,31));
+    });
+    var nrows=[['Nursery','Item','Entry','Reason / report']];
+    ['1','2'].forEach(function(n){ rowsOf(n).forEach(function(it){ var r=it[1], nt=r.notes||{};
+      ['purchase','sales','damages'].forEach(function(f){ if(nt[f]&&(nt[f].text||nt[f].reason)) nrows.push([NURS[n],r.name,NOTE_LABELS[f]+' '+(r[f]||0),[nt[f].reason,nt[f].text].filter(Boolean).join(' - ')]); });
+      xferEntries(r).forEach(function(e){ nrows.push([NURS[n],r.name,'Transferred '+(e.k==='in'?'in ':'out ')+e.q,(e.k==='in'?'From ':'To ')+NURS[e.o||'1']+(e.n?' - '+e.n:'')]); }); }); });
+    if(day.report&&day.report.text) nrows.push([],['Supervisor\'s report','','',day.report.text]);
+    if(nrows.length>1){ var w2=XLSX.utils.aoa_to_sheet(nrows); w2['!cols']=[{wch:20},{wch:30},{wch:20},{wch:60}]; XLSX.utils.book_append_sheet(wb,w2,'Reasons And Reports'); }
+    var out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+    if(!downloads){ toast('Saving files is not available in this view.'); return; }
+    await downloads.save({filename:'stock-report-'+selDate+'.xlsx', data:out}); $('#dlgDl').close();
+  }catch(e){ if(!e||e.code!=='declined') toast('The Excel file could not be saved here.'); }
 });
 /* ---------- stock categories ---------- */
 function catSort(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }
