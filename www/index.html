@@ -194,6 +194,7 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .lab{display:none; font-size:.68rem; color:var(--muted); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .c input{text-align:center; font-variant-numeric:tabular-nums; padding:8px 8px; height:42px; border-radius:10px; -moz-appearance:textfield; appearance:textfield}
 .c input::-webkit-outer-spin-button,.c input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.c input.autosp:disabled{background:var(--field); border-color:var(--line); opacity:1; -webkit-text-fill-color:currentColor}
 .c input:disabled{background:transparent; border-color:transparent; opacity:1; -webkit-text-fill-color:currentColor}
 .c.purchase input:not(:disabled),.c.purchase .val{color:var(--buy)}
 .c.sales input:not(:disabled),.c.sales .val{color:var(--sell)}
@@ -620,7 +621,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:50 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 5:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2183,7 +2184,7 @@ function updateRow(el,id,r,n){
   [['cost','Cost price'],['mcip','Monthly cost increase'],['sp','Sales price']].forEach(function(d){
     if((d[0]==='cost'||d[0]==='mcip') && !isOwner) return;
     var v=Number(r[d[0]])||0;
-    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?String(Math.round(v)):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
+    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?String(Math.round(v)):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); if(d[0]==='sp') R.sp.classList.toggle('autosp',(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
     else R[d[0]+'V'].textContent=v?'\u20b9'+fmtWhole(v):'\u2013';
   });
   if(R.mcn){ var mq=Number(r.mcip)||0, mm=mcipMonths(r); R.mcn.hidden=!(mq>0); R.mcn.textContent=mq>0?(Number(r.cost)>0&&r.mcipAt?'SP = CP + MCIP \u00d7 '+mm+' month'+(mm===1?'':'s')+' (updates monthly)':'Enter CP so SP can update monthly'):''; }
