@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 5:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 9:05 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -5998,6 +5998,7 @@ $('#daySel').addEventListener('change', function(){ goTo(this.value); });
 $('#salBtn').addEventListener('click', function(){ salAttFor=''; tab='sal'; renderAll(); });
 function closeWin(fromPop){ if(!tab) return; tab=''; if(!fromPop && winPushed){ winPushed=false; try{ history.back(); }catch(e){} } renderAll(); }
 $('#winClose').addEventListener('click', function(){ closeWin(false); });
+window.__nmBack=function(){ var d=[].slice.call(document.querySelectorAll('dialog[open]')).pop(); if(d){ try{ d.close(); }catch(e){} return true; } if(tab){ closeWin(false); return true; } return false; };
 window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
@@ -8529,6 +8530,36 @@ boot();
   var t=0; function later(){ if(t) return; t=setTimeout(function(){ t=0; scan(); },60); }
   function start(){ scan(); try{ new MutationObserver(later).observe(document.body,{childList:true,subtree:true}); }catch(e){} setInterval(function(){ list.forEach(sync); },500); }
   if(document.body) start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
+/* short swipe from the left or right edge goes back to the page used before */
+(function(){
+  var on=false, side=0, x=0, y=0, fired=false, ind=null, TH=38;
+  function mkInd(){ if(ind) return ind; ind=document.createElement('div'); ind.setAttribute('aria-hidden','true');
+    ind.style.cssText='position:fixed;top:0;width:34px;height:34px;margin-top:-17px;background:rgba(20,20,20,.78);color:#fff;font:600 28px/30px sans-serif;text-align:center;z-index:99999;pointer-events:none;opacity:0;transition:opacity .12s';
+    document.body.append(ind); return ind; }
+  function hide(){ if(ind) ind.style.opacity='0'; }
+  document.addEventListener('touchstart',function(e){
+    on=false; fired=false; if(e.touches.length!==1) return;
+    var t=e.touches[0], W=window.innerWidth; side=t.clientX<=26?1:(t.clientX>=W-26?-1:0); if(!side) return; on=true; y=t.clientY; x=t.clientX;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!on) return; var t=e.touches[0], dx=side>0?t.clientX-x:x-t.clientX, dy=Math.abs(t.clientY-y);
+    if(dx<0) dx=0;
+    if(dy>dx*1.2+30){ on=false; hide(); return; }
+    var i=mkInd(), k=Math.min(1,dx/TH);
+    i.textContent=side>0?'\u2039':'\u203a'; i.style.top=t.clientY+'px';
+    if(side>0){ i.style.left='0'; i.style.right='auto'; i.style.borderRadius='0 17px 17px 0'; i.style.transform='translateX('+(-34+34*k)+'px)'; }
+    else{ i.style.right='0'; i.style.left='auto'; i.style.borderRadius='17px 0 0 17px'; i.style.transform='translateX('+(34-34*k)+'px)'; }
+    i.style.opacity=String(k);
+    if(dx>=TH&&!fired){ fired=true; try{ if(navigator.vibrate) navigator.vibrate(12); }catch(er){} }
+    if(dx<TH&&fired) fired=false;
+  },{passive:true});
+  document.addEventListener('touchend',function(){
+    if(!on) return; on=false; hide();
+    if(fired){ fired=false; try{ if(window.__nmBack) window.__nmBack(); }catch(er){} }
+  },{passive:true});
+  document.addEventListener('touchcancel',function(){ on=false; hide(); },{passive:true});
 })();
 </script>
 
