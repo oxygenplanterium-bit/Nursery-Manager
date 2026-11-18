@@ -617,7 +617,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 3:10 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 3:30 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2139,7 +2139,7 @@ function makeRow(id){
     cr.append(c);
   });
   ac.classList.add('bal'); ac.append(av); R.amt=av; cr.append(ac); el.append(cr);
-  if(isOwner){ R.mcn=mk('div','pmeta'); R.mcn.style.cssText='font-size:.72rem;margin:2px 0 0;text-align:right'; R.mcn.hidden=true; el.append(R.mcn); }
+  if(isOwner){ R.mcn=mk('div','pmeta'); R.mcn.style.cssText='font-size:.72rem;margin:2px 0 0;text-align:right;grid-column:1/-1;white-space:nowrap'; R.mcn.classList.add('fitme'); R.mcn.hidden=true; el.append(R.mcn); }
   el.append(R.notes); el.append(tgEl,actRow);
   el._r=R; return el;
 }
@@ -2289,7 +2289,7 @@ function renderTotals(items){
   Object.keys(s).forEach(function(f){ totalsBuilt[f].textContent=fmtN(s[f]); });
 }
 function renderStock(){
-  setTimeout(mcipSync,0); setTimeout(hideAllLabel,0); catSync(); tagSync();
+  setTimeout(mcipSync,0); setTimeout(hideAllLabel,0); fitAll(); catSync(); tagSync();
   var items=day ? sortedRows() : [];
   var show=!!day && items.length>0, q=filter.trim().toLowerCase();
   $('#ledger').hidden=!show; if(!show){ var sa0=$('#stockAmt'); if(sa0) sa0.hidden=true; }
@@ -8017,6 +8017,22 @@ $('#dlXls').addEventListener('click', async function(){
     await downloads.save({filename:'stock-report-'+selDate+'.xlsx',data:out}); $('#dlgDl').close();
   }catch(e){ if(!e||e.code!=='declined') toast('The Excel file could not be saved here.'); }
 });
+
+/* ---------- auto-fit numbers and help lines to their boxes ---------- */
+function fitOne(n){
+  n.style.fontSize=''; if(n.tagName!=='INPUT'&&getComputedStyle(n).display==='inline'){ n.style.display='inline-block'; n.style.whiteSpace='nowrap'; }
+  var isIn=n.tagName==='INPUT', blk=!isIn&&getComputedStyle(n).display==='block';
+  var par=n.parentElement; if(!par||!par.clientWidth) return;
+  var pc=getComputedStyle(par), avail=par.clientWidth-parseFloat(pc.paddingLeft)-parseFloat(pc.paddingRight);
+  var over=function(){ return isIn?n.scrollWidth>n.clientWidth+1:blk?n.scrollWidth>n.clientWidth+1:n.getBoundingClientRect().width>avail+1; };
+  var fs=parseFloat(getComputedStyle(n).fontSize), i=0;
+  while(over()&&fs>7&&i++<30){ fs-=.5; n.style.fontSize=fs+'px'; }
+}
+var fitTm=0;
+function fitAll(){ clearTimeout(fitTm); fitTm=setTimeout(function(){ requestAnimationFrame(function(){ document.querySelectorAll('#list .c input, #list .c .val, #list .fitme, #totals .val, #totals .c span:not(.lab)').forEach(fitOne); }); },40); }
+window.addEventListener('resize', fitAll);
+document.addEventListener('click', function(e){ if(e.target.closest&&e.target.closest('#list,#ledger,.tabs')) fitAll(); });
+document.addEventListener('input', function(e){ if(e.target.closest&&e.target.closest('#list')) fitAll(); });
 /* ---------- stock categories ---------- */
 function catSort(a,b){ return (a[1].o||0)-(b[1].o||0)||a[1].n.localeCompare(b[1].n); }
 function catDup(name,exceptId){ var k=String(name||'').trim().replace(/\s+/g,' ').toLowerCase(); return catAll().filter(function(c){ return c[0]!==exceptId&&c[1].n.trim().replace(/\s+/g,' ').toLowerCase()===k; })[0]||null; }
