@@ -620,7 +620,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:35 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:50 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2183,12 +2183,12 @@ function updateRow(el,id,r,n){
   [['cost','Cost price'],['mcip','Monthly cost increase'],['sp','Sales price']].forEach(function(d){
     if((d[0]==='cost'||d[0]==='mcip') && !isOwner) return;
     var v=Number(r[d[0]])||0;
-    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v.toFixed(2):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
-    else R[d[0]+'V'].textContent=v?'\u20b9'+fmtMoney(v):'\u2013';
+    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?String(Math.round(v)):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
+    else R[d[0]+'V'].textContent=v?'\u20b9'+fmtWhole(v):'\u2013';
   });
   if(R.mcn){ var mq=Number(r.mcip)||0, mm=mcipMonths(r); R.mcn.hidden=!(mq>0); R.mcn.textContent=mq>0?(Number(r.cost)>0&&r.mcipAt?'SP = CP + MCIP \u00d7 '+mm+' month'+(mm===1?'':'s')+' (updates monthly)':'Enter CP so SP can update monthly'):''; }
   var spv=Number(r.sp)||0;
-  R.amt.textContent=spv?'\u20b9'+fmtMoney(Math.round(spv*Math.max(b,0)*100)/100):'\u2013';
+  R.amt.textContent=spv?'\u20b9'+fmtWhole(spv*Math.max(b,0)):'\u2013';
   (function(){ var n=R.amt.textContent.length; R.amt.style.fontSize=n>9?Math.max(.6,Math.round(8.4/n*100)/100)+'em':''; R.amt.style.whiteSpace='nowrap'; })();
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
@@ -2326,8 +2326,8 @@ function renderStock(){
     var sa=$('#stockAmt'), tS=0, tC=0; items.forEach(function(it){ var r=it[1], b=Math.max(bal(r),0); tS+=(Number(r.sp)||0)*b; tC+=(Number(r.cost)||0)*b; });
     sa.textContent=''; sa.hidden=false; sa.style.display='flex';
     sa.append(mk('span','pmeta','Total Estimated Amount Of All Stock (SP \u00d7 Bal Qty) \u00b7 '+(NURS[nursery]||'')));
-    var sb=mk('b',null,'\u20b9'+fmtMoney(Math.round(tS*100)/100)); sb.style.cssText='font-size:1.4rem;line-height:1.15;font-weight:600'; sa.append(sb);
-    if(isOwner) sa.append(mk('span','pmeta','At Cost Price (CP \u00d7 Bal Qty): \u20b9'+fmtMoney(Math.round(tC*100)/100)));
+    var sb=mk('b',null,'\u20b9'+fmtWhole(tS)); sb.style.cssText='font-size:1.4rem;line-height:1.15;font-weight:600'; sa.append(sb);
+    if(isOwner) sa.append(mk('span','pmeta','At Cost Price (CP \u00d7 Bal Qty): \u20b9'+fmtWhole(tC)));
   }
   paintSel();
   var box=$('#reportBox'), ta=$('#report'), meta=$('#reportMeta');
@@ -3378,10 +3378,10 @@ function mcipSync(){
 async function commitCost(id,inp,fld){
   if(!isOwner) return;
   var r=day&&day.rows&&day.rows[id], stored=r?(Number(r[fld])||0):0;
-  var reset=function(){ inp.value=stored?stored.toFixed(2):''; };
+  var reset=function(){ inp.value=stored?String(Math.round(stored)):''; };
   if(!r||!editable()){ reset(); return; }
   var v=parseFloat(inp.value); if(!(v>0)) v=0; v=Math.round(v*100)/100;
-  if(v===stored){ reset(); return; }
+  if(v===stored||(v===Math.round(stored)&&Math.abs(stored-v)<1)){ reset(); return; }
   var patch={rows:{}}; patch.rows[id]={}; patch.rows[id][fld]=v;
   if(fld==='mcip'){ patch.rows[id].mcipAt=v>0?(r.mcipAt||Date.now()):0; var cp=Number(r.cost)||0; if(v>0&&cp>0) patch.rows[id].sp=Math.round((cp+v*mcipMonths({mcipAt:patch.rows[id].mcipAt}))*100)/100; }
   if(fld==='cost'&&(Number(r.mcip)||0)>0&&r.mcipAt&&v>0) patch.rows[id].sp=Math.round((v+Number(r.mcip)*mcipMonths(r))*100)/100;
@@ -4588,6 +4588,7 @@ $('#fResBulk').addEventListener('submit', async function(e){
 });
 
 /* ---------- customers and sales ---------- */
+var fmtWhole=function(n){ return Math.round(Number(n)||0).toLocaleString('en-IN'); };
 var fmtMoney=function(n){ return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 function csItems(n){
   n=n||nursery;
