@@ -616,7 +616,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 2:05 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 2:25 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1211,6 +1211,11 @@ select:not([multiple]){pointer-events:none}
   <div class="dbody">
     <h2>Download Stock Report</h2>
     <p class="pmeta" id="dlSub"></p>
+    <label>Nursery<select id="dlNur"><option value="">Both nurseries</option><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select></label>
+    <p class="pmeta" style="margin:10px 0 4px"><b>Select the fields to include</b></p>
+    <div id="dlFields" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px"></div>
+    <div class="actions" style="margin:8px 0"><button type="button" class="btn small" id="dlAll">Select All</button><button type="button" class="btn small" id="dlNone">Clear All</button></div>
+    <p class="pmeta" id="dlErr" style="color:var(--bad,#c0392b)"></p>
     <div class="actions" style="flex-wrap:wrap"><button type="button" class="btn" id="dlClose">Close</button><button type="button" class="btn primary" id="dlXls">Excel</button><button type="button" class="btn primary" id="dlPdf">PDF</button></div>
   </div>
 </dialog>
@@ -7935,39 +7940,66 @@ $('#grpPdf').addEventListener('click', async function(){
   catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 });
 
-/* ---------- download stock report (Excel and PDF) ---------- */
-$('#dlBtn').addEventListener('click', function(){ if(!day){ toast('Data not available for this date.'); return; } $('#dlSub').textContent='Both nurseries, '+fmtLong(selDate)+'. Includes category, source, totals, transfers and reasons.'; var d=$('#dlgDl'); if(!d.open) d.showModal(); });
+/* ---------- download stock report (Excel and PDF, chosen fields) ---------- */
+var DL_F=[['sl','Sl.No.'],['name','Item Name'],['cat','Category'],['src','Source'],['tags','Tags'],['total','Total Qty'],['pur','Purchases'],['sales','Sales'],['dam','Damages'],['xfer','Transfers (net)'],['bal','Bal Qty'],['notes','Reasons And Reports']];
+var DL_NUM={total:1,pur:1,sales:1,dam:1,xfer:1,bal:1};
+function dlSaved(){ try{ var v=JSON.parse(localStorage.getItem('dlFields')||'null'); if(v&&v.length) return v; }catch(e){} return DL_F.map(function(f){ return f[0]; }); }
+function dlPicked(){ return [].slice.call(document.querySelectorAll('#dlFields input')).filter(function(i){ return i.checked; }).map(function(i){ return i.value; }); }
+function dlVal(k,r,i){ var t=xferOf(r);
+  return k==='sl'?i+1:k==='name'?r.name:k==='cat'?(catName(r.cat)||''):k==='src'?(SRC_NAME[r.src]||''):k==='tags'?(r.tags||[]).join(', '):k==='total'?(r.total||0):k==='pur'?(r.purchase||0):k==='sales'?(r.sales||0):k==='dam'?(r.damages||0):k==='xfer'?(t.in-t.out):bal(r); }
+function dlNotes(r){ var out=[], nt=r.notes||{};
+  ['purchase','sales','damages'].forEach(function(f){ if(nt[f]&&(nt[f].text||nt[f].reason)) out.push(NOTE_LABELS[f]+' '+(r[f]||0)+': '+[nt[f].reason,nt[f].text].filter(Boolean).join(' - ')); });
+  xferEntries(r).forEach(function(e){ out.push('Transferred '+(e.k==='in'?'in ':'out ')+e.q+' '+(e.k==='in'?'from ':'to ')+NURS[e.o||'1']+(e.n?' - '+e.n:'')); });
+  return out.join('; '); }
+function dlTotal(k,items){ var s=sums(items); return k==='name'?'Totals':k==='total'?s.total:k==='pur'?s.purchase:k==='sales'?s.sales:k==='dam'?s.damages:k==='bal'?s.bal:k==='xfer'?items.reduce(function(a,it){ var t=xferOf(it[1]); return a+t.in-t.out; },0):''; }
+function dlTable(n,keys){ var items=rowsOf(n);
+  var head=keys.map(function(k){ return DL_F.filter(function(f){ return f[0]===k; })[0][1]; });
+  var body=items.map(function(it,i){ return keys.map(function(k){ return k==='notes'?dlNotes(it[1]):dlVal(k,it[1],i); }); });
+  var foot=keys.some(function(k){ return DL_NUM[k]; })?[keys.map(function(k){ return k==='notes'?'':dlTotal(k,items); })]:[];
+  if(foot.length&&keys.indexOf('name')<0){ var f0=keys.findIndex(function(k){ return !DL_NUM[k]; }); if(f0>=0) foot[0][f0]='Totals'; }
+  return {head:head,body:body,foot:foot,items:items}; }
+function dlOpen(){ var sv=dlSaved(), box=$('#dlFields'); box.textContent='';
+  DL_F.forEach(function(f){ var l=document.createElement('label'); l.style.cssText='display:flex;align-items:center;gap:8px;font-size:.9rem'; var c=document.createElement('input'); c.type='checkbox'; c.value=f[0]; c.checked=sv.indexOf(f[0])>=0; l.append(c,document.createTextNode(f[1])); box.append(l); });
+  $('#dlErr').textContent=''; $('#dlNur').value=''; $('#dlSub').textContent=fmtLong(selDate)+'. Tick only the fields you want in the report.'; var d=$('#dlgDl'); if(!d.open) d.showModal(); }
+function dlKeys(){ var k=dlPicked(); if(!k.length){ $('#dlErr').textContent='Select at least one field.'; return null; } $('#dlErr').textContent=''; try{ localStorage.setItem('dlFields',JSON.stringify(k)); }catch(e){} return DL_F.map(function(f){ return f[0]; }).filter(function(x){ return k.indexOf(x)>=0; }); }
+$('#dlBtn').addEventListener('click', function(){ if(!day){ toast('Data not available for this date.'); return; } dlOpen(); });
 $('#dlClose').addEventListener('click', function(){ $('#dlgDl').close(); });
+$('#dlAll').addEventListener('click', function(){ document.querySelectorAll('#dlFields input').forEach(function(i){ i.checked=true; }); });
+$('#dlNone').addEventListener('click', function(){ document.querySelectorAll('#dlFields input').forEach(function(i){ i.checked=false; }); });
+function dlNurs(){ var v=$('#dlNur').value; return v?[v]:['1','2']; }
 $('#dlPdf').addEventListener('click', async function(){
-  if(!window.jspdf) await ensurePdf();
-  var buf=null; try{ buf=pdfStock(); }catch(e){ buf=null; }
-  if(!buf){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
+  var keys=dlKeys(); if(!keys) return;
+  if(!window.jspdf) await ensurePdf(); var J=window.jspdf&&window.jspdf.jsPDF;
+  if(!J){ toast('The PDF tools did not load. Check your connection and try again.'); return; }
   if(!downloads){ toast('Saving files is not available in this view.'); return; }
-  try{ await downloads.save({filename:'stock-report-'+selDate+'.pdf', data:buf}); $('#dlgDl').close(); }
-  catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
+  try{
+    var doc=pdfBase('Stock Report'), y=94+70, R={halign:'right'}, cs={};
+    var land=keys.length>8; if(land){ doc=new J({unit:'pt',format:'a4',orientation:'landscape'}); letterhead(doc); doc.setFontSize(16); doc.text('Nursery Manager - Stock Report',40,116); doc.setFontSize(10); doc.text('Date: '+fmtLong(selDate),40,136); y=164; }
+    keys.forEach(function(k,i){ if(DL_NUM[k]) cs[i]=R; if(k==='sl') cs[i]={cellWidth:40}; });
+    dlNurs().forEach(function(n){
+      var t=dlTable(n,keys); if(y>(land?470:690)){ doc.addPage(); y=50; }
+      doc.setFontSize(12); doc.text(NURS[n],40,y); doc.setFontSize(10);
+      if(!t.items.length){ doc.text('No items in this nursery.',40,y+16); y+=36; return; }
+      doc.autoTable({startY:y+6,theme:'grid',styles:{fontSize:9,cellPadding:4},head:[t.head],body:t.body,foot:t.foot,headStyles:{fillColor:[42,127,62]},footStyles:{fillColor:[228,237,230],textColor:20},columnStyles:cs});
+      y=doc.lastAutoTable.finalY+20;
+    });
+    await downloads.save({filename:'stock-report-'+selDate+'.pdf',data:doc.output('arraybuffer')}); $('#dlgDl').close();
+  }catch(e){ if(!e||e.code!=='declined') toast('The PDF could not be saved here.'); }
 });
 $('#dlXls').addEventListener('click', async function(){
+  var keys=dlKeys(); if(!keys) return;
   await ensureXlsx(); if(!window.XLSX){ toast('The Excel tool did not load. Check your connection and try again.'); return; }
+  if(!downloads){ toast('Saving files is not available in this view.'); return; }
   try{
     var wb=XLSX.utils.book_new();
-    ['1','2'].forEach(function(n){
-      var items=rowsOf(n), s=sums(items), tn=0;
-      var aoa=[[NURS[n]+' - Stock Report'],['Date: '+fmtLong(selDate)],[],['Sl.No.','Item Name','Category','Source','Tags','Total Qty','Purchases','Sales','Damages','Transfers (net)','Bal Qty']];
-      items.forEach(function(it,i){ var r=it[1], t=xferOf(r); tn+=t.in-t.out; aoa.push([i+1,r.name,catName(r.cat)||'',SRC_NAME[r.src]||'',(r.tags||[]).join(', '),r.total||0,r.purchase||0,r.sales||0,r.damages||0,t.in-t.out,bal(r)]); });
-      aoa.push(['','Totals','','','',s.total,s.purchase,s.sales,s.damages,tn,s.bal]);
+    dlNurs().forEach(function(n){
+      var t=dlTable(n,keys), aoa=[[NURS[n]+' - Stock Report'],['Date: '+fmtLong(selDate)],[],t.head].concat(t.body,t.foot);
       var ws=XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols']=[{wch:7},{wch:36},{wch:22},{wch:16},{wch:20},{wch:11},{wch:11},{wch:9},{wch:10},{wch:15},{wch:10}];
+      ws['!cols']=keys.map(function(k){ return {wch:k==='name'?36:k==='notes'?60:k==='cat'?22:k==='sl'?7:14}; });
       XLSX.utils.book_append_sheet(wb,ws,NURS[n].replace(/[\\\/?*\[\]:]/g,'').slice(0,31));
     });
-    var nrows=[['Nursery','Item','Entry','Reason / report']];
-    ['1','2'].forEach(function(n){ rowsOf(n).forEach(function(it){ var r=it[1], nt=r.notes||{};
-      ['purchase','sales','damages'].forEach(function(f){ if(nt[f]&&(nt[f].text||nt[f].reason)) nrows.push([NURS[n],r.name,NOTE_LABELS[f]+' '+(r[f]||0),[nt[f].reason,nt[f].text].filter(Boolean).join(' - ')]); });
-      xferEntries(r).forEach(function(e){ nrows.push([NURS[n],r.name,'Transferred '+(e.k==='in'?'in ':'out ')+e.q,(e.k==='in'?'From ':'To ')+NURS[e.o||'1']+(e.n?' - '+e.n:'')]); }); }); });
-    if(day.report&&day.report.text) nrows.push([],['Supervisor\'s report','','',day.report.text]);
-    if(nrows.length>1){ var w2=XLSX.utils.aoa_to_sheet(nrows); w2['!cols']=[{wch:20},{wch:30},{wch:20},{wch:60}]; XLSX.utils.book_append_sheet(wb,w2,'Reasons And Reports'); }
     var out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
-    if(!downloads){ toast('Saving files is not available in this view.'); return; }
-    await downloads.save({filename:'stock-report-'+selDate+'.xlsx', data:out}); $('#dlgDl').close();
+    await downloads.save({filename:'stock-report-'+selDate+'.xlsx',data:out}); $('#dlgDl').close();
   }catch(e){ if(!e||e.code!=='declined') toast('The Excel file could not be saved here.'); }
 });
 /* ---------- stock categories ---------- */
