@@ -617,7 +617,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 3:50 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:10 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -8021,18 +8021,24 @@ $('#dlXls').addEventListener('click', async function(){
 /* ---------- auto-fit numbers and help lines to their boxes ---------- */
 var fitCv=null;
 function fitOne(n){
-  n.style.fontSize='';
+  n.style.fontSize=''; n.style.transform=''; n.style.width=''; n.style.paddingLeft=n.style.paddingRight=''; n.style.marginLeft=''; n.style.display=n.classList.contains('fitme')?n.style.display:'';
   var isIn=n.tagName==='INPUT', cs=getComputedStyle(n), txt=isIn?n.value:n.textContent; if(!txt) return;
-  if(!isIn&&cs.display==='inline'){ n.style.display='inline-block'; n.style.whiteSpace='nowrap'; }
-  var G=n.classList.contains('fitme')?0:7, avail;
-  if(isIn){ n.style.paddingLeft=n.style.paddingRight='0px'; avail=n.clientWidth; }
-  else{ var par=n.parentElement; if(!par||!par.clientWidth) return; var pc=getComputedStyle(par); avail=par.clientWidth-parseFloat(pc.paddingLeft)-parseFloat(pc.paddingRight); if(cs.display==='block'&&n.clientWidth) avail=Math.min(avail,n.clientWidth); }
-  if(!avail) return;
+  var me=n.classList.contains('fitme'), G=me?0:7, par=n.parentElement; if(!par||!par.clientWidth) return;
+  var avail;
+  if(isIn){ avail=n.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)+0; avail=par.clientWidth-parseFloat(getComputedStyle(par).paddingLeft)-parseFloat(getComputedStyle(par).paddingRight); }
+  else{ var pc=getComputedStyle(par); avail=par.clientWidth-parseFloat(pc.paddingLeft)-parseFloat(pc.paddingRight); }
+  if(avail<=0) return;
   fitCv=fitCv||document.createElement('canvas').getContext('2d');
-  var fs=parseFloat(cs.fontSize), i=0, fw=cs.fontWeight, ff=cs.fontFamily;
-  var wid=function(){ fitCv.font=fw+' '+fs+'px '+ff; return fitCv.measureText(txt).width+(parseFloat(cs.letterSpacing)||0)*txt.length; };
-  while(wid()>avail-2*G&&fs>7&&i++<60){ fs-=.5; }
+  var base=parseFloat(cs.fontSize), fs=me?base:Math.round(base*1.18*2)/2, fw=cs.fontWeight, ff=cs.fontFamily, ls=parseFloat(cs.letterSpacing)||0;
+  var wid=function(){ fitCv.font=fw+' '+fs+'px '+ff; return fitCv.measureText(txt).width+ls*txt.length; };
+  var MINK=0.62, k=1, i=0;
+  if(me){ while(wid()>avail&&fs>7&&i++<60) fs-=.5; n.style.fontSize=fs+'px'; return; }
+  while(i++<80){ var need=wid()+2*G; k=Math.min(1,avail/need); if(k>=MINK||fs<=7) break; fs-=.5; }
   n.style.fontSize=fs+'px';
+  if(k<1){
+    n.style.display='block'; n.style.width=(100/k)+'%'; n.style.transformOrigin='left center'; n.style.transform='scaleX('+k+')'; n.style.textAlign='center';
+    n.style.paddingLeft=n.style.paddingRight=(G/k)+'px'; n.style.boxSizing='border-box';
+  }
 }
 var fitTm=0;
 function fitAll(){ clearTimeout(fitTm); fitTm=setTimeout(function(){ requestAnimationFrame(function(){ document.querySelectorAll('#list .c input, #list .c .val, #list .fitme, #totals .val, #totals .c span:not(.lab)').forEach(fitOne); }); },40); }
