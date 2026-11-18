@@ -206,7 +206,8 @@ input.rchk{width:28px; height:28px; padding:0; flex:0 0 auto; accent-color:var(-
 .notes{display:flex; flex-direction:column; gap:4px; margin-top:6px; grid-column:2/-1}
 .notes:empty{display:none}
 #list .c input, #totals .c input{text-align:center !important}
-#list .c .val, #totals .c .val{display:block; text-align:center !important}
+#list .c .val, #totals .c .val{display:flex !important; align-items:center; justify-content:center; text-align:center !important}
+#list .c input, #totals .c input{padding-top:0 !important; padding-bottom:0 !important; line-height:42px}
 .costrow{grid-column:2/-1; display:flex; gap:8px; justify-content:flex-end; margin-top:2px}
 .costrow .c{width:110px}
 .costrow .lab{display:block; text-align:center}
@@ -619,7 +620,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 4:35 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2182,7 +2183,7 @@ function updateRow(el,id,r,n){
   [['cost','Cost price'],['mcip','Monthly cost increase'],['sp','Sales price']].forEach(function(d){
     if((d[0]==='cost'||d[0]==='mcip') && !isOwner) return;
     var v=Number(r[d[0]])||0;
-    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v:''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
+    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?v.toFixed(2):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
     else R[d[0]+'V'].textContent=v?'\u20b9'+fmtMoney(v):'\u2013';
   });
   if(R.mcn){ var mq=Number(r.mcip)||0, mm=mcipMonths(r); R.mcn.hidden=!(mq>0); R.mcn.textContent=mq>0?(Number(r.cost)>0&&r.mcipAt?'SP = CP + MCIP \u00d7 '+mm+' month'+(mm===1?'':'s')+' (updates monthly)':'Enter CP so SP can update monthly'):''; }
@@ -3377,7 +3378,7 @@ function mcipSync(){
 async function commitCost(id,inp,fld){
   if(!isOwner) return;
   var r=day&&day.rows&&day.rows[id], stored=r?(Number(r[fld])||0):0;
-  var reset=function(){ inp.value=stored?stored:''; };
+  var reset=function(){ inp.value=stored?stored.toFixed(2):''; };
   if(!r||!editable()){ reset(); return; }
   var v=parseFloat(inp.value); if(!(v>0)) v=0; v=Math.round(v*100)/100;
   if(v===stored){ reset(); return; }
@@ -8038,7 +8039,7 @@ function fitOne(n){
   while(i++<80){ var need=wid()+2*G; k=Math.min(1,avail/need); if(k>=MINK||fs<=7) break; fs-=.5; }
   n.style.fontSize=fs+'px';
   if(k<1){
-    n.style.display='block'; n.style.width=(100/k)+'%'; n.style.transformOrigin='left center'; n.style.transform='scaleX('+k+')'; n.style.textAlign='center';
+    if(isIn) n.style.display='block'; n.style.width=(100/k)+'%'; n.style.transformOrigin='left center'; n.style.transform='scaleX('+k+')'; n.style.textAlign='center';
     n.style.paddingLeft=n.style.paddingRight=(G/k)+'px'; n.style.boxSizing='border-box';
   }
 }
