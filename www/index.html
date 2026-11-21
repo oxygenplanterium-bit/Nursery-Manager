@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 1:55 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 2:20 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -3373,7 +3373,7 @@ async function commit(id,f,inp){
 function mcipMonths(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); }
 function mcipNext(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(), m=Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); var d=new Date(a.getFullYear(),a.getMonth()+m+1,1); return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
 var MC_SIZES=['2.5” PS','3” PS','4” PS','5” PS','6” PS','7” PS','8” PS','10” PS','12” PS','14” PS','16” PS','18” PS','20” PS','24” PS','28” PS','MBag','05x06 BS','05x07 BS','06x06 BS','07x09 BS','08x10 BS','09x10 BS','12x12 BS','13x13 BS','15x16 BS','18x18 BS','21x21 BS','25x25 BS','30x30 BS','40x40 BS'];
-var mcCustom={}, mcAmt={}, mcShow=true, mcBuilt=null, mcSig='';
+var mcDraft={}, mcCustom={}, mcAmt={}, mcShow=true, mcBuilt=null, mcSig='';
 try{ mcShow=localStorage.getItem('mcSizeShow')!=='0'; }catch(e){}
 function mcKey(l){ return String(l).replace(/[^A-Za-z0-9]+/g,'_'); }
 function mcAll(){
@@ -3414,7 +3414,8 @@ function mcipAllCard(){
   all.forEach(function(z,i){
     var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:center';
     var lb=mk('span',null,(i<9?'0':'')+(i+1)+'. '+z.l); lb.style.cssText='flex:0 0 106px;font-weight:600;font-size:.92rem';
-    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcAmt[z.k]>0) inp.value=String(mcAmt[z.k]);
+    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcDraft[z.k]!==undefined) inp.value=mcDraft[z.k]; else if(mcAmt[z.k]>0) inp.value=String(mcAmt[z.k]);
+    inp.addEventListener('input',function(){ mcDraft[z.k]=inp.value; });
     var go=mk('button','btn small','Apply ('+cnt[i]+')'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap;min-width:84px'; go.setAttribute('aria-label','Apply to all '+z.l+' in stock titles');
     go.addEventListener('click',function(){
       var v=parseFloat(inp.value); if(!(v>=0)){ toast('Enter an amount, or 0 to remove.'); return; } v=Math.round(v*100)/100;
@@ -3424,7 +3425,7 @@ function mcipAllCard(){
         var ids=mcMatch(z.l); if(!ids.length){ toast('No stock titles with size '+z.l+'.'); return; }
         var patch={rows:{}}, now=Date.now();
         ids.forEach(function(id){ var r=day.rows[id]; patch.rows[id]= v>0 ? {mcip:v, mcipAt:now, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0} : {mcip:0, mcipAt:0, mcC:null, mcS:null}; });
-        if(await save(patch)){ var sp={mcsa:{}}; sp.mcsa[z.k]=v; saveSettings(sp); mcAmt[z.k]=v; toast(v>0?('MCIP '+fmtN(v)+' set on '+ids.length+' '+z.l+' title'+(ids.length>1?'s':'')):('MCIP removed from '+ids.length+' '+z.l+' title'+(ids.length>1?'s':''))); }
+        if(await save(patch)){ var sp={mcsa:{}}; sp.mcsa[z.k]=v; saveSettings(sp); mcAmt[z.k]=v; delete mcDraft[z.k]; toast(v>0?('MCIP '+fmtN(v)+' set on '+ids.length+' '+z.l+' title'+(ids.length>1?'s':'')):('MCIP removed from '+ids.length+' '+z.l+' title'+(ids.length>1?'s':''))); }
       });
     });
     rw.append(lb,inp,go);
@@ -3433,6 +3434,22 @@ function mcipAllCard(){
       rw.append(rm); }
     c.append(rw);
   });
+  var aa=mk('button','btn','Apply To All'); aa.type='button'; aa.style.cssText='width:100%;margin-top:4px'; aa.setAttribute('aria-label','Apply the typed MCIP to all sizes at once');
+  aa.addEventListener('click',function(){
+    if(!day||!editable()||!isOwner) return;
+    var ent=[]; all.forEach(function(z){ var raw=mcDraft[z.k]; if(raw===undefined||String(raw).trim()==='') return; var v=parseFloat(raw); if(v>=0) ent.push({z:z,v:Math.round(v*100)/100}); });
+    if(!ent.length){ toast('Type an MCIP in at least one size box first.'); return; }
+    arm(aa,'mcall','Apply To All',async function(){
+      var patch={rows:{}}, now=Date.now(), seen={}, cntT=0, sp={mcsa:{}};
+      ent.forEach(function(e){ sp.mcsa[e.z.k]=e.v; var re=mcTest(e.z.l); if(!re) return;
+        Object.keys(day.rows).forEach(function(id){ var r=day.rows[id]; if(!r||r.removed||r.pending||seen[id]||!re.test(String(r.name||''))) return; seen[id]=1; cntT++;
+          patch.rows[id]= e.v>0 ? {mcip:e.v, mcipAt:now, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0} : {mcip:0, mcipAt:0, mcC:null, mcS:null}; }); });
+      if(cntT && !(await save(patch))) return;
+      saveSettings(sp); ent.forEach(function(e){ mcAmt[e.z.k]=e.v; delete mcDraft[e.z.k]; }); mcSig=''; mcipAllCard();
+      toast(cntT?('MCIP applied to '+cntT+' stock title'+(cntT>1?'s':'')+' across '+ent.length+' size'+(ent.length>1?'s':'')):'Amounts saved. No stock titles match those sizes yet.');
+    });
+  });
+  c.append(aa);
   var ad=mk('div'); ad.style.cssText='display:flex;gap:6px;align-items:center;margin-top:4px';
   var ty=document.createElement('select'); ty.setAttribute('aria-label','Size type'); ['BS','PS'].forEach(function(t){ var o=mk('option',null,t==='BS'?'BS (Bag Size)':'PS (Pot Size)'); o.value=t; ty.append(o); }); ty.style.cssText='flex:0 0 130px;height:40px';
   var nm=document.createElement('input'); nm.type='text'; nm.placeholder='Size, e.g. 09x12 or 9”'; nm.maxLength=14; nm.autocomplete='off'; nm.setAttribute('aria-label','New size'); nm.style.cssText='flex:1 1 auto;min-width:0;height:40px';
