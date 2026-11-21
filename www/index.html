@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 12:10 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 12:40 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2296,7 +2296,7 @@ function renderTotals(items){
   Object.keys(s).forEach(function(f){ totalsBuilt[f].textContent=fmtN(s[f]); });
 }
 function renderStock(){
-  setTimeout(mcipSync,0); setTimeout(hideAllLabel,0); fitAll(); catSync(); tagSync();
+  mcipAllCard(); setTimeout(mcipSync,0); setTimeout(hideAllLabel,0); fitAll(); catSync(); tagSync();
   var items=day ? sortedRows() : [];
   var show=!!day && items.length>0, q=filter.trim().toLowerCase();
   $('#ledger').hidden=!show; if(!show){ var sa0=$('#stockAmt'); if(sa0) sa0.hidden=true; }
@@ -3371,6 +3371,36 @@ async function commit(id,f,inp){
 }
 function mcipMonths(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); }
 function mcipNext(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(), m=Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); var d=new Date(a.getFullYear(),a.getMonth()+m+1,1); return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+var mcAllBuilt=null;
+function mcipAllCard(){
+  var host=$('#stockAmt'); if(!host) return;
+  var show=!!(isOwner&&canWrite&&day&&editable());
+  if(!mcAllBuilt){
+    var c=mk('div','card'); c.id='mcipAll'; c.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 14px';
+    c.append(mk('b',null,'MCIP For All Stock'));
+    c.append(mk('span','pmeta','Enter the monthly cost increase per plant. Applying it sets MCIP on every stock card in both nurseries. CP and SP then each increase by it on the 1st of every month. Enter 0 to remove it from all.'));
+    var rw=mk('div'); rw.style.cssText='display:flex;gap:8px;align-items:stretch';
+    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP amount'; inp.setAttribute('aria-label','MCIP for all stock'); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center';
+    var go=mk('button','btn primary','Apply To All Cards'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap';
+    var er=mk('span','pmeta'); er.style.color='var(--bad,#c0392b)';
+    go.addEventListener('click', function(){
+      er.textContent=''; var v=parseFloat(inp.value);
+      if(!(v>=0)){ er.textContent='Enter an amount, or 0 to remove.'; return; }
+      v=Math.round(v*100)/100;
+      if(!day||!editable()||!isOwner) return;
+      arm(go,'mcipAll','Apply To All Cards',async function(){
+        var rows=day.rows||{}, patch={rows:{}}, n=0, now=Date.now();
+        Object.keys(rows).forEach(function(id){ var r=rows[id]; if(!r||r.removed||r.pending) return;
+          patch.rows[id]= v>0 ? {mcip:v, mcipAt:now, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0} : {mcip:0, mcipAt:0, mcC:null, mcS:null}; n++; });
+        if(!n){ toast('No stock cards to change.'); return; }
+        if(await save(patch)) toast(v>0?('MCIP '+fmtN(v)+' set on '+n+' stock card'+(n>1?'s':'')):('MCIP removed from '+n+' stock card'+(n>1?'s':'')));
+      });
+    });
+    rw.append(inp,go); c.append(rw,er); mcAllBuilt=c;
+  }
+  if(mcAllBuilt.parentNode!==host.parentNode||mcAllBuilt.previousSibling!==host) host.after(mcAllBuilt);
+  mcAllBuilt.hidden=!show;
+}
 var mcSyncing=false, mcLast=0;
 function mcipSync(){
   if(mcSyncing||!isOwner||!canWrite||!day||!day.rows||!editable()||Date.now()-mcLast<8000) return;
