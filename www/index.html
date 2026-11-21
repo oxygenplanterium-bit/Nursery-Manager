@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 12:40 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 1:30 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -3371,35 +3371,80 @@ async function commit(id,f,inp){
 }
 function mcipMonths(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); }
 function mcipNext(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(), m=Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); var d=new Date(a.getFullYear(),a.getMonth()+m+1,1); return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
-var mcAllBuilt=null;
+var MC_SIZES=['2.5” PS','3” PS','4” PS','5” PS','6” PS','7” PS','8” PS','10” PS','12” PS','14” PS','16” PS','18” PS','20” PS','24” PS','28” PS','MBag','05x06 BS','05x07 BS','06x06 BS','07x09 BS','08x10 BS','09x10 BS','12x12 BS','13x13 BS','15x16 BS','18x18 BS','21x21 BS','25x25 BS','30x30 BS','40x40 BS'];
+var mcCustom={}, mcAmt={}, mcShow=true, mcBuilt=null, mcSig='';
+try{ mcShow=localStorage.getItem('mcSizeShow')!=='0'; }catch(e){}
+function mcKey(l){ return String(l).replace(/[^A-Za-z0-9]+/g,'_'); }
+function mcAll(){
+  var a=MC_SIZES.map(function(l){ return {k:mcKey(l),l:l,c:false}; });
+  Object.keys(mcCustom).sort().forEach(function(id){ var c=mcCustom[id]; if(c&&c.n&&!c.x) a.push({k:'c'+id,l:c.n,c:true,id:id}); });
+  return a;
+}
+function mcTest(l){
+  var t=String(l).trim(), m;
+  if(/^m\s*bag$/i.test(t)) return /(^|[^a-z])m\s*bag([^a-z]|$)/i;
+  if((m=t.match(/^(\d+)\s*[x×]\s*(\d+)\s*bs$/i))) return new RegExp('(^|[^\\d.])0?'+parseInt(m[1],10)+'\\s*[x×]\\s*0?'+parseInt(m[2],10)+'(?!\\d)','i');
+  if((m=t.match(/^(\d+(?:\.\d+)?)\s*["”″“']*\s*ps$/i))) return new RegExp('(^|[^\\d.])'+m[1].replace('.','\\.')+'\\s*(?:["”″“\u2019\']\\s*)?ps(?![a-z])','i');
+  return null;
+}
+function mcMatch(l){
+  var re=mcTest(l), out=[]; if(!re||!day||!day.rows) return out;
+  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id]; if(r&&!r.removed&&!r.pending&&re.test(String(r.name||''))) out.push(id); });
+  return out;
+}
 function mcipAllCard(){
   var host=$('#stockAmt'); if(!host) return;
   var show=!!(isOwner&&canWrite&&day&&editable());
-  if(!mcAllBuilt){
-    var c=mk('div','card'); c.id='mcipAll'; c.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 14px';
-    c.append(mk('b',null,'MCIP For All Stock'));
-    c.append(mk('span','pmeta','Enter the monthly cost increase per plant. Applying it sets MCIP on every stock card in both nurseries. CP and SP then each increase by it on the 1st of every month. Enter 0 to remove it from all.'));
-    var rw=mk('div'); rw.style.cssText='display:flex;gap:8px;align-items:stretch';
-    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP amount'; inp.setAttribute('aria-label','MCIP for all stock'); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center';
-    var go=mk('button','btn primary','Apply To All Cards'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap';
-    var er=mk('span','pmeta'); er.style.color='var(--bad,#c0392b)';
-    go.addEventListener('click', function(){
-      er.textContent=''; var v=parseFloat(inp.value);
-      if(!(v>=0)){ er.textContent='Enter an amount, or 0 to remove.'; return; }
-      v=Math.round(v*100)/100;
+  if(!mcBuilt){ mcBuilt=mk('div','card'); mcBuilt.id='mcipAll'; mcBuilt.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 14px'; }
+  if(mcBuilt.previousSibling!==host) host.after(mcBuilt);
+  mcBuilt.hidden=!show; if(!show) return;
+  var all=mcAll(), cnt=all.map(function(z){ return mcMatch(z.l).length; });
+  var sig=JSON.stringify([mcShow,mcCustom,mcAmt,cnt]); if(sig===mcSig) return;
+  if(mcBuilt.contains(document.activeElement)&&/^(INPUT|SELECT)$/.test(document.activeElement.tagName)) return;
+  mcSig=sig; var c=mcBuilt; c.textContent='';
+  var th=mk('div'); th.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px';
+  var tt=mk('b',null,'MCIP By Size'); tt.style.cssText='flex:1 1 auto;cursor:pointer'; th.append(tt);
+  var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=mcShow; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show MCIP by size'); swl.style.cssText+=';margin:0;gap:8px;flex:0 0 auto'; swl.append(swi,document.createElement('i'));
+  var tog=function(v){ try{ document.activeElement.blur(); }catch(e){} mcShow=v; try{ localStorage.setItem('mcSizeShow',v?'1':'0'); }catch(e){} mcSig=''; mcipAllCard(); };
+  swi.addEventListener('change',function(){ tog(swi.checked); }); tt.addEventListener('click',function(){ tog(!mcShow); });
+  th.append(swl); c.append(th);
+  if(!mcShow) return;
+  c.append(mk('span','pmeta','Type the monthly cost increase for a size and tap Apply. It is set on every stock title of that size in both nurseries. CP and SP then each increase by it on the 1st of every month. Enter 0 to remove it.'));
+  all.forEach(function(z,i){
+    var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:center';
+    var lb=mk('span',null,(i<9?'0':'')+(i+1)+'. '+z.l); lb.style.cssText='flex:0 0 106px;font-weight:600;font-size:.92rem';
+    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcAmt[z.k]>0) inp.value=String(mcAmt[z.k]);
+    var go=mk('button','btn small','Apply ('+cnt[i]+')'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap;min-width:84px'; go.setAttribute('aria-label','Apply to all '+z.l+' in stock titles');
+    go.addEventListener('click',function(){
+      var v=parseFloat(inp.value); if(!(v>=0)){ toast('Enter an amount, or 0 to remove.'); return; } v=Math.round(v*100)/100;
       if(!day||!editable()||!isOwner) return;
-      arm(go,'mcipAll','Apply To All Cards',async function(){
-        var rows=day.rows||{}, patch={rows:{}}, n=0, now=Date.now();
-        Object.keys(rows).forEach(function(id){ var r=rows[id]; if(!r||r.removed||r.pending) return;
-          patch.rows[id]= v>0 ? {mcip:v, mcipAt:now, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0} : {mcip:0, mcipAt:0, mcC:null, mcS:null}; n++; });
-        if(!n){ toast('No stock cards to change.'); return; }
-        if(await save(patch)) toast(v>0?('MCIP '+fmtN(v)+' set on '+n+' stock card'+(n>1?'s':'')):('MCIP removed from '+n+' stock card'+(n>1?'s':'')));
+      var lab='Apply ('+cnt[i]+')';
+      arm(go,'mc'+z.k,lab,async function(){
+        var ids=mcMatch(z.l); if(!ids.length){ toast('No stock titles with size '+z.l+'.'); return; }
+        var patch={rows:{}}, now=Date.now();
+        ids.forEach(function(id){ var r=day.rows[id]; patch.rows[id]= v>0 ? {mcip:v, mcipAt:now, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0} : {mcip:0, mcipAt:0, mcC:null, mcS:null}; });
+        if(await save(patch)){ var sp={mcsa:{}}; sp.mcsa[z.k]=v; saveSettings(sp); mcAmt[z.k]=v; toast(v>0?('MCIP '+fmtN(v)+' set on '+ids.length+' '+z.l+' title'+(ids.length>1?'s':'')):('MCIP removed from '+ids.length+' '+z.l+' title'+(ids.length>1?'s':''))); }
       });
     });
-    rw.append(inp,go); c.append(rw,er); mcAllBuilt=c;
-  }
-  if(mcAllBuilt.parentNode!==host.parentNode||mcAllBuilt.previousSibling!==host) host.after(mcAllBuilt);
-  mcAllBuilt.hidden=!show;
+    rw.append(lb,inp,go);
+    if(z.c){ var rm=mk('button','btn small','Remove'); rm.type='button'; rm.style.cssText='flex:0 0 auto';
+      rm.addEventListener('click',function(){ arm(rm,'mcrm'+z.id,'Remove',async function(){ var sp={mcsz:{}}; sp.mcsz[z.id]={x:true}; if(await saveSettings(sp)){ mcCustom[z.id]={x:true}; mcSig=''; mcipAllCard(); toast('Size removed'); } }); });
+      rw.append(rm); }
+    c.append(rw);
+  });
+  var ad=mk('div'); ad.style.cssText='display:flex;gap:6px;align-items:center;margin-top:4px';
+  var ty=document.createElement('select'); ty.setAttribute('aria-label','Size type'); ['BS','PS'].forEach(function(t){ var o=mk('option',null,t==='BS'?'BS (Bag Size)':'PS (Pot Size)'); o.value=t; ty.append(o); }); ty.style.cssText='flex:0 0 130px;height:40px';
+  var nm=document.createElement('input'); nm.type='text'; nm.placeholder='Size, e.g. 09x12 or 9”'; nm.maxLength=14; nm.autocomplete='off'; nm.setAttribute('aria-label','New size'); nm.style.cssText='flex:1 1 auto;min-width:0;height:40px';
+  var ab=mk('button','btn small','Add Size'); ab.type='button'; ab.style.cssText='flex:0 0 auto';
+  ab.addEventListener('click',async function(){
+    var raw=nm.value.trim().replace(/\s+/g,' ').replace(/["”″“]/g,'”'); if(!raw){ toast('Type the size first.'); return; }
+    var lab=ty.value==='PS'?(raw.replace(/\s*ps$/i,'').replace(/”$/,'')+'” PS'):(raw.replace(/\s*bs$/i,'')+' BS');
+    if(!mcTest(lab)){ toast(ty.value==='PS'?'Type a pot size like 9 or 2.5.':'Type a bag size like 09x12.'); return; }
+    var dup=mcAll().some(function(z){ return z.l.toLowerCase()===lab.toLowerCase(); }); if(dup){ toast('That size is already in the list.'); return; }
+    var id='s'+Date.now().toString(36), sp={mcsz:{}}; sp.mcsz[id]={n:lab,t:ty.value};
+    if(await saveSettings(sp)){ mcCustom[id]=sp.mcsz[id]; nm.value=''; mcSig=''; mcipAllCard(); toast(lab+' added'); }
+  });
+  ad.append(ty,nm,ab); c.append(ad);
 }
 var mcSyncing=false, mcLast=0;
 function mcipSync(){
@@ -8299,6 +8344,7 @@ function applySettings(d){
   ownerWa = String(d.ownerWa||'');
   var c0=d.co||{}; CO={n:c0.n||'Oxygen Planterium',a:c0.a||'',c:c0.c||'',p:c0.p||'',s:c0.s||'',t:c0.t||'',e:c0.e||''};
   team = {sup:(d.team&&d.team.sup)||{}, staff:(d.team&&d.team.staff)||{}};
+  mcCustom=d.mcsz||{}; mcAmt=d.mcsa||{}; mcSig='';
   res = d.res||{}; ct = d.ct||{}; cg = d.cg||{}; if(tab==='call') renderCall();
   srcApply(d); if($('#dlgSrcs')&&$('#dlgSrcs').open) srcsRender();
   catMap = d.cats||{}; minMap = d.min||{}; kpiT = d.kpi||{}; sopMap = d.sop||{}; if($('#dlgSop')&&$('#dlgSop').open&&!Object.keys(sopOpen).some(function(k){ return sopOpen[k]==='edit'; })) renderSopList(); 
