@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 18 Nov 2026, 9:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 11:10 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2195,6 +2195,7 @@ function updateRow(el,id,r,n){
   (function(){ var n=R.amt.textContent.length; R.amt.style.fontSize=n>9?Math.max(.6,Math.round(8.4/n*100)/100)+'em':''; R.amt.style.whiteSpace='nowrap'; })();
   R.notes.textContent='';
   ['purchase','sales','damages'].forEach(function(f){ var ne=noteEl(id,r,f,ed); if(ne) R.notes.append(ne); });
+  if(r.mvd&&r.mvd.f){ var me=mk('span','note xfer'); me.append(mk('b',null,'Moved from '+NURS[r.mvd.f]+' to '+NURS[r.nid||'1'])); var mm2=[r.mvd.by,fmtTime(r.mvd.at)].filter(Boolean).join(' '); if(mm2) me.append(mk('small',null,mm2)); R.notes.append(me); }
   xferEntries(r).forEach(function(e){
     var el=mk('span','note xfer'); el.append(mk('b',null,(e.k==='in'?'Transferred in ':'Transferred out ')+e.q));
     el.append(document.createTextNode((e.k==='in'?' from ':' to ')+NURS[e.o||'1']+(e.n?' · '+e.n:'')));
@@ -3715,7 +3716,7 @@ function moveRow(id,btn){
   var from=r.nid||'1';
   mvAllOpen('item',1,async function(dest){
     if(rowClash(r.name,dest,id)){ toast(r.name+' is already in '+NURS[dest]+'.'); return; }
-    var p={rows:{}}; p.rows[id]={nid:dest};
+    var p={rows:{}}; p.rows[id]={nid:dest, mvd:{f:from,at:Date.now(),by:nameNow()||(isOwner?'Owner':'')}};
     if(await save(p)){ logMove('rows',[{id:id,from:from,dest:dest}]); toast(r.name+' moved to '+NURS[dest]); }
   },{head:'Move Item',info:'"'+r.name+'" is in '+NURS[from]+'.',from:from});
 }
@@ -3758,7 +3759,7 @@ async function undoMove(kind){
     if(!o||o.removed||o.x||(o.nid||'1')!==x.dest){ skip++; return; }
     if(kind==='rows'&&rowClash(o.name,x.from,x.id)){ skip++; return; }
     if(kind==='res'&&resClash(o.n,x.from,x.id)){ skip++; return; }
-    p[key][x.id]={nid:x.from}; n++;
+    p[key][x.id]=kind==='rows'?{nid:x.from,mvd:null}:{nid:x.from}; n++;
   });
   moveLog[kind].splice(i,1); moveLogSave();
   if(!n){ toast('Nothing to undo: those items were changed since.'); undoSync(); return; }
@@ -3793,7 +3794,7 @@ $('#mvAllStock').addEventListener('click', function(){
   mvAllOpen('items',n0, async function(dest){
     var p={rows:{}}, n=0, skip=0, seen={};
     var ent=[]; sortedRows().forEach(function(it){ var r=it[1], k=normName(r.name);
-      if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest}; ent.push({id:it[0],from:r.nid||'1',dest:dest}); n++; });
+      if(rowClash(r.name,dest,it[0])||seen[k]){ skip++; return; } seen[k]=1; p.rows[it[0]]={nid:dest, mvd:{f:r.nid||'1',at:Date.now(),by:nameNow()||(isOwner?'Owner':'')}}; ent.push({id:it[0],from:r.nid||'1',dest:dest}); n++; });
     if(!n){ toast(skip?'Nothing moved: names already exist in '+NURS[dest]+'.':'No items to move.'); return; }
     var okm=await save(p); if(okm) logMove('rows',ent); if(okm) toast(n+' item'+(n>1?'s':'')+' moved to '+NURS[dest]+(skip?'; '+skip+' skipped (same name exists)':''));
   });
