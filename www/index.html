@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 1:30 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 1:55 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -3160,6 +3160,7 @@ async function approveItem(id,inp){
   var rows=day.rows, maxO=0;
   Object.keys(rows).forEach(function(k){ maxO=Math.max(maxO,rows[k].order||0); });
   var p={rows:{}}; p.rows[id]={pending:false, order:maxO+1, total:num(inp.value), purchase:0, sales:0, damages:0, approvedAt:Date.now()};
+  var av=mcAuto(r); if(av>0){ p.rows[id].mcip=av; p.rows[id].mcipAt=Date.now(); p.rows[id].mcC=Number(r.cost)||0; p.rows[id].mcS=Number(r.sp)||0; }
   if(await save(p)) toast(r.name+' approved and added to the list');
 }
 async function rejectItem(id){
@@ -3447,9 +3448,17 @@ function mcipAllCard(){
   ad.append(ty,nm,ab); c.append(ad);
 }
 var mcSyncing=false, mcLast=0;
+function mcAuto(r){
+  var nm=String((r&&r.name)||''), z=mcAll(), i, re;
+  for(i=0;i<z.length;i++){ if(!(mcAmt[z[i].k]>0)) continue; re=mcTest(z[i].l); if(re&&re.test(nm)) return mcAmt[z[i].k]; }
+  return 0;
+}
 function mcipSync(){
   if(mcSyncing||!isOwner||!canWrite||!day||!day.rows||!editable()||Date.now()-mcLast<8000) return;
   var patch={rows:{}}, n=0, r2=function(x){ return Math.round(x*100)/100; };
+  var now0=Date.now();
+  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id]; if(!r||r.removed||r.pending||!r.by||r.mcip!=null) return;
+    var v=mcAuto(r); if(v>0){ patch.rows[id]={mcip:v, mcipAt:now0, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0}; n++; } });
   Object.keys(day.rows).forEach(function(id){ var r=day.rows[id], m=Number(r.mcip)||0; if(!(m>0)||!r.mcipAt||r.removed) return;
     var o={}, c0=r.mcC, s0=r.mcS;
     if(c0==null){ c0=Number(r.cost)||0; o.mcC=c0; } if(s0==null){ s0=Number(r.sp)||0; o.mcS=s0; }
