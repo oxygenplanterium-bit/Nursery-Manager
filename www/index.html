@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 2:35 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 4:35 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -692,6 +692,7 @@ select:not([multiple]){pointer-events:none}
     <div class="bar" id="stockBar" hidden>
       <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
       <input type="search" id="filter" placeholder="Search item name">
+      <div class="card" id="bothCard" hidden style="padding:10px 14px"><label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer"><input type="checkbox" id="bothChk" style="width:22px;height:22px;flex:0 0 22px;margin:0"><span style="flex:1 1 auto;font-weight:600">Search Stock In Both Nurseries</span></label><span class="pmeta" id="bothHint" style="display:block;margin-top:4px" hidden>Type an item name above to see its stock card from both nurseries.</span></div>
       <div class="card" id="stockAmt" hidden style="display:flex;flex-direction:column;gap:2px;padding:10px 14px"></div>
       <div id="stockCtl">
         <select id="sortSel" aria-label="Sort stock">
@@ -1811,6 +1812,7 @@ var NOTE_LABELS = {purchase:'Purchase',sales:'Sale',damages:'Damage'};
 var db=null, user=null, downloads=null, uid=null, canWrite=false, isOwner=false, accountOwner=false;
 var index=null, selDate=todayKey(), followToday=true, day=undefined, unsubDay=null;
 var winPushed=false, winPane=null;
+var bothOn=false; try{ bothOn=localStorage.getItem('nmBoth')==='1'; }catch(e){}
 var catMap={}, catFilter='', tagFilter='', tab='', filter='', supName='', rowEls=new Map(), taskEls=new Map(), chain=Promise.resolve(), ensuring=false, lastToday=todayKey();
 var CK='nurseryCache1', cache={idx:null,days:{},meta:{}}, cacheT=null, indexLive=false, dayLive=false;
 try{ var cc=JSON.parse(localStorage.getItem(CK)||'null'); if(cc&&typeof cc==='object'){ cache.idx=cc.idx||null; cache.days=cc.days||{}; cache.meta=cc.meta||{}; } }catch(e){}
@@ -2169,7 +2171,7 @@ function noteEl(id,r,f,ed){
 }
 function updateRow(el,id,r,n){
   var R=el._r, ed=editable();
-  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=[catName(r.cat),SRC_NAME[r.src]||''].filter(Boolean).join(' \u00B7 '); R.cat.hidden=!R.cat.textContent; R.tg.textContent=''; (r.tags||[]).forEach(function(t){ R.tg.append(mk('span','rtag',t)); }); R.tg.hidden=!(r.tags&&r.tags.length);
+  R.sl.textContent=n; R.name.textContent=r.name; R.cat.textContent=[(bothOn&&filter.trim()?NURS[r.nid||'1']:''),catName(r.cat),SRC_NAME[r.src]||''].filter(Boolean).join(' \u00B7 '); R.cat.hidden=!R.cat.textContent; R.tg.textContent=''; (r.tags||[]).forEach(function(t){ R.tg.append(mk('span','rtag',t)); }); R.tg.hidden=!(r.tags&&r.tags.length);
   if(R.edit) R.edit.hidden=!ed;
   if(R.xf) R.xf.hidden=!(ed&&canWrite);
   if(R.mv){ R.mv.hidden=!(ed&&isOwner); if(!armed['mvr'+id]) R.mv.textContent=mvLabel(r.nid||'1'); }
@@ -2298,7 +2300,10 @@ function renderTotals(items){
 function renderStock(){
   mcipAllCard(); setTimeout(mcipSync,0); setTimeout(hideAllLabel,0); fitAll(); catSync(); tagSync();
   var items=day ? sortedRows() : [];
-  var show=!!day && items.length>0, q=filter.trim().toLowerCase();
+  var q=filter.trim().toLowerCase(), both=!!(bothOn&&q&&day);
+  var pool=both?sortedOf('rows'):items;
+  var show=!!day && (items.length>0||both);
+  var bc=$('#bothCard'); if(bc){ bc.hidden=!(!!day&&(items.length>0||sortedOf('rows').length>0)); $('#bothChk').checked=bothOn; $('#bothHint').hidden=!(bothOn&&!q); }
   $('#ledger').hidden=!show; if(!show){ var sa0=$('#stockAmt'); if(sa0) sa0.hidden=true; }
   $('#stockBar').hidden=!(show || (day && ((canWrite && editable()) || isOwner)));
   $('#filter').hidden=!show; $('#sortSel').hidden=!show; if($('#sortSel').value!==sortMode) $('#sortSel').value=sortMode;
@@ -2321,11 +2326,11 @@ function renderStock(){
       var b2=mk('button','btn primary addwide','Add New Item'); b2.type='button'; b2.addEventListener('click', openAdd); s.append(b2);
     }else s.textContent='The owner has not added any stock yet.';
   }
-  else if((q||catFilter||tagFilter||srcFilter) && !items.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && rowMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items match this filter.';
+  else if((q||catFilter||tagFilter||srcFilter) && !pool.some(function(it){ return (!q||(it[1].name||'').toLowerCase().indexOf(q)!==-1) && rowMatch(it[1]); })) s.textContent=q?'No item matches "'+filter.trim()+'".':'No items match this filter.';
   else s.hidden=true;
   if(show){
-    var serial={}; items.forEach(function(it,i){ serial[it[0]]=i+1; });
-    var sorted=sortItems(items);
+    var serial={}; pool.forEach(function(it,i){ serial[it[0]]=i+1; });
+    var sorted=sortItems(pool);
     renderRows(sorted,serial); renderTotals(items);
     var sa=$('#stockAmt'), tS=0, tC=0; items.forEach(function(it){ var r=it[1], b=Math.max(bal(r),0); tS+=(Number(r.sp)||0)*b; tC+=(Number(r.cost)||0)*b; });
     sa.textContent=''; sa.hidden=false; sa.style.display='flex';
@@ -6119,6 +6124,7 @@ $('#tabAcc').addEventListener('click', function(){ if(isOwner){ tab='acc'; rende
 $('#tabChat').addEventListener('click', function(){ tab='chat'; chatOpen=''; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
+$('#bothChk').addEventListener('change', function(){ bothOn=this.checked; try{ localStorage.setItem('nmBoth',bothOn?'1':'0'); }catch(e){} renderAll(); });
 function setMode(m){
   isOwner = accountOwner && m==='owner';
   try{ localStorage.setItem('nurseryMode', m); }catch(e){}
