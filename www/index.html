@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 11:10 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 11:40 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1924,7 +1924,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.src) rows[id].src=r.src; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.mcip>0){ rows[id].mcip=r.mcip; rows[id].mcipAt=r.mcipAt||0; } if(r.sp>0) rows[id].sp=r.sp;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.src) rows[id].src=r.src; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.mcip>0){ rows[id].mcip=r.mcip; rows[id].mcipAt=r.mcipAt||0; if(r.mcC!=null) rows[id].mcC=r.mcC; if(r.mcS!=null) rows[id].mcS=r.mcS; } if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -2186,10 +2186,10 @@ function updateRow(el,id,r,n){
   [['cost','Cost price'],['mcip','Monthly cost increase'],['sp','Sales price']].forEach(function(d){
     if((d[0]==='cost'||d[0]==='mcip') && !isOwner) return;
     var v=Number(r[d[0]])||0;
-    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?String(Math.round(v)):''; R[d[0]].disabled=!ed||(d[0]==='sp'&&(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); if(d[0]==='sp') R.sp.classList.toggle('autosp',(Number(r.mcip)||0)>0&&(Number(r.cost)||0)>0&&!!r.mcipAt); R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
+    if(R[d[0]]){ if(document.activeElement!==R[d[0]]) R[d[0]].value=v?String(Math.round(v)):''; R[d[0]].disabled=!ed;  R[d[0]].setAttribute('aria-label',d[1]+' per piece for '+r.name); }
     else R[d[0]+'V'].textContent=v?'\u20b9'+fmtWhole(v):'\u2013';
   });
-  if(R.mcn){ var mq=Number(r.mcip)||0, mm=mcipMonths(r); R.mcn.hidden=!(mq>0); R.mcn.textContent=mq>0?(Number(r.cost)>0&&r.mcipAt?'SP = CP + MCIP \u00d7 '+mm+' month'+(mm===1?'':'s')+' (updates monthly)':'Enter CP so SP can update monthly'):''; }
+  if(R.mcn){ var mq=Number(r.mcip)||0; R.mcn.hidden=!(mq>0); R.mcn.textContent=mq>0?(r.mcipAt?'CP And SP Each +'+fmtN(mq)+' On '+mcipNext(r)+' And On The 1st Of Every Month':'Saving...'):''; }
   var spv=Number(r.sp)||0;
   R.amt.textContent=spv?'\u20b9'+fmtWhole(spv*Math.max(b,0)):'\u2013';
   (function(){ var n=R.amt.textContent.length; R.amt.style.fontSize=n>9?Math.max(.6,Math.round(8.4/n*100)/100)+'em':''; R.amt.style.whiteSpace='nowrap'; })();
@@ -3369,13 +3369,19 @@ async function commit(id,f,inp){
   var ok=await save(patch);
   if(ok && f!=='total' && v>0) openNote(id,f);
 }
-function mcipMonths(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(), m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth(); if(b.getDate()<a.getDate()) m--; return Math.max(m,0)+1; }
+function mcipMonths(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); }
+function mcipNext(r){ var a=new Date(r.mcipAt||Date.now()), b=new Date(), m=Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()); var d=new Date(a.getFullYear(),a.getMonth()+m+1,1); return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
 var mcSyncing=false, mcLast=0;
 function mcipSync(){
   if(mcSyncing||!isOwner||!canWrite||!day||!day.rows||!editable()||Date.now()-mcLast<8000) return;
-  var patch={rows:{}}, n=0;
-  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id], m=Number(r.mcip)||0, c=Number(r.cost)||0; if(!(m>0)||!(c>0)||!r.mcipAt) return;
-    var sp=Math.round((c+m*mcipMonths(r))*100)/100; if(sp!==(Number(r.sp)||0)){ patch.rows[id]={sp:sp}; n++; } });
+  var patch={rows:{}}, n=0, r2=function(x){ return Math.round(x*100)/100; };
+  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id], m=Number(r.mcip)||0; if(!(m>0)||!r.mcipAt||r.removed) return;
+    var o={}, c0=r.mcC, s0=r.mcS;
+    if(c0==null){ c0=Number(r.cost)||0; o.mcC=c0; } if(s0==null){ s0=Number(r.sp)||0; o.mcS=s0; }
+    var k=mcipMonths(r);
+    if(c0>0){ var c=r2(c0+m*k); if(c!==(Number(r.cost)||0)) o.cost=c; }
+    if(s0>0){ var sp=r2(s0+m*k); if(sp!==(Number(r.sp)||0)) o.sp=sp; }
+    if(Object.keys(o).length){ patch.rows[id]=o; n++; } });
   if(!n) return; mcSyncing=true; mcLast=Date.now();
   Promise.resolve(save(patch)).catch(function(){}).then(function(){ mcSyncing=false; });
 }
@@ -3387,8 +3393,8 @@ async function commitCost(id,inp,fld){
   var v=parseFloat(inp.value); if(!(v>0)) v=0; v=Math.round(v*100)/100;
   if(v===stored||(v===Math.round(stored)&&Math.abs(stored-v)<1)){ reset(); return; }
   var patch={rows:{}}; patch.rows[id]={}; patch.rows[id][fld]=v;
-  if(fld==='mcip'){ patch.rows[id].mcipAt=v>0?(r.mcipAt||Date.now()):0; var cp=Number(r.cost)||0; if(v>0&&cp>0) patch.rows[id].sp=Math.round((cp+v*mcipMonths({mcipAt:patch.rows[id].mcipAt}))*100)/100; }
-  if(fld==='cost'&&(Number(r.mcip)||0)>0&&r.mcipAt&&v>0) patch.rows[id].sp=Math.round((v+Number(r.mcip)*mcipMonths(r))*100)/100;
+  if(fld==='mcip'){ if(v>0){ patch.rows[id].mcipAt=Date.now(); patch.rows[id].mcC=Number(r.cost)||0; patch.rows[id].mcS=Number(r.sp)||0; } else { patch.rows[id].mcipAt=0; patch.rows[id].mcC=null; patch.rows[id].mcS=null; } }
+  if((fld==='cost'||fld==='sp')&&(Number(r.mcip)||0)>0&&r.mcipAt){ var kk=Number(r.mcip)*mcipMonths(r); patch.rows[id][fld==='cost'?'mcC':'mcS']=Math.round((v-kk)*100)/100; }
   await save(patch);
 }
 function openNote(id,f){
