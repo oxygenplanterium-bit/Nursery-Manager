@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 11:40 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 12:10 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -8248,8 +8248,19 @@ $('#hideAll').addEventListener('click', function(){
     });
   }
   vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
-  document.addEventListener('focusin', function(e){ var t=e.target; if(!t||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return; setTimeout(function(){ fit(); try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(x){} },320); });
-  function lift(el){ setTimeout(function(){ try{ el.scrollIntoView({block:'start',behavior:'smooth'}); }catch(e){} }, 350); }
+    function ensureVis(t){
+    try{
+      var r=t.getBoundingClientRect(), top=8, bot=vv.offsetTop+vv.height-8;
+      var hb=document.getElementById('winBar'); if(hb&&!hb.hidden){ var hr=hb.getBoundingClientRect(); if(hr.bottom>0) top=Math.max(top,hr.bottom+8); }
+      var fz=document.getElementById('fsBar'); if(fz&&fz.offsetParent){ top=Math.max(top,fz.getBoundingClientRect().bottom+8); }
+      if(t.closest&&t.closest('dialog')){ t.scrollIntoView({block:'nearest'}); return; }
+      if(r.top>=top&&r.bottom<=bot) return;
+      var dy=r.bottom>bot?(r.bottom-bot+12):(r.top-top-12);
+      window.scrollBy({top:dy,behavior:'smooth'});
+    }catch(x){}
+  }
+document.addEventListener('focusin', function(e){ var t=e.target; if(!t||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return; setTimeout(function(){ fit(); ensureVis(t); },320); });
+  function lift(el){ setTimeout(function(){ ensureVis(el); }, 350); }
   ['#filter','#sopSearch'].forEach(function(q){ var el=$(q); if(el) el.addEventListener('focus', function(){ lift(el); }); });
   document.addEventListener('focusin', function(e){ if(e.target&&(e.target.id==='pickSearch'||e.target.id==='sopSearch')) setTimeout(fit,350); });
 })();
