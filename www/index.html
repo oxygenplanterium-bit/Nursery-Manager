@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 2:20 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 2:35 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -3414,7 +3414,7 @@ function mcipAllCard(){
   all.forEach(function(z,i){
     var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:center';
     var lb=mk('span',null,(i<9?'0':'')+(i+1)+'. '+z.l); lb.style.cssText='flex:0 0 106px;font-weight:600;font-size:.92rem';
-    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcDraft[z.k]!==undefined) inp.value=mcDraft[z.k]; else if(mcAmt[z.k]>0) inp.value=String(mcAmt[z.k]);
+    var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcDraft[z.k]!==undefined) inp.value=mcDraft[z.k]; else if(mcAmt[z.k]!=null&&mcAmt[z.k]!=='') inp.value=String(mcAmt[z.k]);
     inp.addEventListener('input',function(){ mcDraft[z.k]=inp.value; });
     var go=mk('button','btn small','Apply ('+cnt[i]+')'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap;min-width:84px'; go.setAttribute('aria-label','Apply to all '+z.l+' in stock titles');
     go.addEventListener('click',function(){
