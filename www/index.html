@@ -2126,7 +2126,7 @@ function makeRow(id){
   var tg=mk('button','rsw rtg'); tg.type='button'; tg.setAttribute('role','switch'); tg.append(mk('span','rswk'));
   var R0={name:name};
   var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
-  tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
+  tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); fitAll(); });
   el._hid=hidApply; var qt=mk('span','rqty'), swc=mk('div','rswc'); swc.append(tg,qt); top.append(swc); hidApply();
   var lpFired=false; name.style.cursor='pointer';
   name.addEventListener('click', function(){ if(lpFired){ lpFired=false; return; } tg.click(); });
@@ -8403,7 +8403,7 @@ $('#hideAll').addEventListener('click', function(){
   var rows=document.querySelectorAll('#ledger .row'), o=rowHidGet(), anyShown=false;
   rows.forEach(function(r){ if(!o[r.dataset.id]) anyShown=true; });
   rows.forEach(function(r){ if(anyShown) o[r.dataset.id]=1; else delete o[r.dataset.id]; });
-  rowHidSet(o); rows.forEach(function(r){ if(r._hid) r._hid(); }); hideAllLabel();
+  rowHidSet(o); rows.forEach(function(r){ if(r._hid) r._hid(); }); hideAllLabel(); fitAll();
 });
 /* ---------- keep sheets and search results above the on-screen keyboard ---------- */
 (function(){
