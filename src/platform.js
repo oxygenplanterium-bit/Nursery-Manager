@@ -122,10 +122,14 @@ function loginName(v) {
   return v.indexOf('@') >= 0 ? v.toLowerCase() : OWNER_BASE[0] + '+' + phoneDigits(v) + '@' + OWNER_BASE[1];
 }
 let current = null;
+let recovering = /type=recovery/.test((location.hash || '') + (location.search || ''));
 const ready = new Promise(resolve => {
   const style = document.createElement('style');
   style.textContent = '#loginBox,#waitBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#loginBox form,#waitBox .wc{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1,#waitBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button,#waitBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginBox button.alt,#waitBox button.alt{background:#fff;color:#1f6b34}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small,#waitBox p{color:#5a6b5a;margin:0}@media (prefers-color-scheme:dark){#loginBox,#waitBox{background:#0F1713}#loginBox form,#waitBox .wc{background:#1A2620;border-color:#2C3D33}#loginBox h1,#waitBox h1{color:#6DBE6F}#loginBox input{background:#111A15;color:#E9F1EB;border-color:#2C3D33}#loginBox button,#waitBox button{background:#6DBE6F;border-color:#6DBE6F;color:#0B1A10}#loginBox button.alt,#waitBox button.alt{background:transparent;color:#6DBE6F}#loginBox small,#waitBox p{color:#9DB1A4}#loginMsg{color:#FF9381}}';
   document.head.appendChild(style);
+  const st2 = document.createElement('style');
+  st2.textContent = '#recBox,#chgBox{position:fixed;inset:0;z-index:100000;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#recBox form,#chgBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#recBox h1,#chgBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#recBox input,#chgBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#recBox button,#chgBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#chgBox button.alt{background:#fff;color:#1f6b34}.pm{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}@media (prefers-color-scheme:dark){#recBox,#chgBox{background:#0F1713}#recBox form,#chgBox form{background:#1A2620;border-color:#2C3D33}#recBox h1,#chgBox h1{color:#6DBE6F}#recBox input,#chgBox input{background:#111A15;color:#E9F1EB;border-color:#2C3D33}#recBox button,#chgBox button{background:#6DBE6F;border-color:#6DBE6F;color:#0B1A10}#chgBox button.alt{background:transparent;color:#6DBE6F}.pm{color:#FF9381}}';
+  document.head.appendChild(st2);
   const box = document.createElement('div'); box.id = 'loginBox';
   box.innerHTML = '<form id="loginForm" novalidate><h1>Nursery Manager</h1>' +
     '<input id="loginName" type="text" autocomplete="name" placeholder="Your name" hidden>' +
@@ -134,13 +138,14 @@ const ready = new Promise(resolve => {
     '<input id="loginPass2" type="password" autocomplete="new-password" placeholder="Type the password again" hidden>' +
     '<p id="loginMsg" role="alert"></p><button type="submit" id="loginGo">Sign in</button>' +
     '<button type="button" class="alt" id="loginSwap">Create new account</button>' +
+    '<button type="button" class="alt" id="loginForgot">Forgot password?</button>' +
     '<small id="loginNote">New here? Create an account with your phone number. The owner approves it before you can use the app.</small></form>';
   const wait = document.createElement('div'); wait.id = 'waitBox';
   wait.innerHTML = '<div class="wc"><h1 id="waitTitle">Waiting for approval</h1><p id="waitText"></p><button type="button" id="waitCheck">Check Again</button><button type="button" class="alt" id="waitOut">Sign Out</button></div>';
   const attach = () => { document.body.appendChild(box); document.body.appendChild(wait); };
   if (document.body) attach(); else document.addEventListener('DOMContentLoaded', attach);
   const q = id => box.querySelector(id);
-  const msg = t => { q('#loginMsg').textContent = t; };
+  const msg = t => { q('#loginMsg').textContent = t; q('#loginMsg').style.color = ''; };
   let mode = 'in';
   const setMode = m => {
     mode = m; msg('');
@@ -149,10 +154,21 @@ const ready = new Promise(resolve => {
     q('#loginSwap').textContent = m === 'up' ? 'I already have an account' : 'Create new account';
     q('#loginEmail').placeholder = m === 'up' ? 'Phone number' : 'Phone number or owner email';
     q('#loginPass').autocomplete = m === 'up' ? 'new-password' : 'current-password';
-    q('#loginNote').hidden = m === 'up';
+    q('#loginNote').hidden = m === 'up'; q('#loginForgot').hidden = m === 'up';
   };
   q('#loginSwap').addEventListener('click', () => setMode(mode === 'up' ? 'in' : 'up'));
   const bad = e => /fetch|network/i.test(e.message) ? 'No internet connection.' : null;
+  q('#loginForgot').addEventListener('click', async () => {
+    msg(''); const who = q('#loginEmail').value.trim();
+    if (!who) { msg('Type your phone number, or the owner email, in the first box. Then tap Forgot password again.'); return; }
+    if (who.indexOf('@') < 0 && phoneDigits(who).length < 10) { msg('Enter a valid 10 digit phone number.'); return; }
+    const bt = q('#loginForgot'); bt.disabled = true; bt.textContent = 'Sending...';
+    let r; try { r = await sb.auth.resetPasswordForEmail(loginName(who), { redirectTo: location.origin + location.pathname }); } catch (e) { r = { error: e }; }
+    bt.disabled = false; bt.textContent = 'Forgot password?';
+    if (r.error) { msg(bad(r.error) || (/rate|seconds|too many/i.test(r.error.message) ? 'Please wait a minute and try again.' : 'Could not send the reset link. ' + r.error.message)); return; }
+    msg(who.indexOf('@') >= 0 ? 'A reset link was sent to your email. Open it on this phone to set a new password.' : 'A reset link was sent to the owner\u2019s email. Ask the owner to send it to you, then open it on this phone.');
+    q('#loginMsg').style.color = '#2a7f3e';
+  });
   q('#loginForm').addEventListener('submit', async e => {
     e.preventDefault(); msg('');
     const who = q('#loginEmail').value.trim(), pass = q('#loginPass').value;
@@ -196,7 +212,25 @@ const ready = new Promise(resolve => {
   };
   wait.querySelector('#waitCheck').addEventListener('click', async () => { const bt = wait.querySelector('#waitCheck'); bt.textContent = 'Checking...'; bt.disabled = true; try { await sb.auth.refreshSession(); } catch (e) {} if (current) await check(current); setTimeout(() => { bt.textContent = 'Check Again'; bt.disabled = false; }, 800); });
   wait.querySelector('#waitOut').addEventListener('click', async () => { try { localStorage.removeItem('nurseryRole'); await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
+  const rec = document.createElement('div'); rec.id = 'recBox';
+  rec.innerHTML = '<form novalidate><h1>Set New Password</h1><input id="recP1" type="password" autocomplete="new-password" placeholder="New password"><input id="recP2" type="password" autocomplete="new-password" placeholder="Type the new password again"><p class="pm" id="recMsg" role="alert"></p><button type="submit" id="recGo">Save new password</button></form>';
+  const attachRec = () => document.body.appendChild(rec);
+  if (document.body) attachRec(); else document.addEventListener('DOMContentLoaded', attachRec);
+  const showRec = () => { rec.style.display = 'flex'; box.style.display = 'none'; wait.style.display = 'none'; };
+  rec.querySelector('form').addEventListener('submit', async e => {
+    e.preventDefault(); const m = rec.querySelector('#recMsg'), p1 = rec.querySelector('#recP1').value, p2 = rec.querySelector('#recP2').value; m.style.color = '';
+    if (p1.length < 6) { m.textContent = 'The password needs at least 6 characters.'; return; }
+    if (p1 !== p2) { m.textContent = 'The two passwords do not match.'; return; }
+    rec.querySelector('#recGo').disabled = true;
+    const r = await sb.auth.updateUser({ password: p1 });
+    rec.querySelector('#recGo').disabled = false;
+    if (r.error) { m.textContent = bad(r.error) || (/same|different/i.test(r.error.message) ? 'Choose a password different from the old one.' : 'Could not save. ' + r.error.message + ' If the link has expired, tap Forgot password again.'); return; }
+    recovering = false; rec.style.display = 'none';
+    try { history.replaceState(null, '', location.pathname); } catch (x) {}
+    const g = await sb.auth.getSession(); onSession(g.data && g.data.session);
+  });
   const onSession = sess => {
+    if (recovering) { if (sess) showRec(); return; }
     current = sess ? sess.user : null;
     if (!current) { approved = false; gateFor = ''; clearInterval(gateTimer); wait.style.display = 'none'; box.style.display = 'flex'; return; }
     if (approved && gateFor === current.id) return;
@@ -204,14 +238,41 @@ const ready = new Promise(resolve => {
     gateFor = current.id; box.style.display = 'none';
     clearInterval(gateTimer); const u = current; check(u); gateTimer = setInterval(() => check(u), 5000);
   };
-  sb.auth.onAuthStateChange((ev, sess) => onSession(sess));
+  sb.auth.onAuthStateChange((ev, sess) => { if (ev === 'PASSWORD_RECOVERY') recovering = true; onSession(sess); });
   sb.auth.getSession().then(r => onSession(r.data && r.data.session));
 });
 function addSignOut() {
   const acts = document.querySelector('.acts'); if (!acts || document.getElementById('signOutBtn')) return;
   const b = document.createElement('button'); b.className = 'btn'; b.id = 'signOutBtn'; b.textContent = 'Sign out';
   b.addEventListener('click', async () => { try { localStorage.removeItem('nurseryRole'); await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); });
-  acts.appendChild(b);
+  const c = document.createElement('button'); c.className = 'btn'; c.id = 'chgPassBtn'; c.textContent = 'Change password';
+  c.addEventListener('click', openChange);
+  acts.appendChild(c); acts.appendChild(b);
+}
+function openChange() {
+  let d = document.getElementById('chgBox'); if (d) d.remove();
+  d = document.createElement('div'); d.id = 'chgBox';
+  d.innerHTML = '<form novalidate><h1>Change Password</h1><input id="chO" type="password" autocomplete="current-password" placeholder="Current password"><input id="chN" type="password" autocomplete="new-password" placeholder="New password"><input id="chN2" type="password" autocomplete="new-password" placeholder="Type the new password again"><p class="pm" id="chM" role="alert"></p><button type="submit" id="chGo">Save new password</button><button type="button" class="alt" id="chX">Cancel</button></form>';
+  document.body.appendChild(d); d.style.display = 'flex';
+  const m = d.querySelector('#chM'), say = (t, ok) => { m.textContent = t; m.style.color = ok ? '#2a7f3e' : ''; };
+  d.querySelector('#chX').addEventListener('click', () => d.remove());
+  d.querySelector('form').addEventListener('submit', async e => {
+    e.preventDefault(); say('');
+    const o = d.querySelector('#chO').value, n1 = d.querySelector('#chN').value, n2 = d.querySelector('#chN2').value;
+    if (!o) { say('Enter your current password.'); return; }
+    if (n1.length < 6) { say('The new password needs at least 6 characters.'); return; }
+    if (n1 !== n2) { say('The two new passwords do not match.'); return; }
+    if (n1 === o) { say('The new password is the same as the current one.'); return; }
+    const bt = d.querySelector('#chGo'); bt.disabled = true;
+    try {
+      if (!current || !current.email) { say('Please sign in again.'); bt.disabled = false; return; }
+      const v = await sb.auth.signInWithPassword({ email: current.email, password: o });
+      if (v.error) { say(/fetch|network/i.test(v.error.message) ? 'No internet connection.' : 'The current password is wrong.'); bt.disabled = false; return; }
+      const r = await sb.auth.updateUser({ password: n1 });
+      if (r.error) { say('Could not save. ' + r.error.message); bt.disabled = false; return; }
+      say('Password changed.', true); setTimeout(() => d.remove(), 1500);
+    } catch (x) { say('No internet connection.'); bt.disabled = false; }
+  });
 }
 
 const user = {
