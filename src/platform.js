@@ -252,24 +252,23 @@ function addSignOut() {
 function openChange() {
   let d = document.getElementById('chgBox'); if (d) d.remove();
   d = document.createElement('div'); d.id = 'chgBox';
-  d.innerHTML = '<form novalidate><h1>Change Password</h1><input id="chO" type="password" autocomplete="current-password" placeholder="Current password"><input id="chN" type="password" autocomplete="new-password" placeholder="New password"><input id="chN2" type="password" autocomplete="new-password" placeholder="Type the new password again"><p class="pm" id="chM" role="alert"></p><button type="submit" id="chGo">Save new password</button><button type="button" class="alt" id="chX">Cancel</button></form>';
+  d.innerHTML = '<form novalidate><h1>Change Password</h1><input id="chO" type="password" autocomplete="current-password" placeholder="Current password (leave empty if forgotten)"><input id="chN" type="password" autocomplete="new-password" placeholder="New password"><input id="chN2" type="password" autocomplete="new-password" placeholder="Type the new password again"><p class="pm" id="chM" role="alert"></p><button type="submit" id="chGo">Save new password</button><button type="button" class="alt" id="chX">Cancel</button></form>';
   document.body.appendChild(d); d.style.display = 'flex';
   const m = d.querySelector('#chM'), say = (t, ok) => { m.textContent = t; m.style.color = ok ? '#2a7f3e' : ''; };
   d.querySelector('#chX').addEventListener('click', () => d.remove());
   d.querySelector('form').addEventListener('submit', async e => {
     e.preventDefault(); say('');
     const o = d.querySelector('#chO').value, n1 = d.querySelector('#chN').value, n2 = d.querySelector('#chN2').value;
-    if (!o) { say('Enter your current password.'); return; }
     if (n1.length < 6) { say('The new password needs at least 6 characters.'); return; }
     if (n1 !== n2) { say('The two new passwords do not match.'); return; }
-    if (n1 === o) { say('The new password is the same as the current one.'); return; }
+    if (o && n1 === o) { say('The new password is the same as the current one.'); return; }
     const bt = d.querySelector('#chGo'); bt.disabled = true;
     try {
       if (!current || !current.email) { say('Please sign in again.'); bt.disabled = false; return; }
-      const v = await sb.auth.signInWithPassword({ email: current.email, password: o });
+      const v = o ? await sb.auth.signInWithPassword({ email: current.email, password: o }) : {};
       if (v.error) { say(/fetch|network/i.test(v.error.message) ? 'No internet connection.' : 'The current password is wrong.'); bt.disabled = false; return; }
       const r = await sb.auth.updateUser({ password: n1 });
-      if (r.error) { say('Could not save. ' + r.error.message); bt.disabled = false; return; }
+      if (r.error) { say(/reauth|current password|nonce/i.test(r.error.message) ? 'Supabase needs the current password. Use Forgot password on the sign-in screen instead.' : 'Could not save. ' + r.error.message); bt.disabled = false; return; }
       say('Password changed.', true); setTimeout(() => d.remove(), 1500);
     } catch (x) { say('No internet connection.'); bt.disabled = false; }
   });
