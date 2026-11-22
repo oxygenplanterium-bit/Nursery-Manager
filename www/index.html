@@ -15,6 +15,9 @@
 #bothCard{flex:1 1 100%; width:100%; max-width:100%; box-sizing:border-box}
 #paneStock>.xcw{position:sticky; top:38px; z-index:6; background:var(--bg); flex:0 0 auto!important; width:100%}
 #paneStock>.xcw.stk{box-shadow:0 -38px 0 var(--bg), 0 10px 0 var(--bg)}
+.rqty{display:none}
+.row.rhid .rqty{display:inline-block; flex:0 0 auto; font-weight:700; font-size:.9rem; white-space:nowrap; padding:2px 10px; border:1.5px solid var(--line); border-radius:10px; margin-left:8px}
+#list .row.rhid .rqty{margin-left:auto; margin-right:8px}
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -639,7 +642,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 10:00 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 10:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2120,7 +2123,7 @@ function makeRow(id){
   var R0={name:name};
   var hidApply=function(){ var h=!!rowHidGet()[id]; el.classList.toggle('rhid',h); tg.setAttribute('aria-checked',h?'false':'true'); tg.title=h?'Show details':'Hide details'; tg.setAttribute('aria-label','Show details of '+(R0.name.textContent||'this item')); };
   tg.addEventListener('click', function(){ var o=rowHidGet(); if(o[id]) delete o[id]; else o[id]=1; rowHidSet(o); hidApply(); hideAllLabel(); });
-  el._hid=hidApply; top.append(tg); hidApply();
+  el._hid=hidApply; var qt=mk('span','rqty'); top.append(qt,tg); hidApply();
   var lpFired=false; name.style.cursor='pointer';
   name.addEventListener('click', function(){ if(lpFired){ lpFired=false; return; } tg.click(); });
   var catEl=mk('div','rcat'); catEl.hidden=true; var tgEl=mk('div','rtags'); tgEl.hidden=true; nm.append(top,catEl); idw.append(sl,nm); el.append(idw);
@@ -2134,7 +2137,7 @@ function makeRow(id){
     ['pointerup','pointercancel','pointerleave'].forEach(function(t){ idw.addEventListener(t,lpStop); });
     idw.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
-  var R={cat:catEl,tg:tgEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
+  var R={qt:qt,cat:catEl,tg:tgEl,sl:sl,name:name,edit:edit,mv:mv,xf:xf,notes:mk('div','notes')};
   FIELDS.forEach(function(f){
     var c=cell(LABELS[f], f);
     if(canWrite && (f!=='total'||isOwner)){
@@ -2202,7 +2205,7 @@ function updateRow(el,id,r,n){
       R[f].setAttribute('aria-label', LABELS[f]+' for '+r.name);
     }else R[f+'V'].textContent = (v===0 && f!=='total') ? '–' : fmtN(v);
   });
-  var b=bal(r); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
+  var b=bal(r); if(R.qt) R.qt.textContent='Qty: '+fmtN(b); R.bal.textContent=fmtN(b); R.bal.className='val'+(b===0?' zero':'');
   var cost=Number(r.cost)||0;
   [['cost','Cost price'],['mcip','Monthly cost increase'],['sp','Sales price']].forEach(function(d){
     if((d[0]==='cost'||d[0]==='mcip') && !isOwner) return;
