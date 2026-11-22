@@ -649,7 +649,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
     <div id="themeRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px"><span style="font-weight:600">Dark Mode</span><button type="button" class="rsw" id="themeSw" role="switch" aria-checked="true" aria-label="Dark mode"><span class="rswk"></span></button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 12:15 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 12:30 PM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -2360,7 +2360,7 @@ function renderStock(){
   if(show){
     var serial={}; pool.forEach(function(it,i){ serial[it[0]]=i+1; });
     var sorted=sortItems(pool);
-    renderRows(sorted,serial); renderTotals(items);
+    renderRows(sorted,serial); renderTotals(q?pool.filter(function(it){ return (it[1].name||'').toLowerCase().indexOf(q)!==-1 && rowMatch(it[1]); }):items);
     var sa=$('#stockAmt'), tS=0, tC=0; items.forEach(function(it){ var r=it[1], b=Math.max(bal(r),0); tS+=(Number(r.sp)||0)*b; tC+=(Number(r.cost)||0)*b; });
     sa.textContent=''; sa.hidden=false; sa.style.display='flex';
     sa.append(mk('span','pmeta','Total Estimated Amount Of All Stock (SP \u00d7 Bal Qty) \u00b7 '+(NURS[nursery]||'')));
