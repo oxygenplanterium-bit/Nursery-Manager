@@ -10,6 +10,8 @@
 #stockAmt,#mcipAll{order:-3}
 #paneStock[data-sub="pref"] #filter,#paneStock[data-sub="pref"] #bothCard,#paneStock[data-sub="pref"] #ledger,#paneStock[data-sub="pref"] #state,#paneStock[data-sub="pref"] #reportBox{display:none!important}
 #paneStock[data-sub="list"] #stockAmt,#paneStock[data-sub="list"] #mcipAll,#paneStock[data-sub="list"] #stockCtl,#paneStock[data-sub="list"] #addBox{display:none!important}
+#paneStock[data-sub="pref"] #stockActs{display:none!important}
+#stockActs{width:100%}
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -634,7 +636,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 9:10 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 9:30 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -705,6 +707,11 @@ select:not([multiple]){pointer-events:none}
       <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
       <input type="search" id="filter" placeholder="Search item name">
       <div class="card" id="bothCard" hidden style="padding:10px 14px"><label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer"><input type="checkbox" id="bothChk" style="width:22px;height:22px;flex:0 0 22px;margin:0"><span style="flex:1 1 auto;font-weight:600">Search Stock In Both Nurseries</span></label><span class="pmeta" id="bothHint" style="display:block;margin-top:4px" hidden>Type an item name above to see its stock card from both nurseries.</span></div>
+      <div id="stockActs">
+          <button class="btn small" id="mvAllStock" hidden></button>
+          <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
+          <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
+        </div>
       <div class="card" id="stockAmt" hidden style="display:flex;flex-direction:column;gap:2px;padding:10px 14px"></div>
       <div id="stockCtl">
         <select id="sortSel" aria-label="Sort stock">
@@ -725,11 +732,7 @@ select:not([multiple]){pointer-events:none}
         <select id="tagSel" aria-label="Filter by tag" hidden></select>
         <select id="srcSel" aria-label="Filter by source"></select>
         <div id="stockTools"><button class="btn small" id="catBtn" type="button" hidden>Sub Categories</button><button class="btn small" id="srcBtn" type="button" hidden>Sources</button><button class="btn small" id="grpBtn" type="button">Group Report</button><button class="btn small" id="dlBtn" type="button">Download Stock Report</button></div>
-        <div id="stockActs">
-          <button class="btn small" id="mvAllStock" hidden></button>
-          <button class="btn small" id="undoStock" type="button" hidden>Undo move</button>
-          <button class="btn small" id="hideAll" type="button" aria-expanded="true">Hide All</button>
-        </div>
+
       </div>
       <div id="addBox"><button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
       <div id="bulkRow" hidden><label><input type="checkbox" id="bulkBS"><span>Add To BS</span></label><label><input type="checkbox" id="bulkPS"><span>Add To PS</span></label><button class="btn small" id="undoAdd" type="button" hidden>Undo</button></div></div>
