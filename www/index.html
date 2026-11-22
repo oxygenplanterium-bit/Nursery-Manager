@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title><style>html.booting body{visibility:hidden}</style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title><style>html.booting body{visibility:hidden}#bulkRow{flex:1 1 100%; order:-1; display:flex; align-items:center; gap:14px; flex-wrap:nowrap; padding:2px 2px}
+#bulkRow[hidden]{display:none}
+#bulkRow label{display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:.92rem; white-space:nowrap}
+#bulkRow input[type=checkbox]{width:22px; height:22px; flex:0 0 22px; margin:0}
+#bulkRow #undoAdd{margin-left:auto; white-space:nowrap}
+</style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
 :root{
@@ -623,7 +628,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 6:40 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:10 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -720,6 +725,7 @@ select:not([multiple]){pointer-events:none}
         </div>
       </div>
       <button class="btn primary addwide" id="addBtn" hidden>Add New Item</button>
+      <div id="bulkRow" hidden><label><input type="checkbox" id="bulkBS"><span>Add To All BS</span></label><label><input type="checkbox" id="bulkPS"><span>Add To All PS</span></label><button class="btn small" id="undoAdd" type="button" hidden>Undo</button></div>
       <span class="chip" id="pending" hidden></span>    </div>
     <div class="card state" id="state">Loading register…</div>
     <section class="card" id="ledger" hidden>
@@ -2309,7 +2315,7 @@ function renderStock(){
   $('#filter').hidden=!show; $('#sortSel').hidden=!show; if($('#sortSel').value!==sortMode) $('#sortSel').value=sortMode;
   $('#addBtn').hidden=!(canWrite && editable());
   $('#addBtn').textContent = 'Add New Item';
-  var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all'; undoSync();
+  bulkSync(); var ma=$('#mvAllStock'); ma.hidden=!(isOwner&&editable()&&items.length); ma.textContent='Move all'; undoSync();
   $('#waSetBtn').hidden=!isOwner; $('#repSetBtn').hidden=!isOwner; $('#coBtn').hidden=!isOwner; $('#fdReset').hidden=!isOwner;
   $('#pinBtn').hidden=!isOwner;
   $('#pinBtn').textContent = (pinData&&pinData.hash) ? 'Change owner PIN' : 'Set owner PIN';
@@ -3584,7 +3590,26 @@ function parseAdd(){
     var clean=function(s){ return s.trim().replace(/\s+/g,' '); };
     out.push(m ? {name:clean(m[1]), qty:parseInt(m[2],10)} : {name:clean(line.replace(/[,\t]+$/,'')), qty:0});
   });
-  return out.filter(function(x){ return x.name; });
+  out=out.filter(function(x){ return x.name; });
+  var bs=$('#bulkBS')&&$('#bulkBS').checked, ps=$('#bulkPS')&&$('#bulkPS').checked;
+  if(!(bs||ps)) return out;
+  var sizes=mcAll().filter(function(z){ return (bs&&/\sBS$/i.test(z.l))||(ps&&/\sPS$/i.test(z.l)); });
+  if(!sizes.length) return out;
+  var ex=[];
+  out.forEach(function(it){
+    var base=it.name.replace(/\s*[-\u2013\u2014]\s*(?:\d+(?:\.\d+)?\s*[x\u00d7]\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*[\"\u201d\u2033\u201c']*)\s*(?:BS|PS)?\s*$/i,'').replace(/\s+$/,'');
+    if(!base) base=it.name;
+    sizes.forEach(function(z){ ex.push({name:base+' - '+z.l, qty:it.qty}); });
+  });
+  return ex;
+}
+var bulkLast=null; try{ bulkLast=JSON.parse(localStorage.getItem('nmBulkLast')||'null'); }catch(e){}
+function bulkSync(){
+  var row=$('#bulkRow'); if(!row) return;
+  var on=!!(canWrite&&day&&editable()); row.hidden=!on; if(!on) return;
+  var u=$('#undoAdd'), any=$('#bulkBS').checked||$('#bulkPS').checked, n=0;
+  if(bulkLast&&bulkLast.d===selDate&&day.rows) bulkLast.ids.forEach(function(id){ var r=day.rows[id]; if(r&&!r.removed) n++; });
+  u.hidden=!(any&&n>0); if(!armed.bulkundo) u.textContent='Undo ('+n+')';
 }
 function openAdd(){
   if(!canWrite||!editable()) return;
@@ -3684,6 +3709,16 @@ $('#addFile').addEventListener('change', async function(){
   }
 });
 $('#addBtn').addEventListener('click', openAdd);
+['#bulkBS','#bulkPS'].forEach(function(q){ $(q).addEventListener('change', function(){ bulkSync(); var t=$('#addText'); if(t) t.dispatchEvent(new Event('input')); }); });
+$('#undoAdd').addEventListener('click', function(){
+  var b=this; if(!bulkLast||!day||!editable()) return;
+  arm(b,'bulkundo','Undo',async function(){
+    var p={rows:{}}, n=0; bulkLast.ids.forEach(function(id){ var r=day.rows[id]; if(r&&!r.removed){ p.rows[id]={removed:true}; n++; } });
+    if(!n){ bulkSync(); return; }
+    if(await save(p)){ bulkLast=null; try{ localStorage.removeItem('nmBulkLast'); }catch(e){} toast(n+(n===1?' item':' items')+' removed. Last bulk add undone.'); }
+    bulkSync();
+  });
+});
 $('#addCancel').addEventListener('click', function(){ $('#dlgAdd').close(); });
 $('#fAdd').addEventListener('submit', async function(e){
   e.preventDefault();
@@ -3696,6 +3731,7 @@ $('#fAdd').addEventListener('submit', async function(e){
   ce.hidden=true; if(cb) cb.style.borderColor='';
   var sp=splitDups(list);
   if(!sp.fresh.length){ toast('Already in the list: '+sp.dups.join(', ')); return; }
+  var bulkOn=$('#bulkBS').checked||$('#bulkPS').checked;
   var rows=(day&&day.rows)||{}, existing={}, maxO=0;
   Object.keys(rows).forEach(function(id){ if(!rows[id].removed && (rows[id].nid||'1')===nursery) existing[normName(rows[id].name)]=1; maxO=Math.max(maxO,rows[id].order||0); });
   var patch={rows:{}}, added=0, skipped=0, newNames=[], dupNames=[];
@@ -3714,6 +3750,7 @@ $('#fAdd').addEventListener('submit', async function(e){
   $('#dlgAdd').close();
   if(!added){ toast('Already in the list: '+dupNames.join(', ')); return; }
   if(await save(patch)){
+    if(bulkOn){ bulkLast={d:selDate,ids:Object.keys(patch.rows)}; try{ localStorage.setItem('nmBulkLast',JSON.stringify(bulkLast)); }catch(e){} bulkSync(); }
     if(isOwner) toast(added+(added===1?' item added':' items added')+(skipped?'. Skipped duplicates: '+dupNames.join(', '):''));
     else showSent(newNames, dupNames);
   }
