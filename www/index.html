@@ -7,6 +7,7 @@
 #addBox{flex:1 1 100%; order:-1; display:flex; flex-direction:column; gap:10px; border:1px solid var(--line); border-radius:14px; padding:10px}
 #addBox[hidden]{display:none}
 #addBox .addwide{order:0; flex:0 0 auto}
+#stockAmt,#mcipAll{order:-3}
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -631,7 +632,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:25 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:40 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
