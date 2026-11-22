@@ -8,6 +8,8 @@
 #addBox[hidden]{display:none}
 #addBox .addwide{order:0; flex:0 0 auto}
 #stockAmt,#mcipAll{order:-3}
+#paneStock[data-sub="pref"] #filter,#paneStock[data-sub="pref"] #bothCard,#paneStock[data-sub="pref"] #ledger,#paneStock[data-sub="pref"] #state,#paneStock[data-sub="pref"] #reportBox{display:none!important}
+#paneStock[data-sub="list"] #stockAmt,#paneStock[data-sub="list"] #mcipAll,#paneStock[data-sub="list"] #stockCtl,#paneStock[data-sub="list"] #addBox{display:none!important}
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -632,7 +634,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:50 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 8:15 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -689,7 +691,8 @@ select:not([multiple]){pointer-events:none}
     <button class="tab" id="fdBtn" type="button">Dashboard</button>
   </nav>
 
-  <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock">
+  <section class="pane" id="paneStock" role="tabpanel" aria-labelledby="tabStock" data-sub="list">
+    <div class="tabs" role="tablist" aria-label="Stock views" id="stockSubs"><button class="tab" id="subPref" type="button" role="tab" aria-selected="false">01. Preferences</button><button class="tab" id="subList" type="button" role="tab" aria-selected="true">02. Stock List</button></div>
     <label class="f card" style="padding:10px 14px"><span>Nursery</span>
       <select class="nursel" aria-label="Select nursery"><option value="1">Chalmatti Nursery</option><option value="2">Raynal Nursery</option></select>
     </label>
@@ -6159,6 +6162,10 @@ $('#winClose').addEventListener('click', function(){ closeWin(false); });
 window.__nmBack=function(){ var d=[].slice.call(document.querySelectorAll('dialog[open]')).pop(); if(d){ try{ d.close(); }catch(e){} return true; } if(tab){ closeWin(false); return true; } return false; };
 window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
+function stockSubSet(v){ var p=$('#paneStock'); p.dataset.sub=v; try{ localStorage.setItem('nmStockSub',v); }catch(e){} $('#subPref').setAttribute('aria-selected',v==='pref'?'true':'false'); $('#subList').setAttribute('aria-selected',v==='list'?'true':'false'); try{ document.activeElement.blur(); }catch(e){} renderAll(); window.scrollTo(0,Math.min(window.scrollY,(($('#stockSubs').getBoundingClientRect().top+window.scrollY)-8))); }
+$('#subPref').addEventListener('click', function(){ stockSubSet('pref'); });
+$('#subList').addEventListener('click', function(){ stockSubSet('list'); });
+(function(){ var v='list'; try{ v=localStorage.getItem('nmStockSub')==='pref'?'pref':'list'; }catch(e){} if(v==='pref'){ $('#paneStock').dataset.sub='pref'; $('#subPref').setAttribute('aria-selected','true'); $('#subList').setAttribute('aria-selected','false'); } })();
 $('#tabTasks').addEventListener('click', function(){ tab='tasks'; renderAll(); });
 $('#tabSop').addEventListener('click', function(){ tab='sop'; renderAll(); });
 $('#tabAtt').addEventListener('click', function(){ tab='att'; renderAll(); });
