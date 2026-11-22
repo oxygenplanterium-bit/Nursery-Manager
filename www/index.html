@@ -632,7 +632,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:40 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 7:50 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -3420,9 +3420,9 @@ function mcipAllCard(){
   mcSig=sig; var c=mcBuilt; c.textContent='';
   var th=mk('div'); th.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px';
   var tt=mk('b',null,'MCIP By Size'); tt.style.cssText='flex:1 1 auto;cursor:pointer'; th.append(tt);
-  var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=mcShow; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show MCIP by size'); swl.style.cssText+=';margin:0;gap:8px;flex:0 0 auto'; swl.append(swi,document.createElement('i'));
+  var swl=mk('button','rsw'); swl.type='button'; swl.setAttribute('role','switch'); swl.setAttribute('aria-label','Show MCIP by size'); swl.setAttribute('aria-checked',mcShow?'true':'false'); swl.style.flex='0 0 auto'; swl.append(mk('span','rswk'));
   var tog=function(v){ try{ document.activeElement.blur(); }catch(e){} mcShow=v; try{ localStorage.setItem('mcSizeShow',v?'1':'0'); }catch(e){} mcSig=''; mcipAllCard(); };
-  swi.addEventListener('change',function(){ tog(swi.checked); }); tt.addEventListener('click',function(){ tog(!mcShow); });
+  swl.addEventListener('click',function(){ tog(!mcShow); }); tt.addEventListener('click',function(){ tog(!mcShow); });
   th.append(swl); c.append(th);
   if(!mcShow) return;
   c.append(mk('span','pmeta','Type the monthly cost increase for a size and tap Apply. It is set on every stock title of that size in both nurseries. CP and SP then each increase by it on the 1st of every month. Enter 0 to remove it.'));
