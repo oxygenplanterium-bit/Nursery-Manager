@@ -452,9 +452,9 @@ html,body{max-width:100%; overflow-x:hidden}
 .pickopt.pmain:not([aria-pressed="true"]){background:color-mix(in srgb,#4caf50 24%,var(--card))}
 .pickopt.psub:not([aria-pressed="true"]){background:color-mix(in srgb,#a0724a 26%,var(--card))}
 .rcat{font-size:.72rem; font-weight:600; color:var(--accent); margin-top:2px}
-.rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1px solid var(--line); background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
+.rsw{position:relative; width:34px; height:20px; padding:0; border-radius:20px; border:1.5px solid #fff; background:var(--line); cursor:pointer; flex:0 0 auto; vertical-align:middle; transition:background .15s}
 .rsw .rswk{position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
-.rsw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
+.rsw[aria-checked="true"]{background:var(--accent); border-color:#fff}
 .rsw[aria-checked="true"] .rswk{transform:translateX(14px)}
 .row.rhid>*:not(.id){display:none!important}
 #list .row .nmtop{flex-wrap:nowrap; justify-content:space-between; width:100%}
@@ -623,7 +623,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 21 Nov 2026, 4:35 PM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 6:40 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -1926,7 +1926,7 @@ async function ensureToday(){
         Object.keys(pr).forEach(function(id){
           var r=pr[id]; if(r.removed) return;
           if(r.pending){ rows[id]={order:0, name:r.name, total:r.total||0, purchase:0, sales:0, damages:0, pending:true, nid:r.nid||'1', by:r.by||'', reqAt:r.reqAt||0}; return; }
-          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.src) rows[id].src=r.src; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.mcip>0){ rows[id].mcip=r.mcip; rows[id].mcipAt=r.mcipAt||0; if(r.mcC!=null) rows[id].mcC=r.mcC; if(r.mcS!=null) rows[id].mcS=r.mcS; } if(r.sp>0) rows[id].sp=r.sp;
+          rows[id]={order:r.order||0, name:r.name, nid:r.nid||'1', total:bal(r), purchase:0, sales:0, damages:0}; if(r.cat) rows[id].cat=r.cat; if(r.src) rows[id].src=r.src; if(r.tags&&r.tags.length) rows[id].tags=r.tags.slice(); if(r.cost>0) rows[id].cost=r.cost; if(r.mcip===0) rows[id].mcip=0; if(r.mcip>0){ rows[id].mcip=r.mcip; rows[id].mcipAt=r.mcipAt||0; if(r.mcC!=null) rows[id].mcC=r.mcC; if(r.mcS!=null) rows[id].mcS=r.mcS; } if(r.sp>0) rows[id].sp=r.sp;
         });
         Object.keys(pt).forEach(function(id){
           var x=pt[id]; if(x.removed||x.once) return;
@@ -3416,11 +3416,15 @@ function mcipAllCard(){
   th.append(swl); c.append(th);
   if(!mcShow) return;
   c.append(mk('span','pmeta','Type the monthly cost increase for a size and tap Apply. It is set on every stock title of that size in both nurseries. CP and SP then each increase by it on the 1st of every month. Enter 0 to remove it.'));
+  var boxes=[];
   all.forEach(function(z,i){
     var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:center';
     var lb=mk('span',null,(i<9?'0':'')+(i+1)+'. '+z.l); lb.style.cssText='flex:0 0 106px;font-weight:600;font-size:.92rem';
     var inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.inputMode='decimal'; inp.placeholder='MCIP'; inp.setAttribute('aria-label','MCIP for '+z.l); inp.style.cssText='flex:1 1 auto;min-width:0;text-align:center;height:40px'; if(mcDraft[z.k]!==undefined) inp.value=mcDraft[z.k]; else if(mcAmt[z.k]!=null&&mcAmt[z.k]!=='') inp.value=String(mcAmt[z.k]);
-    inp.addEventListener('input',function(){ mcDraft[z.k]=inp.value; });
+    inp.addEventListener('input',function(){ mcDraft[z.k]=inp.value; }); boxes.push({z:z,inp:inp});
+    inp.addEventListener('change',function(){ if(!isOwner||!canWrite) return; var raw=inp.value.trim(), v=parseFloat(raw), sp={mcsa:{}};
+      if(raw===''){ sp.mcsa[z.k]=null; delete mcAmt[z.k]; } else if(v>=0){ v=Math.round(v*100)/100; sp.mcsa[z.k]=v; mcAmt[z.k]=v; } else return;
+      delete mcDraft[z.k]; mcSig=mcSig; saveSettings(sp); });
     var go=mk('button','btn small','Apply ('+cnt[i]+')'); go.type='button'; go.style.cssText='flex:0 0 auto;white-space:nowrap;min-width:84px'; go.setAttribute('aria-label','Apply to all '+z.l+' in stock titles');
     go.addEventListener('click',function(){
       var v=parseFloat(inp.value); if(!(v>=0)){ toast('Enter an amount, or 0 to remove.'); return; } v=Math.round(v*100)/100;
@@ -3442,7 +3446,7 @@ function mcipAllCard(){
   var aa=mk('button','btn','Apply To All'); aa.type='button'; aa.style.cssText='width:100%;margin-top:4px'; aa.setAttribute('aria-label','Apply the typed MCIP to all sizes at once');
   aa.addEventListener('click',function(){
     if(!day||!editable()||!isOwner) return;
-    var ent=[]; all.forEach(function(z){ var raw=mcDraft[z.k]; if(raw===undefined||String(raw).trim()==='') return; var v=parseFloat(raw); if(v>=0) ent.push({z:z,v:Math.round(v*100)/100}); });
+    var ent=[]; boxes.forEach(function(b){ var raw=b.inp.value; if(String(raw).trim()==='') return; var v=parseFloat(raw); if(v>=0) ent.push({z:b.z,v:Math.round(v*100)/100}); });
     if(!ent.length){ toast('Type an MCIP in at least one size box first.'); return; }
     arm(aa,'mcall','Apply To All',async function(){
       var patch={rows:{}}, now=Date.now(), seen={}, cntT=0, sp={mcsa:{}};
@@ -3479,7 +3483,7 @@ function mcipSync(){
   if(mcSyncing||!isOwner||!canWrite||!day||!day.rows||!editable()||Date.now()-mcLast<8000) return;
   var patch={rows:{}}, n=0, r2=function(x){ return Math.round(x*100)/100; };
   var now0=Date.now();
-  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id]; if(!r||r.removed||r.pending||!r.by||r.mcip!=null) return;
+  Object.keys(day.rows).forEach(function(id){ var r=day.rows[id]; if(!r||r.removed||r.pending||r.mcip!=null) return;
     var v=mcAuto(r); if(v>0){ patch.rows[id]={mcip:v, mcipAt:now0, mcC:Number(r.cost)||0, mcS:Number(r.sp)||0}; n++; } });
   Object.keys(day.rows).forEach(function(id){ var r=day.rows[id], m=Number(r.mcip)||0; if(!(m>0)||!r.mcipAt||r.removed) return;
     var o={}, c0=r.mcC, s0=r.mcS;
