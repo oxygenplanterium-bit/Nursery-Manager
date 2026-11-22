@@ -13,6 +13,8 @@
 #paneStock[data-sub="pref"] #stockActs{display:none!important}
 #stockActs{width:100%}
 #bothCard{flex:1 1 100%; width:100%; max-width:100%; box-sizing:border-box}
+#paneStock>.xcw{position:sticky; top:38px; z-index:6; background:var(--bg); flex:0 0 auto!important; width:100%}
+#paneStock>.xcw.stk{box-shadow:0 -38px 0 var(--bg), 0 10px 0 var(--bg)}
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -448,7 +450,7 @@ input[type=email],input[type=url],input[type=password],input[type=date],input[ty
 #dlgLow .bcard,#dlgBat .bcard,#dlgDue .bcard{min-width:0}
 .tabs[aria-label="Sections"]{display:none !important}
 .wrap{padding-bottom:120px}
-html,body{max-width:100%; overflow-x:hidden}
+html,body{max-width:100%; overflow-x:hidden; overflow-x:clip}
 .dk>span:not(.dkt):not(.dkb){max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.66rem}
 #dock{position:fixed; left:0; right:0; margin:0 auto; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:50; display:flex; flex-direction:column; gap:10px; padding:12px 12px; box-sizing:border-box; width:calc(100% - 20px); max-width:380px; border-radius:30px; background:var(--card); border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.28)}
 #dock[hidden]{display:none}
@@ -637,7 +639,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 9:40 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 10:00 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -704,9 +706,9 @@ select:not([multiple]){pointer-events:none}
       <p class="pmeta" id="pendSub"></p>
       <div id="pendList"></div>
     </section>
+    <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
+    <input type="search" id="filter" placeholder="Search item name">
     <div class="bar" id="stockBar" hidden>
-      <label for="filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search items</label>
-      <input type="search" id="filter" placeholder="Search item name">
       <div class="card" id="bothCard" hidden style="padding:10px 14px"><label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer"><input type="checkbox" id="bothChk" style="width:22px;height:22px;flex:0 0 22px;margin:0"><span style="flex:1 1 auto;font-weight:600">Search Stock In Both Nurseries</span></label><span class="pmeta" id="bothHint" style="display:block;margin-top:4px" hidden>Type an item name above to see its stock card from both nurseries.</span></div>
       <div id="stockActs">
           <button class="btn small" id="mvAllStock" hidden></button>
@@ -6180,6 +6182,8 @@ $('#tabAcc').addEventListener('click', function(){ if(isOwner){ tab='acc'; rende
 $('#tabChat').addEventListener('click', function(){ tab='chat'; chatOpen=''; renderAll(); });
 $('#tabTeam').addEventListener('click', function(){ if(isOwner){ tab='team'; renderAll(); } });
 $('#filter').addEventListener('input', function(){ filter=this.value; renderAll(); });
+(function(){ var f=function(){ var w=document.querySelector('#paneStock>.xcw'); if(!w) return; w.classList.toggle('stk', w.getBoundingClientRect().top<=39.5 && window.scrollY>0); };
+  window.addEventListener('scroll',f,{passive:true}); window.addEventListener('resize',f); setInterval(f,400); })();
 $('#bothChk').addEventListener('change', function(){ bothOn=this.checked; try{ localStorage.setItem('nmBoth',bothOn?'1':'0'); }catch(e){} renderAll(); });
 function setMode(m){
   isOwner = accountOwner && m==='owner';
