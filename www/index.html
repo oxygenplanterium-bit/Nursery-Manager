@@ -15,10 +15,13 @@
 #bothCard{flex:1 1 100%; width:100%; max-width:100%; box-sizing:border-box}
 #paneStock>.xcw{position:sticky; top:38px; z-index:6; background:var(--bg); flex:0 0 auto!important; width:100%}
 #paneStock>.xcw.stk{box-shadow:0 -38px 0 var(--bg), 0 10px 0 var(--bg)}
-.rswc{display:flex; flex-direction:column; align-items:center; gap:2px; flex:0 0 auto; margin-left:auto}
+.rswc{position:relative; display:flex; align-items:center; flex:0 0 auto; margin-left:auto}
 #list .row .nmtop .rswc .rsw{margin-left:0}
 .rqty{display:none}
-.row.rhid .rqty{display:block; font-weight:700; font-size:.78rem; line-height:1; white-space:nowrap}
+.row.rhid .rqty{display:block; position:absolute; top:calc(100% + 1px); left:50%; transform:translateX(-50%); font-weight:700; font-size:.78rem; line-height:1; white-space:nowrap}
+@media (max-width:640px){ #list .row.rhid{padding-top:9px; padding-bottom:12px; row-gap:0}
+#list .row.rhid .id{align-items:baseline; gap:12px}
+#list .row.rhid .rcat{margin-top:1px} }
 </style><script>try{ if(!localStorage.getItem('nurseryRole')) document.documentElement.classList.add('booting'); }catch(e){} setTimeout(function(){ document.documentElement.classList.remove('booting'); },5000);</script></head><body>
 <style>
 /* Layout (from the owner's screenshot): title and formula line, role card with Owner login, date + supervisor card with previous-day picker, Stock / Daily Tasks toggle, panel, then PDF and WhatsApp buttons. Dark green first, light variant follows the viewer. */
@@ -643,7 +646,7 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 10:30 AM</p>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 11:00 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
