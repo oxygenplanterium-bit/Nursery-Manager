@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title><style>html.booting body{visibility:hidden}#bulkRow{flex:0 0 auto; order:0; display:flex; align-items:center; gap:14px; flex-wrap:nowrap; padding:2px 2px}
+<html lang="en"><head><meta charset="utf-8"><script>try{var _t=localStorage.getItem("nmTheme");if(_t)document.documentElement.setAttribute("data-theme",_t)}catch(e){}</script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nursery Manager"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Nursery Manager</title><style>html.booting body{visibility:hidden}#bulkRow{flex:0 0 auto; order:0; display:flex; align-items:center; gap:14px; flex-wrap:nowrap; padding:2px 2px}
 #bulkRow[hidden]{display:none}
 #bulkRow label{display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:.92rem; white-space:nowrap}
 #bulkRow input[type=checkbox]{width:22px; height:22px; flex:0 0 22px; margin:0}
@@ -646,7 +646,8 @@ select:not([multiple]){pointer-events:none}
     <button class="btn" id="homeBackup" type="button" hidden>Download Days Backup (Full Backup Of All Entries)</button>
     <button class="btn" id="homeRestore" type="button" hidden>Full Restore From Backup File</button>
     <div style="display:flex;gap:8px;align-items:stretch"><button class="btn small" id="alNotifBtn" type="button" style="flex:1 1 0;min-width:0">Turn on phone alerts</button><button class="btn small" id="refreshApp" type="button" style="flex:1 1 0;min-width:0">Refresh App</button></div>
-    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 11:00 AM</p>
+    <div id="themeRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px"><span style="font-weight:600">Dark Mode</span><button type="button" class="rsw" id="themeSw" role="switch" aria-checked="true" aria-label="Dark mode"><span class="rswk"></span></button></div>
+    <p class="pmeta" id="appVer" style="margin:0;text-align:center;font-size:.7rem">App version 22 Nov 2026, 11:20 AM</p>
   </div>
 
   <section class="card alertcard" id="batAlert" hidden>
@@ -6175,6 +6176,15 @@ $('#winClose').addEventListener('click', function(){ closeWin(false); });
 window.__nmBack=function(){ var d=[].slice.call(document.querySelectorAll('dialog[open]')).pop(); if(d){ try{ d.close(); }catch(e){} return true; } if(tab){ closeWin(false); return true; } return false; };
 window.addEventListener('popstate', function(){ if(tab){ winPushed=false; closeWin(true); } });
 $('#tabStock').addEventListener('click', function(){ tab='stock'; renderAll(); });
+(function(){
+  var sw=$('#themeSw'); if(!sw) return;
+  var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  var isDark=function(){ var t=document.documentElement.getAttribute('data-theme'); return t?t==='dark':!(mq&&!mq.matches); };
+  var paint=function(){ var d=isDark(); sw.setAttribute('aria-checked',d?'true':'false'); var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',d?'#0F1713':'#EDF2EC'); };
+  sw.addEventListener('click',function(){ var n=isDark()?'light':'dark'; document.documentElement.setAttribute('data-theme',n); try{ localStorage.setItem('nmTheme',n); }catch(e){} paint(); });
+  if(mq&&mq.addEventListener) mq.addEventListener('change',function(){ if(!document.documentElement.getAttribute('data-theme')) paint(); });
+  paint();
+})();
 function stockSubSet(v){ var p=$('#paneStock'); p.dataset.sub=v; try{ localStorage.setItem('nmStockSub',v); }catch(e){} $('#subPref').setAttribute('aria-selected',v==='pref'?'true':'false'); $('#subList').setAttribute('aria-selected',v==='list'?'true':'false'); try{ document.activeElement.blur(); }catch(e){} renderAll(); window.scrollTo(0,Math.min(window.scrollY,(($('#stockSubs').getBoundingClientRect().top+window.scrollY)-8))); }
 $('#subPref').addEventListener('click', function(){ stockSubSet('pref'); });
 $('#subList').addEventListener('click', function(){ stockSubSet('list'); });
